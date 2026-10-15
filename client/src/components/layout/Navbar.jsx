@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { TrendingUp, Search, Bell, User, Menu, X, LogOut, Settings, LayoutDashboard } from 'lucide-react'
+import { TrendingUp, Search, Bell, User, Menu, X, LogOut, Settings, LayoutDashboard, RefreshCw } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useMarketStore } from '../../store/marketStore'
+import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
 const NAV_LINKS = [
@@ -17,14 +18,29 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const { user, subscription, logout, isAdmin } = useAuthStore()
-  const { marketStatus, isConnected } = useMarketStore()
+  const { marketStatus, isConnected, fetchIndices } = useMarketStore()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
     await logout()
     toast.success('Logged out')
     navigate('/login')
+  }
+
+  const handleSyncApify = async () => {
+    setSyncing(true)
+    const toastId = toast.loading('Syncing real Indian market prices from Apify...')
+    try {
+      const { data } = await api.post('/market/sync-apify')
+      toast.success(`Updated ${data.count || 0} symbols with live Apify prices!`, { id: toastId })
+      if (fetchIndices) fetchIndices()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Apify sync failed', { id: toastId })
+    } finally {
+      setSyncing(false)
+    }
   }
 
   return (
@@ -73,6 +89,17 @@ export default function Navbar() {
                 {marketStatus}
               </span>
             </div>
+
+            {/* Apify Live Sync Button */}
+            <button
+              onClick={handleSyncApify}
+              disabled={syncing}
+              title="Sync Live Indian Market Prices via Apify"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50"
+            >
+              <RefreshCw size={11} className={syncing ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">{syncing ? 'Syncing...' : 'Apify Live'}</span>
+            </button>
 
             {/* Connection status */}
             <div className="w-2 h-2 rounded-full" title={isConnected ? 'Live' : 'Disconnected'}
