@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { TrendingUp, Search, Bell, User, Menu, X, LogOut, Settings, LayoutDashboard, RefreshCw } from 'lucide-react'
+import { TrendingUp, Search, Bell, User, Menu, X, LogOut, Settings, LayoutDashboard, RefreshCw, BookOpen } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useMarketStore } from '../../store/marketStore'
 import api from '../../lib/api'
@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { to: '/',          label: 'Dashboard' },
   { to: '/indices',   label: 'Indices'   },
   { to: '/stocks',    label: 'Stocks'    },
+  { to: '/journal',   label: 'Journal'   },
   { to: '/news',      label: 'News'      },
   { to: '/education', label: 'Learn'     },
   { to: '/pricing',   label: 'Pricing'   },
@@ -133,6 +134,10 @@ export default function Navbar() {
                       <Link to="/watchlist" onClick={() => setUserMenuOpen(false)}
                             className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5 transition-colors">
                         <Bell size={14} /> Watchlist
+                      </Link>
+                      <Link to="/journal" onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5 transition-colors">
+                        <BookOpen size={14} /> Trading Journal
                       </Link>
                       <Link to="/profile" onClick={() => setUserMenuOpen(false)}
                             className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5 transition-colors">

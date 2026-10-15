@@ -12,6 +12,7 @@ import WatchlistPage from './pages/WatchlistPage'
 import PricingPage from './pages/PricingPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
+import TradingJournalPage from './pages/TradingJournalPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminPage from './pages/admin/AdminPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="news/:slug" element={<ArticlePage />} />
         <Route path="education" element={<EducationPage />} />
         <Route path="pricing" element={<PricingPage />} />
+        <Route path="journal" element={<TradingJournalPage />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>

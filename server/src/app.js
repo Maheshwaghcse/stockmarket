@@ -12,6 +12,7 @@ const newsRoutes = require('./routes/news');
 const watchlistRoutes = require('./routes/watchlist');
 const subscriptionRoutes = require('./routes/subscription');
 const adminRoutes = require('./routes/admin');
+const journalRoutes = require('./routes/journal');
 const webhookRoutes = require('./routes/webhook');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
@@ -84,6 +85,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/journal', journalRoutes);
 
 // ─── Health Check ──────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

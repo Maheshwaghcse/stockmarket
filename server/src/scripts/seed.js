@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Article = require('../models/Article');
 const Watchlist = require('../models/Watchlist');
 const Subscription = require('../models/Subscription');
+const Trade = require('../models/Trade');
 const { connectDB } = require('../config/db');
 
 async function seed() {
@@ -16,8 +17,9 @@ async function seed() {
     Article.deleteMany({}),
     Watchlist.deleteMany({}),
     Subscription.deleteMany({}),
+    Trade.deleteMany({}),
   ]);
-  console.log('🧹 Cleared existing users, articles, watchlists, subscriptions.');
+  console.log('🧹 Cleared existing users, articles, watchlists, subscriptions, trades.');
 
   // 1. Create Users
   const adminUser = await User.create({
@@ -115,7 +117,118 @@ async function seed() {
 
   console.log('✅ Created initial watchlists and subscription records.');
 
-  // 4. Create Articles (News, Education, Analysis, Guide, Glossary)
+  // 4. Create Sample Trades for Trading Journal (demo user)
+  const sampleTrades = [
+    {
+      user: demoUser._id,
+      symbol: 'RELIANCE',
+      tradeType: 'Long',
+      entryDate: new Date('2026-10-01T09:30:00Z'),
+      exitDate: new Date('2026-10-01T15:15:00Z'),
+      entryPrice: 1180,
+      exitPrice: 1215,
+      quantity: 50,
+      entryReason: 'Bullish breakout above 50-DMA with heavy volume expansion.',
+      exitReason: 'Target 1 hit at resistance; took profits before market close.',
+      lessonLearned: 'Sticking to predefined targets yields stress-free execution.',
+    },
+    {
+      user: demoUser._id,
+      symbol: 'TCS',
+      tradeType: 'Long',
+      entryDate: new Date('2026-10-05T10:00:00Z'),
+      exitDate: new Date('2026-10-05T14:30:00Z'),
+      entryPrice: 2310,
+      exitPrice: 2355,
+      quantity: 30,
+      entryReason: 'Pre-earnings optimism and strong USD/INR tailwind.',
+      exitReason: 'Trailing stop loss triggered on rally consolidation.',
+      lessonLearned: 'Trail stop losses in 1/3 tranches to let winners run further.',
+    },
+    {
+      user: demoUser._id,
+      symbol: 'HDFCBANK',
+      tradeType: 'Short',
+      entryDate: new Date('2026-10-07T09:45:00Z'),
+      exitDate: new Date('2026-10-07T13:30:00Z'),
+      entryPrice: 735,
+      exitPrice: 718,
+      quantity: 100,
+      entryReason: 'Rejection at downward trendline, sector weakness in banking.',
+      exitReason: 'Covered short near previous swing support.',
+      lessonLearned: 'Short trades need stricter profit booking due to gap-up risks.',
+    },
+    {
+      user: demoUser._id,
+      symbol: 'INFY',
+      tradeType: 'Long',
+      entryDate: new Date('2026-10-08T11:15:00Z'),
+      exitDate: new Date('2026-10-08T14:00:00Z'),
+      entryPrice: 1860,
+      exitPrice: 1835,
+      quantity: 25,
+      entryReason: 'Attempted intraday bottom fishing on sudden dip.',
+      exitReason: 'Strict stop loss hit at ₹1835.',
+      lessonLearned: 'Never catch falling knives without price action confirmation.',
+    },
+    {
+      user: demoUser._id,
+      symbol: 'ICICIBANK',
+      tradeType: 'Long',
+      entryDate: new Date('2026-10-12T09:20:00Z'),
+      exitDate: new Date('2026-10-12T15:00:00Z'),
+      entryPrice: 1320,
+      exitPrice: 1362,
+      quantity: 40,
+      entryReason: 'Strong Q2 loan growth numbers and positive analyst upgrades.',
+      exitReason: 'End of day square-off at target level.',
+      lessonLearned: 'Fundamental momentum combined with intraday trend gives high win rate.',
+    },
+    {
+      user: demoUser._id,
+      symbol: 'TATAMOTORS',
+      tradeType: 'Long',
+      entryDate: new Date('2026-10-13T10:30:00Z'),
+      exitDate: new Date('2026-10-13T15:10:00Z'),
+      entryPrice: 970,
+      exitPrice: 1005,
+      quantity: 60,
+      entryReason: 'EV sales record announcement and breakout from cup & handle.',
+      exitReason: 'Reached psychological round level of ₹1000+.',
+      lessonLearned: 'Holding through minor intraday pullbacks rewarded well.',
+    },
+    {
+      user: demoUser._id,
+      symbol: 'SBIN',
+      tradeType: 'Long',
+      entryDate: new Date('2026-10-14T09:40:00Z'),
+      exitDate: new Date('2026-10-14T11:30:00Z'),
+      entryPrice: 840,
+      exitPrice: 825,
+      quantity: 50,
+      entryReason: 'Anticipated PSU bank rally following morning gap up.',
+      exitReason: 'Failed to sustain gap, stop loss hit.',
+      lessonLearned: 'Wait 15 minutes after open before buying gap-ups.',
+    },
+    {
+      user: demoUser._id,
+      symbol: 'WIPRO',
+      tradeType: 'Long',
+      entryDate: new Date('2026-10-15T09:30:00Z'),
+      entryPrice: 550,
+      quantity: 100,
+      entryReason: 'Swing position build ahead of deal win announcements.',
+      lessonLearned: 'Position sizing kept small for overnight hold.',
+    },
+  ];
+
+  for (const t of sampleTrades) {
+    const tradeDoc = new Trade(t);
+    await tradeDoc.save();
+  }
+  console.log(`✅ Seeded ${sampleTrades.length} trades for Trading Journal.`);
+
+  // 5. Create Articles (News, Education, Analysis, Guide, Glossary)
   const articlesData = [
     {
       title: 'Sensex Crosses 80,000: What Is Powering the Indian Equity Bull Run?',
