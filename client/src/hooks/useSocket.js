@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { useMarketStore } from '../store/marketStore'
+import api from '../lib/api'
 
 let socket = null
 
@@ -10,6 +11,17 @@ export function useSocket() {
 
   useEffect(() => {
     mountedRef.current = true
+
+    // Immediate initial data fetch
+    api.get('/market/indices')
+      .then(({ data }) => {
+        if (!mountedRef.current || !data?.data) return
+        const map = {}
+        data.data.forEach((idx) => { map[idx.symbol] = idx })
+        setIndices(map)
+        if (data.data[0]?.marketStatus) setMarketStatus(data.data[0].marketStatus)
+      })
+      .catch((err) => console.warn('Initial indices fetch warning:', err))
 
     if (!socket) {
       socket = io('/', {
