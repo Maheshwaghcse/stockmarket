@@ -195,16 +195,63 @@ async function fetchIndexQuote(symbol, forceRefresh = false) {
   return cached || null;
 }
 
+function resolveSymbolConfig(symbol) {
+  const upper = (symbol || '').toUpperCase().trim();
+  let found = INDEX_CONFIG.find((c) => c.symbol === upper || c.yahooSymbol.toUpperCase() === upper);
+  if (found) return found;
+  found = STOCK_CONFIG.find((c) => c.symbol === upper || c.yahooSymbol.toUpperCase() === upper);
+  if (found) return found;
+  if (upper === '^NSEI') return { symbol: 'NIFTY50', yahooSymbol: '^NSEI', name: 'Nifty 50', exchange: 'NSE' };
+  if (upper === '^NSEBANK') return { symbol: 'BANKNIFTY', yahooSymbol: '^NSEBANK', name: 'Nifty Bank', exchange: 'NSE' };
+  if (upper === '^BSESN') return { symbol: 'SENSEX', yahooSymbol: '^BSESN', name: 'BSE Sensex', exchange: 'BSE' };
+  return {
+    symbol: upper,
+    yahooSymbol: upper.endsWith('.NS') || upper.endsWith('.BO') || upper.startsWith('^') ? upper : `${upper}.NS`,
+    name: upper,
+    exchange: 'NSE',
+  };
+}
+
 /**
  * Fetch historical/intraday chart candles from Yahoo Finance
- * Returns array of { time: unix_seconds, open, high, low, close, volume }
+ * Supports indices, equities, multiple intervals (1m, 5m, 15m, 1h, 1d) and ranges (1d, 5d, 1mo, 6mo, 1y).
+ * Returns { symbol, yahooSymbol, name, interval, range, count, data, lastCandleTime, sourceTimestamp, dataFreshness, isMarketOpen }
  */
-async function fetchIndexChart(symbol, interval = '5m', forceRefresh = false) {
-  const upper = symbol.toUpperCase();
-  const config = INDEX_CONFIG.find((c) => c.symbol === upper);
+async function fetchSymbolHistory(symbol, interval = '5m', range = '5d', forceRefresh = false) {
+  const config = resolveSymbolConfig(symbol);
   if (!config) return null;
 
-  const cacheKey = `${upper}_${interval}`;
+  // Clean interval and range
+  let cleanInterval = (interval || '5m').toLowerCase();
+  if (cleanInterval === '1h') cleanInterval = '60m';
+  if (cleanInterval === 'd') cleanInterval = '1d';
+  if (['1', '5', '15', '30', '60'].includes(cleanInterval)) cleanInterval = `${cleanInterval}m`;
+
+  let cleanRange = (range || '5d').toLowerCase();
+
+  // Enforce Yahoo Finance limits
+  let daysBack = 5;
+  if (cleanRange === '1d') daysBack = 2;
+  else if (cleanRange === '5d') daysBack = 5;
+  else if (cleanRange === '1mo' || cleanRange === '1m') daysBack = 30;
+  else if (cleanRange === '3mo' || cleanRange === '3m') daysBack = 90;
+  else if (cleanRange === '6mo' || cleanRange === '6m') daysBack = 180;
+  else if (cleanRange === '1y') daysBack = 365;
+  else if (cleanRange === '2y') daysBack = 730;
+  else if (cleanRange === '5y') daysBack = 1825;
+
+  // Yahoo limits: 1m max 7d; other intraday max 59d
+  let note = null;
+  if (cleanInterval === '1m' && daysBack > 7) {
+    daysBack = 7;
+    note = '1m intraday data capped to 7 days maximum';
+  } else if (['5m', '15m', '30m', '60m'].includes(cleanInterval) && daysBack > 59) {
+    // If range is large (e.g. 6mo or 1y), switch to 1d candles
+    cleanInterval = '1d';
+    note = 'Switched to 1d interval for extended historical range';
+  }
+
+  const cacheKey = `${config.symbol}_${cleanInterval}_${cleanRange}`;
   const now = Date.now();
   const cached = chartCache.get(cacheKey);
 
@@ -213,32 +260,13 @@ async function fetchIndexChart(symbol, interval = '5m', forceRefresh = false) {
   }
 
   try {
-    // Map interval to Yahoo Finance supported intervals and appropriate period1
-    let yfInterval = '5m';
-    let daysBack = 5;
-
-    if (interval === '1m' || interval === 1) {
-      yfInterval = '1m';
-      daysBack = 2; // Yahoo only supports 1m for last 7 days
-    } else if (interval === '5m' || interval === 5) {
-      yfInterval = '5m';
-      daysBack = 5;
-    } else if (interval === '15m' || interval === 15) {
-      yfInterval = '15m';
-      daysBack = 15;
-    } else if (interval === '1d' || interval === 'D') {
-      yfInterval = '1d';
-      daysBack = 180;
-    }
-
     const period1 = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
-    const res = await yf.chart(config.yahooSymbol, { period1, interval: yfInterval });
+    const res = await yf.chart(config.yahooSymbol, { period1, interval: cleanInterval });
 
     if (!res || !Array.isArray(res.quotes) || res.quotes.length === 0) {
-      return cached ? cached.data : [];
+      return cached ? cached.data : null;
     }
 
-    // Clean, validate and format candles for Lightweight Charts
     const candles = [];
     const seenTimes = new Set();
 
@@ -246,7 +274,6 @@ async function fetchIndexChart(symbol, interval = '5m', forceRefresh = false) {
       if (!q.date) continue;
       const t = Math.floor(new Date(q.date).getTime() / 1000);
 
-      // Validate OHLC numbers
       const o = typeof q.open === 'number' ? q.open : null;
       const h = typeof q.high === 'number' ? q.high : null;
       const l = typeof q.low === 'number' ? q.low : null;
@@ -268,28 +295,56 @@ async function fetchIndexChart(symbol, interval = '5m', forceRefresh = false) {
       });
     }
 
-    // Sort ascending by time
     candles.sort((a, b) => a.time - b.time);
 
+    const openStatus = isMarketOpen();
+    const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+    const lastCandleIso = lastCandle ? new Date(lastCandle.time * 1000).toISOString() : null;
+
+    let dataFreshness = openStatus ? 'Live Session (~15m delay)' : 'Market Closed (Latest Session Close)';
+    if (lastCandle) {
+      const minutesAgo = Math.round((Date.now() - lastCandle.time * 1000) / 60000);
+      if (minutesAgo < 60) {
+        dataFreshness = `Updated ${minutesAgo}m ago`;
+      }
+    }
+
     const result = {
-      symbol: upper,
+      symbol: config.symbol,
       yahooSymbol: config.yahooSymbol,
-      interval: yfInterval,
+      name: config.name,
+      exchange: config.exchange,
+      interval: cleanInterval,
+      range: cleanRange,
       count: candles.length,
       data: candles,
-      lastCandleTime: candles.length > 0 ? new Date(candles[candles.length - 1].time * 1000).toISOString() : null,
-      source: 'Yahoo Finance',
-      dataSourceNote: 'Latest available Yahoo Finance data',
+      lastCandleTime: lastCandleIso,
+      sourceTimestamp: lastCandleIso,
+      dataFreshness,
+      isMarketOpen: openStatus,
+      note,
+      source: 'Live Markets',
+      dataSourceNote: 'Market reference quotes',
       updatedAt: new Date().toISOString(),
     };
 
     chartCache.set(cacheKey, { data: result, timestamp: now });
     return result;
   } catch (err) {
-    console.error(`[YahooFinance] Chart error for ${symbol}:`, err.message);
+    console.error(`[YahooFinance] Historical data error for ${symbol}:`, err.message);
     if (cached) return cached.data;
     return null;
   }
+}
+
+/**
+ * Fetch historical/intraday chart candles from Yahoo Finance (backward compatible wrapper)
+ */
+async function fetchIndexChart(symbol, interval = '5m', forceRefresh = false) {
+  let range = '5d';
+  if (interval === '1d' || interval === 'D') range = '6mo';
+  if (interval === '15m') range = '15d';
+  return fetchSymbolHistory(symbol, interval, range, forceRefresh);
 }
 
 /**
@@ -364,6 +419,8 @@ module.exports = {
   fetchIndexQuotes,
   fetchIndexQuote,
   fetchIndexChart,
+  fetchSymbolHistory,
+  resolveSymbolConfig,
   fetchStockQuotes,
   fetchStockDetail,
   isMarketOpen,

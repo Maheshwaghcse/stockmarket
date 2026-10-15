@@ -126,6 +126,39 @@ router.get('/indices/:symbol/history', async (req, res, next) => {
 });
 
 /**
+ * GET /api/market/chart/:symbol
+ * Comprehensive historical OHLCV endpoint supporting indices and equities,
+ * multiple intervals (1m, 5m, 15m, 1h, 1d) and ranges (1d, 5d, 1mo, 6mo, 1y).
+ */
+router.get('/chart/:symbol', async (req, res, next) => {
+  try {
+    const symbol = req.params.symbol;
+    const interval = req.query.interval || '5m';
+    const range = req.query.range || '5d';
+
+    const result = await yahooFinanceService.fetchSymbolHistory(symbol, interval, range);
+
+    if (!result || !result.data || !result.data.length) {
+      return res.status(404).json({
+        success: false,
+        message: `No chart data available for ${symbol} with interval ${interval} and range ${range}.`,
+        sourceTimestamp: null,
+        dataFreshness: 'Unavailable',
+        count: 0,
+        data: [],
+      });
+    }
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /api/market/gainers-losers
  * Returns top 5 gainers and losers from tracked indices/stocks.
  */
