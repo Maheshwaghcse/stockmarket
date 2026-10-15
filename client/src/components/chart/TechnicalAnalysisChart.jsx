@@ -155,185 +155,202 @@ export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', heig
   useEffect(() => {
     if (!mainChartContainerRef.current || chartCandles.length === 0) return
 
-    // Clean up previous instance
-    if (mainChartRef.current) {
-      mainChartRef.current.remove()
-      mainChartRef.current = null
-    }
+    let chart = null
+    let handleResize = null
 
-    const container = mainChartContainerRef.current
-    const mainHeight = subIndicator !== 'none' ? height * 0.72 : height
-
-    const chart = createChart(container, {
-      height: mainHeight,
-      layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#94a3b8',
-        fontFamily: 'JetBrains Mono, monospace',
-        fontSize: 11,
-      },
-      grid: {
-        vertLines: { color: 'rgba(51,65,85,0.3)' },
-        horzLines: { color: 'rgba(51,65,85,0.3)' },
-      },
-      crosshair: { mode: CrosshairMode.Normal },
-      rightPriceScale: {
-        borderColor: '#334155',
-        scaleMargins: { top: 0.1, bottom: showVolume ? 0.2 : 0.1 },
-      },
-      timeScale: {
-        borderColor: '#334155',
-        timeVisible: selectedTf.range === '1d' || selectedTf.range === '5d',
-        secondsVisible: false,
-      },
-    })
-    mainChartRef.current = chart
-
-    // 1. Primary Price Series
-    let priceSeries = null
-    if (chartType === 'candlestick' || chartType === 'heikin-ashi') {
-      priceSeries = chart.addSeries(CandlestickSeries, {
-        upColor: '#22c55e',
-        downColor: '#ef4444',
-        borderUpColor: '#22c55e',
-        borderDownColor: '#ef4444',
-        wickUpColor: '#22c55e',
-        wickDownColor: '#ef4444',
-      })
-      priceSeries.setData(
-        chartCandles.map((c) => ({
-          time: c.time,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-        }))
-      )
-    } else if (chartType === 'line') {
-      priceSeries = chart.addSeries(LineSeries, {
-        color: '#3b82f6',
-        lineWidth: 2,
-      })
-      priceSeries.setData(chartCandles.map((c) => ({ time: c.time, value: c.close })))
-    } else if (chartType === 'area') {
-      priceSeries = chart.addSeries(AreaSeries, {
-        topColor: 'rgba(59, 130, 246, 0.4)',
-        bottomColor: 'rgba(59, 130, 246, 0.02)',
-        lineColor: '#3b82f6',
-        lineWidth: 2,
-      })
-      priceSeries.setData(chartCandles.map((c) => ({ time: c.time, value: c.close })))
-    } else if (chartType === 'bar') {
-      priceSeries = chart.addSeries(BarSeries, {
-        upColor: '#22c55e',
-        downColor: '#ef4444',
-      })
-      priceSeries.setData(
-        chartCandles.map((c) => ({
-          time: c.time,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-        }))
-      )
-    }
-
-    // 2. Volume Overlay
-    if (showVolume) {
-      const volumeSeries = chart.addSeries(HistogramSeries, {
-        priceFormat: { type: 'volume' },
-        priceScaleId: 'volume',
-      })
-      chart.priceScale('volume').applyOptions({
-        scaleMargins: { top: 0.8, bottom: 0 },
-      })
-      volumeSeries.setData(
-        chartCandles.map((c) => ({
-          time: c.time,
-          value: c.volume || 0,
-          color: c.close >= c.open ? 'rgba(34, 197, 94, 0.25)' : 'rgba(239, 68, 68, 0.25)',
-        }))
-      )
-    }
-
-    // 3. Technical Indicator Overlays
-    if (showSMA) {
-      const smaData = calculateSMA(rawData, smaPeriod)
-      if (smaData.length > 0) {
-        const smaSeries = chart.addSeries(LineSeries, {
-          color: '#f59e0b', // Amber
-          lineWidth: 1.5,
-          title: `SMA ${smaPeriod}`,
-        })
-        smaSeries.setData(smaData)
+    try {
+      if (mainChartRef.current) {
+        mainChartRef.current.remove()
+        mainChartRef.current = null
       }
-    }
 
-    if (showEMA) {
-      const emaData = calculateEMA(rawData, emaPeriod)
-      if (emaData.length > 0) {
-        const emaSeries = chart.addSeries(LineSeries, {
-          color: '#06b6d4', // Cyan
-          lineWidth: 1.5,
-          title: `EMA ${emaPeriod}`,
+      const container = mainChartContainerRef.current
+      const mainHeight = subIndicator !== 'none' ? height * 0.72 : height
+
+      chart = createChart(container, {
+        width: container.clientWidth || 800,
+        height: mainHeight,
+        layout: {
+          background: { type: ColorType.Solid, color: 'transparent' },
+          textColor: '#94a3b8',
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 11,
+        },
+        grid: {
+          vertLines: { color: 'rgba(51,65,85,0.3)' },
+          horzLines: { color: 'rgba(51,65,85,0.3)' },
+        },
+        crosshair: { mode: CrosshairMode.Normal },
+        rightPriceScale: {
+          borderColor: '#334155',
+          scaleMargins: { top: 0.1, bottom: showVolume ? 0.2 : 0.1 },
+        },
+        timeScale: {
+          borderColor: '#334155',
+          timeVisible: selectedTf.range === '1d' || selectedTf.range === '5d',
+          secondsVisible: false,
+        },
+      })
+      mainChartRef.current = chart
+
+      // 1. Primary Price Series
+      let priceSeries = null
+      if (chartType === 'candlestick' || chartType === 'heikin-ashi') {
+        priceSeries = chart.addSeries(CandlestickSeries, {
+          upColor: '#22c55e',
+          downColor: '#ef4444',
+          borderUpColor: '#22c55e',
+          borderDownColor: '#ef4444',
+          wickUpColor: '#22c55e',
+          wickDownColor: '#ef4444',
         })
-        emaSeries.setData(emaData)
+        priceSeries.setData(
+          chartCandles.map((c) => ({
+            time: c.time,
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+          }))
+        )
+      } else if (chartType === 'line') {
+        priceSeries = chart.addSeries(LineSeries, {
+          color: '#3b82f6',
+          lineWidth: 2,
+        })
+        priceSeries.setData(chartCandles.map((c) => ({ time: c.time, value: c.close })))
+      } else if (chartType === 'area') {
+        priceSeries = chart.addSeries(AreaSeries, {
+          topColor: 'rgba(59, 130, 246, 0.4)',
+          bottomColor: 'rgba(59, 130, 246, 0.02)',
+          lineColor: '#3b82f6',
+          lineWidth: 2,
+        })
+        priceSeries.setData(chartCandles.map((c) => ({ time: c.time, value: c.close })))
+      } else if (chartType === 'bar') {
+        priceSeries = chart.addSeries(BarSeries, {
+          upColor: '#22c55e',
+          downColor: '#ef4444',
+        })
+        priceSeries.setData(
+          chartCandles.map((c) => ({
+            time: c.time,
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+          }))
+        )
       }
-    }
 
-    if (showBB) {
-      const bbData = calculateBollingerBands(rawData, bbPeriod, bbStdDev)
-      if (bbData.length > 0) {
-        const upperSeries = chart.addSeries(LineSeries, {
-          color: 'rgba(168, 85, 247, 0.6)',
-          lineWidth: 1,
-          lineStyle: 2, // Dashed
-          title: `BB Upper (${bbPeriod})`,
-        })
-        const middleSeries = chart.addSeries(LineSeries, {
-          color: 'rgba(168, 85, 247, 0.9)',
-          lineWidth: 1.5,
-          title: `BB Mid (${bbPeriod})`,
-        })
-        const lowerSeries = chart.addSeries(LineSeries, {
-          color: 'rgba(168, 85, 247, 0.6)',
-          lineWidth: 1,
-          lineStyle: 2, // Dashed
-          title: `BB Lower (${bbPeriod})`,
-        })
-
-        upperSeries.setData(bbData.map((d) => ({ time: d.time, value: d.upper })))
-        middleSeries.setData(bbData.map((d) => ({ time: d.time, value: d.middle })))
-        lowerSeries.setData(bbData.map((d) => ({ time: d.time, value: d.lower })))
+      // 2. Volume Overlay
+      if (showVolume) {
+        try {
+          const volumeSeries = chart.addSeries(HistogramSeries, {
+            priceFormat: { type: 'volume' },
+            priceScaleId: '', // overlay mode
+          })
+          if (volumeSeries.priceScale) {
+            volumeSeries.priceScale().applyOptions({
+              scaleMargins: { top: 0.8, bottom: 0 },
+            })
+          }
+          volumeSeries.setData(
+            chartCandles.map((c) => ({
+              time: c.time,
+              value: c.volume || 0,
+              color: c.close >= c.open ? 'rgba(34, 197, 94, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+            }))
+          )
+        } catch (volErr) {
+          console.warn('Volume overlay warning:', volErr)
+        }
       }
-    }
 
-    if (showVWAP) {
-      const vwapData = calculateVWAP(rawData)
-      if (vwapData.length > 0) {
-        const vwapSeries = chart.addSeries(LineSeries, {
-          color: '#ec4899', // Pink
-          lineWidth: 1.5,
-          title: 'VWAP',
-        })
-        vwapSeries.setData(vwapData.map((d) => ({ time: d.time, value: d.value })))
+      // 3. Technical Indicator Overlays
+      if (showSMA) {
+        const smaData = calculateSMA(rawData, smaPeriod)
+        if (smaData.length > 0) {
+          const smaSeries = chart.addSeries(LineSeries, {
+            color: '#f59e0b',
+            lineWidth: 1.5,
+            title: `SMA ${smaPeriod}`,
+          })
+          smaSeries.setData(smaData)
+        }
       }
-    }
 
-    chart.timeScale().fitContent()
-
-    const handleResize = () => {
-      if (container && chart) {
-        chart.applyOptions({ width: container.clientWidth })
+      if (showEMA) {
+        const emaData = calculateEMA(rawData, emaPeriod)
+        if (emaData.length > 0) {
+          const emaSeries = chart.addSeries(LineSeries, {
+            color: '#06b6d4',
+            lineWidth: 1.5,
+            title: `EMA ${emaPeriod}`,
+          })
+          emaSeries.setData(emaData)
+        }
       }
+
+      if (showBB) {
+        const bbData = calculateBollingerBands(rawData, bbPeriod, bbStdDev)
+        if (bbData.length > 0) {
+          const upperSeries = chart.addSeries(LineSeries, {
+            color: 'rgba(168, 85, 247, 0.6)',
+            lineWidth: 1,
+            lineStyle: 2,
+            title: `BB Upper (${bbPeriod})`,
+          })
+          const middleSeries = chart.addSeries(LineSeries, {
+            color: 'rgba(168, 85, 247, 0.9)',
+            lineWidth: 1.5,
+            title: `BB Mid (${bbPeriod})`,
+          })
+          const lowerSeries = chart.addSeries(LineSeries, {
+            color: 'rgba(168, 85, 247, 0.6)',
+            lineWidth: 1,
+            lineStyle: 2,
+            title: `BB Lower (${bbPeriod})`,
+          })
+
+          upperSeries.setData(bbData.map((d) => ({ time: d.time, value: d.upper })))
+          middleSeries.setData(bbData.map((d) => ({ time: d.time, value: d.middle })))
+          lowerSeries.setData(bbData.map((d) => ({ time: d.time, value: d.lower })))
+        }
+      }
+
+      if (showVWAP) {
+        const vwapData = calculateVWAP(rawData)
+        if (vwapData.length > 0) {
+          const vwapSeries = chart.addSeries(LineSeries, {
+            color: '#ec4899',
+            lineWidth: 1.5,
+            title: 'VWAP',
+          })
+          vwapSeries.setData(vwapData.map((d) => ({ time: d.time, value: d.value })))
+        }
+      }
+
+      chart.timeScale().fitContent()
+
+      handleResize = () => {
+        if (container && chart && container.clientWidth > 0) {
+          chart.applyOptions({ width: container.clientWidth })
+        }
+      }
+      window.addEventListener('resize', handleResize)
+    } catch (chartErr) {
+      console.error('Main chart build error:', chartErr)
     }
-    window.addEventListener('resize', handleResize)
 
     return () => {
-      window.removeEventListener('resize', handleResize)
+      if (handleResize) {
+        window.removeEventListener('resize', handleResize)
+      }
       if (chart) {
-        chart.remove()
+        try {
+          chart.remove()
+        } catch {}
         mainChartRef.current = null
       }
     }
@@ -357,123 +374,131 @@ export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', heig
   useEffect(() => {
     if (subIndicator === 'none' || !subChartContainerRef.current || rawData.length === 0) {
       if (subChartRef.current) {
-        subChartRef.current.remove()
+        try {
+          subChartRef.current.remove()
+        } catch {}
         subChartRef.current = null
       }
       return
     }
 
-    if (subChartRef.current) {
-      subChartRef.current.remove()
-      subChartRef.current = null
+    let subChart = null
+    let handleResize = null
+
+    try {
+      if (subChartRef.current) {
+        subChartRef.current.remove()
+        subChartRef.current = null
+      }
+
+      const container = subChartContainerRef.current
+      subChart = createChart(container, {
+        width: container.clientWidth || 800,
+        height: 140,
+        layout: {
+          background: { type: ColorType.Solid, color: 'transparent' },
+          textColor: '#94a3b8',
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 10,
+        },
+        grid: {
+          vertLines: { color: 'rgba(51,65,85,0.2)' },
+          horzLines: { color: 'rgba(51,65,85,0.2)' },
+        },
+        crosshair: { mode: CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#334155' },
+        timeScale: {
+          borderColor: '#334155',
+          timeVisible: selectedTf.range === '1d' || selectedTf.range === '5d',
+          secondsVisible: false,
+        },
+      })
+      subChartRef.current = subChart
+
+      if (subIndicator === 'rsi') {
+        const rsiData = calculateRSI(rawData, rsiPeriod)
+        if (rsiData.length > 0) {
+          const rsiSeries = subChart.addSeries(LineSeries, {
+            color: '#818cf8',
+            lineWidth: 1.5,
+            title: `RSI (${rsiPeriod})`,
+          })
+          rsiSeries.setData(rsiData)
+
+          const obLine = subChart.addSeries(LineSeries, {
+            color: 'rgba(239, 68, 68, 0.4)',
+            lineWidth: 1,
+            lineStyle: 2,
+          })
+          obLine.setData(rsiData.map((d) => ({ time: d.time, value: 70 })))
+
+          const osLine = subChart.addSeries(LineSeries, {
+            color: 'rgba(34, 197, 94, 0.4)',
+            lineWidth: 1,
+            lineStyle: 2,
+          })
+          osLine.setData(rsiData.map((d) => ({ time: d.time, value: 30 })))
+        }
+      } else if (subIndicator === 'macd') {
+        const macdData = calculateMACD(rawData, 12, 26, 9)
+        if (macdData.length > 0) {
+          const histSeries = subChart.addSeries(HistogramSeries, {
+            title: 'Histogram',
+          })
+          histSeries.setData(
+            macdData.map((d) => ({
+              time: d.time,
+              value: d.histogram,
+              color: d.histogram >= 0 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)',
+            }))
+          )
+
+          const macdLine = subChart.addSeries(LineSeries, {
+            color: '#38bdf8',
+            lineWidth: 1.5,
+            title: 'MACD (12,26)',
+          })
+          macdLine.setData(macdData.map((d) => ({ time: d.time, value: d.macd })))
+
+          const sigLine = subChart.addSeries(LineSeries, {
+            color: '#f97316',
+            lineWidth: 1.5,
+            title: 'Signal (9)',
+          })
+          sigLine.setData(macdData.map((d) => ({ time: d.time, value: d.signal })))
+        }
+      } else if (subIndicator === 'atr') {
+        const atrData = calculateATR(rawData, 14)
+        if (atrData.length > 0) {
+          const atrSeries = subChart.addSeries(LineSeries, {
+            color: '#facc15',
+            lineWidth: 1.5,
+            title: 'ATR (14)',
+          })
+          atrSeries.setData(atrData)
+        }
+      }
+
+      subChart.timeScale().fitContent()
+
+      handleResize = () => {
+        if (container && subChart && container.clientWidth > 0) {
+          subChart.applyOptions({ width: container.clientWidth })
+        }
+      }
+      window.addEventListener('resize', handleResize)
+    } catch (subErr) {
+      console.error('Sub chart build error:', subErr)
     }
-
-    const container = subChartContainerRef.current
-    const subChart = createChart(container, {
-      height: 140,
-      layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#94a3b8',
-        fontFamily: 'JetBrains Mono, monospace',
-        fontSize: 10,
-      },
-      grid: {
-        vertLines: { color: 'rgba(51,65,85,0.2)' },
-        horzLines: { color: 'rgba(51,65,85,0.2)' },
-      },
-      crosshair: { mode: CrosshairMode.Normal },
-      rightPriceScale: { borderColor: '#334155' },
-      timeScale: {
-        borderColor: '#334155',
-        timeVisible: selectedTf.range === '1d' || selectedTf.range === '5d',
-        secondsVisible: false,
-      },
-    })
-    subChartRef.current = subChart
-
-    if (subIndicator === 'rsi') {
-      const rsiData = calculateRSI(rawData, rsiPeriod)
-      if (rsiData.length > 0) {
-        // RSI Line
-        const rsiSeries = subChart.addSeries(LineSeries, {
-          color: '#818cf8',
-          lineWidth: 1.5,
-          title: `RSI (${rsiPeriod})`,
-        })
-        rsiSeries.setData(rsiData)
-
-        // Overbought line (70)
-        const obLine = subChart.addSeries(LineSeries, {
-          color: 'rgba(239, 68, 68, 0.4)',
-          lineWidth: 1,
-          lineStyle: 2,
-        })
-        obLine.setData(rsiData.map((d) => ({ time: d.time, value: 70 })))
-
-        // Oversold line (30)
-        const osLine = subChart.addSeries(LineSeries, {
-          color: 'rgba(34, 197, 94, 0.4)',
-          lineWidth: 1,
-          lineStyle: 2,
-        })
-        osLine.setData(rsiData.map((d) => ({ time: d.time, value: 30 })))
-      }
-    } else if (subIndicator === 'macd') {
-      const macdData = calculateMACD(rawData, 12, 26, 9)
-      if (macdData.length > 0) {
-        // Histogram
-        const histSeries = subChart.addSeries(HistogramSeries, {
-          title: 'Histogram',
-        })
-        histSeries.setData(
-          macdData.map((d) => ({
-            time: d.time,
-            value: d.histogram,
-            color: d.histogram >= 0 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)',
-          }))
-        )
-
-        // MACD Line
-        const macdLine = subChart.addSeries(LineSeries, {
-          color: '#38bdf8',
-          lineWidth: 1.5,
-          title: 'MACD (12,26)',
-        })
-        macdLine.setData(macdData.map((d) => ({ time: d.time, value: d.macd })))
-
-        // Signal Line
-        const sigLine = subChart.addSeries(LineSeries, {
-          color: '#f97316',
-          lineWidth: 1.5,
-          title: 'Signal (9)',
-        })
-        sigLine.setData(macdData.map((d) => ({ time: d.time, value: d.signal })))
-      }
-    } else if (subIndicator === 'atr') {
-      const atrData = calculateATR(rawData, 14)
-      if (atrData.length > 0) {
-        const atrSeries = subChart.addSeries(LineSeries, {
-          color: '#facc15',
-          lineWidth: 1.5,
-          title: 'ATR (14)',
-        })
-        atrSeries.setData(atrData)
-      }
-    }
-
-    subChart.timeScale().fitContent()
-
-    const handleResize = () => {
-      if (container && subChart) {
-        subChart.applyOptions({ width: container.clientWidth })
-      }
-    }
-    window.addEventListener('resize', handleResize)
 
     return () => {
-      window.removeEventListener('resize', handleResize)
+      if (handleResize) {
+        window.removeEventListener('resize', handleResize)
+      }
       if (subChart) {
-        subChart.remove()
+        try {
+          subChart.remove()
+        } catch {}
         subChartRef.current = null
       }
     }

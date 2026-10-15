@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Component } from 'react'
 import {
   BookOpen,
   TrendingUp,
@@ -15,8 +15,39 @@ import {
   CheckCircle2,
   ChevronRight,
   Sliders,
+  RefreshCw,
 } from 'lucide-react'
 import TechnicalAnalysisChart from '../components/chart/TechnicalAnalysisChart'
+
+class ChartErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+  componentDidCatch(error, errorInfo) {
+    console.warn('Chart error caught by boundary:', error, errorInfo)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="card p-6 border-amber-500/30 bg-amber-500/10 text-center space-y-2 rounded-xl">
+          <p className="text-sm font-semibold text-amber-300">Technical Analysis Sandbox Loading</p>
+          <p className="text-xs text-slate-300">The chart canvas is refreshing. All educational curriculum modules below remain fully accessible.</p>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            className="btn-primary text-xs px-3 py-1.5 mt-2"
+          >
+            Retry Chart
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const CURRICULUM_MODULES = [
   {
@@ -303,7 +334,9 @@ export default function EducationPage() {
           </div>
         </div>
 
-        <TechnicalAnalysisChart defaultSymbol="NIFTY50" height={460} />
+        <ChartErrorBoundary>
+          <TechnicalAnalysisChart defaultSymbol="NIFTY50" height={460} />
+        </ChartErrorBoundary>
       </div>
 
       {/* Curriculum Module Tabs */}
