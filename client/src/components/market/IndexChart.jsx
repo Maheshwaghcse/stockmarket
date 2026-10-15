@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createChart, CandlestickSeries, ColorType, CrosshairMode } from 'lightweight-charts'
+import { createChart, ColorType, CrosshairMode, CandlestickSeries } from 'lightweight-charts'
 import api from '../../lib/api'
 
 export default function IndexChart({ symbol, height = 260 }) {
@@ -13,6 +13,8 @@ export default function IndexChart({ symbol, height = 260 }) {
     if (!containerRef.current) return
 
     let chart = null
+    let resizeHandler = null
+
     try {
       chart = createChart(containerRef.current, {
         height,
@@ -35,55 +37,61 @@ export default function IndexChart({ symbol, height = 260 }) {
         },
       })
 
-      const seriesOptions = {
-        upColor: '#22c55e',
-        downColor: '#ef4444',
-        borderUpColor: '#22c55e',
-        borderDownColor: '#ef4444',
-        wickUpColor: '#22c55e',
-        wickDownColor: '#ef4444',
-      }
-
-      // Supports lightweight-charts v5 (chart.addSeries(CandlestickSeries, ...)) and v4 fallback
-      const series = (typeof chart.addSeries === 'function' && CandlestickSeries)
-        ? chart.addSeries(CandlestickSeries, seriesOptions)
-        : chart.addCandlestickSeries(seriesOptions)
+      // lightweight-charts v5 uses chart.addSeries(CandlestickSeries, options)
+      const series = chart.addSeries
+        ? chart.addSeries(CandlestickSeries, {
+            upColor: '#22c55e',
+            downColor: '#ef4444',
+            borderUpColor: '#22c55e',
+            borderDownColor: '#ef4444',
+            wickUpColor: '#22c55e',
+            wickDownColor: '#ef4444',
+          })
+        : chart.addCandlestickSeries({
+            upColor: '#22c55e',
+            downColor: '#ef4444',
+            borderUpColor: '#22c55e',
+            borderDownColor: '#ef4444',
+            wickUpColor: '#22c55e',
+            wickDownColor: '#ef4444',
+          })
 
       chartRef.current = chart
       seriesRef.current = series
 
-      const handleResize = () => {
+      resizeHandler = () => {
         if (containerRef.current && chart) {
           chart.applyOptions({ width: containerRef.current.clientWidth })
         }
       }
-      window.addEventListener('resize', handleResize)
+      window.addEventListener('resize', resizeHandler)
 
       // Fetch intraday data
       api.get(`/market/indices/${symbol}/intraday?interval=5`)
         .then(({ data }) => {
-          if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
+          if (data?.data && Array.isArray(data.data)) {
             series.setData(data.data)
             chart.timeScale().fitContent()
           }
           setLoading(false)
         })
-        .catch((err) => {
-          console.warn('Failed to load chart data for', symbol, err)
+        .catch(() => {
           setError('Failed to load chart data')
           setLoading(false)
         })
-
-      return () => {
-        window.removeEventListener('resize', handleResize)
-        if (chart) {
-          chart.remove()
-        }
-      }
-    } catch (e) {
-      console.error('Chart creation error:', e)
-      setError('Could not initialize chart')
+    } catch (err) {
+      console.error('Error initializing chart:', err)
+      setError('Chart initialization error')
       setLoading(false)
+    }
+
+    return () => {
+      if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler)
+      }
+      if (chart) {
+        chart.remove()
+      }
     }
   }, [symbol, height])
 
@@ -95,7 +103,11 @@ export default function IndexChart({ symbol, height = 260 }) {
       {error && (
         <div className="flex items-center justify-center h-full text-sm muted py-12">{error}</div>
       )}
-      <div ref={containerRef} className="w-full" style={{ opacity: loading ? 0 : 1, transition: 'opacity 0.3s' }} />
+      <div
+        ref={containerRef}
+        className="w-full"
+        style={{ display: error ? 'none' : 'block', opacity: loading ? 0 : 1, transition: 'opacity 0.3s' }}
+      />
     </div>
   )
 }
