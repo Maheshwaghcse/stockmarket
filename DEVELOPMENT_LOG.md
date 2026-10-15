@@ -19,6 +19,8 @@
 | 8 | Financial UI Components | Real-time scrolling ticker bar, Index cards with gain/loss indicators, TradingView Lightweight Candlestick Charts | ✅ Complete |
 | 9 | Public & Protected Pages | Home, Indices, Index Detail, Stocks, Stock Detail, News, Article View, Education Hub, Pricing, Watchlists, Profile, Admin Panel | ✅ Complete |
 | 10 | SEBI & Demo Compliance | Prominent demo data badges, non-registered entity disclaimers, clear warnings across pages and endpoints | ✅ Complete |
+| 11 | Apify Live Data Provider | Real-time Indian equity and index prices via Apify Actor (`architjn/yahoo-finance`) + one-click sync button | ✅ Complete |
+| 12 | Trading Journal (Tradebook) | Full trade journaling with Tradebook contribution heatmap, monthly calendar, live metrics, and new trade modal | ✅ Complete |
 
 ---
 
