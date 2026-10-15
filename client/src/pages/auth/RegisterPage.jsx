@@ -31,7 +31,7 @@ export default function RegisterPage() {
             <TrendingUp size={24} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold">Create Account</h1>
-          <p className="text-sm muted mt-1">Join StockSense India — Free forever</p>
+          <p className="text-sm muted mt-1">Join StockSense India — Smart Trading Journal</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -70,7 +70,7 @@ export default function RegisterPage() {
         </form>
 
         <p className="text-xs muted text-center mt-4">
-          By registering you agree to our terms of service. Not SEBI registered.
+          By registering you agree to our terms of service and privacy policy.
         </p>
         <p className="text-center text-sm muted mt-3">
           Already have an account?{' '}

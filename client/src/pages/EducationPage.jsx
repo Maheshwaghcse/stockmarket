@@ -7,7 +7,7 @@ const TOPICS = [
   { icon: BarChart2,   title: 'Understanding NSE & BSE',   desc: 'Differences between NSE and BSE, trading hours, and settlement cycles.', slug: 'nse-bse-guide', category: 'education' },
   { icon: DollarSign,  title: 'Mutual Funds vs Stocks',    desc: 'Comparing direct equity investment with mutual fund structures.', slug: 'mf-vs-stocks', category: 'guide' },
   { icon: Shield,      title: 'Risk Management',           desc: 'Position sizing, stop-loss strategies, and portfolio diversification.', slug: 'risk-management', category: 'education' },
-  { icon: HelpCircle,  title: 'Glossary of Terms',         desc: 'P/E ratio, EBITDA, circuit breaker, SEBI — all terms explained.', slug: 'glossary', category: 'glossary' },
+  { icon: HelpCircle,  title: 'Glossary of Terms',         desc: 'P/E ratio, EBITDA, circuit breaker, Market depth — all key trading terms explained.', slug: 'glossary', category: 'glossary' },
 ]
 
 export default function EducationPage() {
@@ -16,10 +16,9 @@ export default function EducationPage() {
       {/* Hero */}
       <div className="card text-center py-12"
            style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.1))', borderColor: 'rgba(99,102,241,0.2)' }}>
-        <h1 className="text-3xl font-bold mb-3">Stock Market Education</h1>
+        <h1 className="text-3xl font-bold mb-3">Trading & Market Education</h1>
         <p className="muted max-w-xl mx-auto text-sm">
-          Learn stock market fundamentals, chart reading, index analysis, and smart investing principles.
-          All content is educational and not investment advice.
+          Master stock market fundamentals, chart analysis, trading discipline, and risk management strategies.
         </p>
       </div>
 
@@ -43,11 +42,10 @@ export default function EducationPage() {
         </div>
       </div>
 
-      {/* Disclaimer */}
-      <div className="card" style={{ borderColor: 'rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.05)' }}>
-        <p className="text-sm" style={{ color: '#f59e0b' }}>
-          ⚠️ <strong>Educational purpose only.</strong> StockSense India is not SEBI registered.
-          Nothing on this platform constitutes investment advice. Please consult a SEBI-registered financial advisor before investing.
+      {/* Educational Note */}
+      <div className="card" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+        <p className="text-sm muted">
+          📚 <strong>Educational resources for traders.</strong> StockSense is a self-directed trading journal and analytics platform designed to help you document trade setups, refine execution psychology, and master risk management.
         </p>
       </div>
     </div>

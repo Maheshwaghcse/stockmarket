@@ -31,15 +31,15 @@ export default function Navbar() {
     navigate('/login')
   }
 
-  const handleSyncYahoo = async () => {
+  const handleRefreshMarket = async () => {
     setSyncing(true)
-    const toastId = toast.loading('Syncing latest Indian market prices from Yahoo Finance...')
+    const toastId = toast.loading('Refreshing market quotes...')
     try {
-      const { data } = await api.post('/market/sync-yahoo')
-      toast.success(`Updated ${data.count || 0} indices from Yahoo Finance!`, { id: toastId })
+      const { data } = await api.post('/market/sync-market')
+      toast.success(`Updated ${data.count || 0} market quotes!`, { id: toastId })
       if (fetchIndices) fetchIndices()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Yahoo Finance sync failed', { id: toastId })
+      toast.error(err.response?.data?.message || 'Failed to refresh quotes', { id: toastId })
     } finally {
       setSyncing(false)
     }
@@ -92,15 +92,15 @@ export default function Navbar() {
               </span>
             </div>
 
-            {/* Yahoo Finance Live Sync Button */}
+            {/* Live Quotes Refresh Button */}
             <button
-              onClick={handleSyncYahoo}
+              onClick={handleRefreshMarket}
               disabled={syncing}
-              title="Sync Latest Indian Market Prices via Yahoo Finance"
+              title="Refresh Market Quotes"
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50"
             >
               <RefreshCw size={11} className={syncing ? 'animate-spin' : ''} />
-              <span className="hidden sm:inline">{syncing ? 'Syncing...' : 'Yahoo Sync'}</span>
+              <span className="hidden sm:inline">{syncing ? 'Updating...' : 'Live Quotes'}</span>
             </button>
 
             {/* Connection status */}

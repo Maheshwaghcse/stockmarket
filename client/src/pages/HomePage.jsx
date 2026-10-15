@@ -60,8 +60,7 @@ export default function HomePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="demo-badge">⚠ Demo Data</div>
-          <div className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-full"
+          <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium"
                style={{ background: isConnected ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
                         color: isConnected ? 'var(--color-gain)' : 'var(--color-loss)',
                         border: `1px solid ${isConnected ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
@@ -85,7 +84,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="font-semibold">Nifty 50 — Intraday</h2>
-              <p className="text-xs muted">5-minute candles · Latest available Yahoo Finance data</p>
+              <p className="text-xs muted">5-minute candles · Market Reference</p>
             </div>
             <Link to="/indices/NIFTY50" className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300">
               Full view <ArrowRight size={12} />

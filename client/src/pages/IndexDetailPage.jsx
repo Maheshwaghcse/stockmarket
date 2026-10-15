@@ -33,12 +33,7 @@ export default function IndexDetailPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{idx.name}</h1>
-          <p className="text-sm muted flex items-center gap-2 mt-1">
-            <span>{idx.symbol} · {idx.exchange}</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              Yahoo Finance
-            </span>
-          </p>
+          <p className="text-sm muted mt-1">{idx.symbol} · {idx.exchange}</p>
         </div>
         <div className="text-right">
           <p className="text-3xl font-bold mono">{fmt(idx.value)}</p>
@@ -68,17 +63,17 @@ export default function IndexDetailPage() {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold">Intraday Chart — 5 min candles</h2>
-          <span className="text-xs text-slate-400">Latest available Yahoo Finance data</span>
+          <span className="text-xs text-slate-400">Market Reference</span>
         </div>
         <IndexChart symbol={symbol.toUpperCase()} height={360} />
       </div>
 
       {/* Market status & timestamps */}
       <div className="flex flex-col sm:flex-row items-center justify-between text-xs muted gap-2">
-        <span>Source: <strong className="text-slate-300">Yahoo Finance</strong> ({idx.yahooSymbol || '^' + idx.symbol})</span>
+        <span>Benchmark: <strong className="text-slate-300">{idx.name} ({idx.symbol})</strong></span>
         <div className="flex items-center gap-3">
           <span>Market: <strong className={idx.marketStatus === 'OPEN' ? 'gain' : 'loss'}>{idx.marketStatus}</strong></span>
-          <span>Trade Time: <strong className="text-slate-300">{idx.sourceTimestamp ? new Date(idx.sourceTimestamp).toLocaleString() : idx.timestamp ? new Date(idx.timestamp).toLocaleTimeString() : '—'}</strong></span>
+          <span>Last Updated: <strong className="text-slate-300">{idx.timestamp ? new Date(idx.timestamp).toLocaleTimeString() : '—'}</strong></span>
         </div>
       </div>
     </div>

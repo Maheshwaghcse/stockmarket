@@ -25,8 +25,8 @@ router.get('/', async (req, res, next) => {
 
     res.json({
       success: true,
-      source: 'Yahoo Finance',
-      dataSourceNote: 'Latest available Yahoo Finance data',
+      source: 'Live Markets',
+      dataSourceNote: 'Market reference quotes',
       count: stocks.length,
       data: stocks,
       updatedAt: new Date().toISOString(),
@@ -47,14 +47,14 @@ router.get('/:symbol', async (req, res, next) => {
     if (!stock) {
       return res.status(404).json({
         success: false,
-        message: `Stock ${symbol} not found on Yahoo Finance.`,
+        message: `Stock quote for ${symbol} not found.`,
       });
     }
 
     res.json({
       success: true,
-      source: 'Yahoo Finance',
-      dataSourceNote: 'Latest available Yahoo Finance data',
+      source: 'Live Markets',
+      dataSourceNote: 'Market reference quotes',
       data: stock,
     });
   } catch (err) {

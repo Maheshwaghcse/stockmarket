@@ -10,11 +10,11 @@ const PLANS = [
     yearly: 0,
     color: '#94a3b8',
     features: [
-      'Demo market indices (clearly labelled)',
-      'Basic charts',
-      '5 watchlist items',
-      'Market news access',
-      'Educational content',
+      'Trade Journal logging (Up to 100 trades)',
+      'Market reference quotes & charts',
+      'All 5 Trading Calculators',
+      'Personal Watchlist',
+      'Market news & education',
     ],
     cta: 'Get Started Free',
     to: '/register',
@@ -28,10 +28,10 @@ const PLANS = [
     popular: true,
     features: [
       'Everything in Free',
-      '20 watchlist items',
-      'Stock alerts',
-      'Advanced news filters',
-      'Priority support',
+      'Unlimited Trade Journal entries',
+      'Win-rate & P&L Analytics',
+      'Risk & Position Sizing Tools',
+      'Priority email support',
     ],
     cta: 'Start Basic',
     to: '/register',
@@ -45,10 +45,10 @@ const PLANS = [
     color: '#fbbf24',
     features: [
       'Everything in Basic',
-      '100 watchlist items',
-      'Advanced charts',
-      'Data export (CSV)',
-      'Early access features',
+      'Tradebook CSV Data Export',
+      'Advanced Risk Matrix & Metrics',
+      'Strategy & Emotion Tagging',
+      'Early access to new tools',
     ],
     cta: 'Go Premium',
     to: '/register',
@@ -63,8 +63,7 @@ export default function PricingPage() {
     <div className="space-y-10 fade-in max-w-5xl mx-auto">
       <div className="text-center">
         <h1 className="text-3xl font-bold">Simple, Transparent Pricing</h1>
-        <p className="muted mt-2 text-sm">Choose the plan that fits your needs. Cancel anytime.</p>
-        <div className="demo-badge mx-auto mt-3">Currently in Demo Mode — Payments not yet active</div>
+        <p className="muted mt-2 text-sm">Choose the trading journal plan that fits your trading journey. Cancel anytime.</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -106,10 +105,9 @@ export default function PricingPage() {
         ))}
       </div>
 
-      <div className="card text-center" style={{ borderColor: 'rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.05)' }}>
-        <p className="text-sm" style={{ color: '#f59e0b' }}>
-          ⚠️ Payments are powered by Razorpay (India). All subscriptions are subject to SEBI compliance.
-          Live data features require a separately licensed NSE/BSE data provider.
+      <div className="card text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+        <p className="text-sm muted">
+          StockSense is a dedicated trading journal and performance tracking suite. Subscriptions include full access to trade logging, analytics, and risk calculators.
         </p>
       </div>
     </div>

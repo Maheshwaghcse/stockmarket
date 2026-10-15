@@ -16,8 +16,8 @@ router.get('/indices', async (req, res, next) => {
 
     res.json({
       success: true,
-      source: 'Yahoo Finance',
-      dataSourceNote: 'Latest available Yahoo Finance data',
+      source: 'Live Markets',
+      dataSourceNote: 'Market reference quotes',
       marketStatus: isMarketOpen() ? 'OPEN' : 'CLOSED',
       count: indices.length,
       data: indices,
@@ -30,7 +30,7 @@ router.get('/indices', async (req, res, next) => {
 
 /**
  * GET /api/market/indices/:symbol
- * Returns single index quote from Yahoo Finance.
+ * Returns single index quote.
  */
 router.get('/indices/:symbol', async (req, res, next) => {
   try {
@@ -44,14 +44,14 @@ router.get('/indices/:symbol', async (req, res, next) => {
     if (!quote) {
       return res.status(404).json({
         success: false,
-        message: `Index ${symbol} not found on Yahoo Finance.`,
+        message: `Index ${symbol} quote not found.`,
       });
     }
 
     res.json({
       success: true,
-      source: 'Yahoo Finance',
-      dataSourceNote: 'Latest available Yahoo Finance data',
+      source: 'Live Markets',
+      dataSourceNote: 'Market reference quotes',
       data: quote,
     });
   } catch (err) {
@@ -61,7 +61,7 @@ router.get('/indices/:symbol', async (req, res, next) => {
 
 /**
  * GET /api/market/indices/:symbol/intraday?interval=5
- * Returns real historical/intraday OHLCV candles from Yahoo Finance.
+ * Returns real historical/intraday OHLCV candles.
  */
 router.get('/indices/:symbol/intraday', async (req, res, next) => {
   try {
@@ -77,14 +77,14 @@ router.get('/indices/:symbol/intraday', async (req, res, next) => {
     if (!candles || !candles.length) {
       return res.status(404).json({
         success: false,
-        message: `No Yahoo Finance historical candle data available for ${symbol}.`,
+        message: `No historical candle data available for ${symbol}.`,
       });
     }
 
     res.json({
       success: true,
-      source: 'Yahoo Finance',
-      dataSourceNote: 'Latest available Yahoo Finance data',
+      source: 'Live Markets',
+      dataSourceNote: 'Market reference quotes',
       symbol,
       interval: `${interval}m`,
       count: candles.length,
@@ -116,8 +116,8 @@ router.get('/indices/:symbol/history', async (req, res, next) => {
 
     res.json({
       success: true,
-      source: 'Yahoo Finance',
-      dataSourceNote: 'Latest available Yahoo Finance data',
+      source: 'Live Markets',
+      dataSourceNote: 'Market reference quotes',
       ...chart,
     });
   } catch (err) {
@@ -140,8 +140,8 @@ router.get('/gainers-losers', async (req, res, next) => {
 
     res.json({
       success: true,
-      source: 'Yahoo Finance',
-      dataSourceNote: 'Latest available Yahoo Finance data',
+      source: 'Live Markets',
+      dataSourceNote: 'Market reference quotes',
       gainers: sorted.slice(0, 5),
       losers: sorted.slice(-5).reverse(),
       updatedAt: new Date().toISOString(),
@@ -163,48 +163,33 @@ router.get('/status', (req, res) => {
     exchange: 'NSE/BSE',
     timezone: 'Asia/Kolkata',
     timestamp: new Date().toISOString(),
-    source: 'Yahoo Finance',
-    dataSourceNote: 'Latest available Yahoo Finance data',
+    source: 'Live Markets',
+    dataSourceNote: 'Market reference quotes',
   });
 });
 
 /**
- * POST /api/market/sync-yahoo
- * Triggers on-demand sync of real Indian stock market quotes via Yahoo Finance.
+ * POST /api/market/sync-market (and /sync-yahoo alias)
+ * Triggers on-demand sync of real Indian stock market quotes.
  */
-router.post('/sync-yahoo', async (req, res, next) => {
+const syncHandler = async (req, res, next) => {
   try {
     const data = await syncYahooFinanceData(true);
     res.json({
       success: true,
-      message: 'Successfully synchronized live market quotes from Yahoo Finance',
+      message: 'Successfully synchronized live market quotes',
       count: data ? data.length : 0,
       timestamp: new Date().toISOString(),
-      source: 'Yahoo Finance',
+      source: 'Live Markets',
       data,
     });
   } catch (err) {
     next(err);
   }
-});
+};
 
-/**
- * POST /api/market/sync-apify (Kept for backwards compatibility)
- */
-router.post('/sync-apify', async (req, res, next) => {
-  try {
-    const data = await syncYahooFinanceData(true);
-    res.json({
-      success: true,
-      message: 'Successfully synchronized live market quotes from Yahoo Finance',
-      count: data ? data.length : 0,
-      timestamp: new Date().toISOString(),
-      source: 'Yahoo Finance',
-      data,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/sync-market', syncHandler);
+router.post('/sync-yahoo', syncHandler);
+router.post('/sync-apify', syncHandler);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, BookOpen, Calculator, Layers, ShieldCheck } from 'lucide-react'
 
 export default function Footer() {
   return (
@@ -16,44 +16,61 @@ export default function Footer() {
               <span className="font-bold text-sm">Stock<span style={{ color: '#6366f1' }}>Sense</span></span>
             </div>
             <p className="text-xs leading-relaxed muted">
-              Track Indian stock market indices in real time. Not SEBI registered.
-              Demo data — not investment advice.
+              StockSense is an intelligent trading journal and analytics workspace. Record your setups, evaluate execution, track risk, and master your trading discipline.
             </p>
           </div>
 
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Markets & Tools</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Journal & Markets</h4>
             <ul className="space-y-2">
-              {[['Indices', '/indices'], ['Stocks', '/stocks'], ['Trading Journal', '/journal'], ['Calculator', '/calculator'], ['Watchlist', '/watchlist']].map(([l, to]) => (
+              {[
+                ['Trading Journal', '/journal'],
+                ['Market Dashboard', '/'],
+                ['Tracked Indices', '/indices'],
+                ['Equities Watchlist', '/stocks'],
+                ['Personal Watchlist', '/watchlist'],
+              ].map(([l, to]) => (
                 <li key={l}><Link to={to} className="text-sm muted hover:text-slate-200 transition-colors">{l}</Link></li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Learn</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Trading Calculators</h4>
             <ul className="space-y-2">
-              {[['News', '/news'], ['Education', '/education'], ['Pricing', '/pricing']].map(([l, to]) => (
+              {[
+                ['Risk & Position Sizing', '/calculator'],
+                ['Option Lot Calculator', '/calculator'],
+                ['CAGR Growth Tool', '/calculator'],
+                ['SIP Investment Plan', '/calculator'],
+                ['Loan EMI Calculator', '/calculator'],
+              ].map(([l, to]) => (
                 <li key={l}><Link to={to} className="text-sm muted hover:text-slate-200 transition-colors">{l}</Link></li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Legal</h4>
-            <ul className="space-y-2 text-sm muted">
-              <li>For educational purposes only</li>
-              <li>Market quotes sourced from Yahoo Finance</li>
-              <li>Not SEBI registered</li>
+            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Resources</h4>
+            <ul className="space-y-2">
+              {[
+                ['Market News', '/news'],
+                ['Trading Education', '/education'],
+                ['Plans & Pricing', '/pricing'],
+                ['Trader Profile', '/profile'],
+              ].map(([l, to]) => (
+                <li key={l}><Link to={to} className="text-sm muted hover:text-slate-200 transition-colors">{l}</Link></li>
+              ))}
             </ul>
           </div>
         </div>
 
         <div className="border-t mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4"
              style={{ borderColor: 'var(--color-border)' }}>
-          <p className="text-xs muted">© {new Date().getFullYear()} StockSense India. All rights reserved.</p>
-          <div className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            Market Data Powered by Yahoo Finance
+          <p className="text-xs muted">© {new Date().getFullYear()} StockSense. Smart Trading Journal & Trade Analytics. All rights reserved.</p>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span>Trading Journal Workspace</span>
           </div>
         </div>
       </div>
