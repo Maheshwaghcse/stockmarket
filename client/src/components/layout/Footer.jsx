@@ -22,10 +22,10 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Markets</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Markets & Tools</h4>
             <ul className="space-y-2">
-              {['Indices', 'Stocks', 'Watchlist'].map((l) => (
-                <li key={l}><Link to={`/${l.toLowerCase()}`} className="text-sm muted hover:text-slate-200 transition-colors">{l}</Link></li>
+              {[['Indices', '/indices'], ['Stocks', '/stocks'], ['Trading Journal', '/journal'], ['Calculator', '/calculator'], ['Watchlist', '/watchlist']].map(([l, to]) => (
+                <li key={l}><Link to={to} className="text-sm muted hover:text-slate-200 transition-colors">{l}</Link></li>
               ))}
             </ul>
           </div>

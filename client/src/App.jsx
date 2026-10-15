@@ -13,6 +13,7 @@ import PricingPage from './pages/PricingPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import TradingJournalPage from './pages/TradingJournalPage'
+import CalculatorPage from './pages/CalculatorPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminPage from './pages/admin/AdminPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="education" element={<EducationPage />} />
         <Route path="pricing" element={<PricingPage />} />
         <Route path="journal" element={<TradingJournalPage />} />
+        <Route path="calculator" element={<CalculatorPage />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>

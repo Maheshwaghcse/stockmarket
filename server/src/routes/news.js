@@ -2,11 +2,39 @@ const express = require('express');
 const router = express.Router();
 const Article = require('../models/Article');
 const { optionalAuth } = require('../middleware/auth');
+const newsService = require('../services/newsService');
+
+// ─── POST /api/news/sync — Sync fresh finance news from NewsAPI ─────────────
+router.post('/sync', async (req, res, next) => {
+  try {
+    const result = await newsService.syncNewsToDatabase();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/news/live — Get live raw news items from NewsAPI ──────────────
+router.get('/live', async (req, res, next) => {
+  try {
+    const articles = await newsService.fetchNewsFromApi();
+    res.json({ success: true, data: articles });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── GET /api/news — list published articles ───────────────────────────────
 router.get('/', optionalAuth, async (req, res, next) => {
   try {
     const { category, tag, page = 1, limit = 20, q } = req.query;
+
+    // If database has very few articles and category is all or news, trigger background sync
+    const currentNewsCount = await Article.countDocuments({ category: 'news' });
+    if (currentNewsCount < 5) {
+      newsService.syncNewsToDatabase().catch((e) => console.error('Auto sync error:', e.message));
+    }
+
     const filter = { isPublished: true };
     if (category) filter.category = category;
     if (tag) filter.tags = tag.toLowerCase();

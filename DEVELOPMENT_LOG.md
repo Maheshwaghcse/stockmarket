@@ -21,6 +21,8 @@
 | 10 | SEBI & Demo Compliance | Prominent demo data badges, non-registered entity disclaimers, clear warnings across pages and endpoints | ✅ Complete |
 | 11 | Apify Live Data Provider | Real-time Indian equity and index prices via Apify Actor (`architjn/yahoo-finance`) + one-click sync button | ✅ Complete |
 | 12 | Trading Journal (Tradebook) | Full trade journaling with Tradebook contribution heatmap, monthly calendar, live metrics, and new trade modal | ✅ Complete |
+| 13 | Financial Calculator Suite | 5 professional calculators: Risk / Position Sizing (Equity & F&O), CAGR / Reverse CAGR, SIP / Lumpsum, EMI, Option Calculator with interactive SVG donut charts and educational formulas | ✅ Complete |
+| 14 | NewsAPI Live Finance News | Real-time global and Indian business headlines powered by NewsAPI.org (`93ba24a1...`), background sync service, and rich article view | ✅ Complete |
 
 ---
 
