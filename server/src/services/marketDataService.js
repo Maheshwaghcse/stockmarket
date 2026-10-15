@@ -112,6 +112,35 @@ function tick() {
   }
 }
 
+function updateIndexSeedPrices(realQuotes = []) {
+  for (const q of realQuotes) {
+    const seed = INDEX_SEEDS.find((s) => s.symbol === q.symbol);
+    if (seed && q.price) {
+      seed.base = q.price;
+      seed.prevClose = q.prevClose || q.price;
+      seed.current = q.price;
+      const quote = buildQuote(seed, q.price);
+      quote.isRealTime = true;
+      quote.source = q.source || 'Apify Live';
+      indexCache.set(seed.symbol, quote);
+    }
+  }
+}
+
+async function syncWithApify() {
+  const { fetchApifyQuotes } = require('./apifyMarketService');
+  const quotes = await fetchApifyQuotes();
+  if (quotes && quotes.length) {
+    updateIndexSeedPrices(quotes);
+    try {
+      const { updateStockPrices } = require('../routes/stocks');
+      updateStockPrices(quotes);
+    } catch {}
+    console.log(`✅ Apify market data sync successful: updated ${quotes.length} instruments with live data`);
+  }
+  return quotes;
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 let tickInterval = null;
 
@@ -120,7 +149,17 @@ function startMarketDataService() {
 
   const mode = process.env.MARKET_DATA_MODE || 'demo';
 
-  if (mode === 'demo') {
+  if (mode === 'apify') {
+    tickInterval = setInterval(tick, 2000);
+    console.log('📊 Market data service running in APIFY mode (Real Indian market data + WebSockets)');
+    syncWithApify().catch((err) => {
+      console.warn('⚠️  Initial Apify sync note (using cached baseline):', err.message);
+    });
+    // Periodic refresh every 10 minutes to stay fresh without exhausting credits
+    setInterval(() => {
+      syncWithApify().catch(() => {});
+    }, 10 * 60 * 1000);
+  } else if (mode === 'demo') {
     // Tick every 2 seconds in demo mode
     tickInterval = setInterval(tick, 2000);
     console.log('📊 Market data service started in DEMO mode (mock data, 2 s tick)');
@@ -128,7 +167,6 @@ function startMarketDataService() {
   } else {
     // Placeholder for real provider integration
     console.log('📊 Live market data mode selected — provider integration required.');
-    // TODO: Connect to licensed NSE/BSE data provider WebSocket here.
   }
 }
 
@@ -195,4 +233,5 @@ module.exports = {
   getIndex,
   getIntradayCandles,
   isMarketOpen,
+  syncWithApify,
 };

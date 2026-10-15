@@ -88,4 +88,44 @@ router.get('/status', (req, res) => {
   });
 });
 
+/**
+ * POST /api/market/sync-apify
+ * Triggers on-demand sync of real Indian stock market quotes via Apify.
+ */
+router.post('/sync-apify', async (req, res, next) => {
+  try {
+    const { syncWithApify } = require('../services/marketDataService');
+    const data = await syncWithApify();
+    res.json({
+      success: true,
+      message: 'Successfully synchronized live market quotes from Apify',
+      count: data ? data.length : 0,
+      timestamp: new Date().toISOString(),
+      data,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/market/apify-live
+ * Direct fetch of real-time quotes using Apify without mutating cache.
+ */
+router.get('/apify-live', async (req, res, next) => {
+  try {
+    const { fetchApifyQuotes } = require('../services/apifyMarketService');
+    const quotes = await fetchApifyQuotes();
+    res.json({
+      success: true,
+      provider: 'Apify (architjn/yahoo-finance)',
+      count: quotes.length,
+      timestamp: new Date().toISOString(),
+      data: quotes,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

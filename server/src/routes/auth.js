@@ -88,32 +88,6 @@ router.post(
   }
 );
 
-// ─── GET /api/auth/register — browser friendly redirect or JSON guidance ──────
-router.get('/register', (req, res) => {
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  if (req.accepts('html')) {
-    return res.redirect(`${clientUrl}/register`);
-  }
-  res.status(405).json({
-    success: false,
-    message: 'Method Not Allowed. Registration requires a POST request with JSON body { name, email, password }.',
-    webRegisterUrl: `${clientUrl}/register`,
-  });
-});
-
-// ─── GET /api/auth/login — browser friendly redirect or JSON guidance ─────────
-router.get('/login', (req, res) => {
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  if (req.accepts('html')) {
-    return res.redirect(`${clientUrl}/login`);
-  }
-  res.status(405).json({
-    success: false,
-    message: 'Method Not Allowed. Login requires a POST request with JSON body { email, password }.',
-    webLoginUrl: `${clientUrl}/login`,
-  });
-});
-
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
 router.post(
   '/login',

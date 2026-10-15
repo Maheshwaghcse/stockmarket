@@ -5,7 +5,7 @@ const router = express.Router();
 // Individual stock quotes require a separate licensed feed (e.g. Kite Connect, Upstox).
 // Demo mode returns clearly labelled mock data.
 
-const DEMO_STOCKS = [
+let DEMO_STOCKS = [
   { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', sector: 'Energy', exchange: 'NSE', price: 2985.50, change: 12.30, changePct: 0.41 },
   { symbol: 'TCS', name: 'Tata Consultancy Services', sector: 'IT', exchange: 'NSE', price: 4210.00, change: -25.00, changePct: -0.59 },
   { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', sector: 'Banking', exchange: 'NSE', price: 1890.75, change: 8.50, changePct: 0.45 },
@@ -17,6 +17,19 @@ const DEMO_STOCKS = [
   { symbol: 'SBIN', name: 'State Bank of India', sector: 'Banking', exchange: 'NSE', price: 845.30, change: 9.70, changePct: 1.16 },
   { symbol: 'WIPRO', name: 'Wipro Ltd', sector: 'IT', exchange: 'NSE', price: 562.00, change: -3.50, changePct: -0.62 },
 ];
+
+function updateStockPrices(realQuotes = []) {
+  for (const q of realQuotes) {
+    const s = DEMO_STOCKS.find(item => item.symbol === q.symbol);
+    if (s && q.price) {
+      s.price = q.price;
+      s.change = q.change;
+      s.changePct = q.changePct;
+      s.isRealTime = true;
+      s.source = q.source || 'Apify Live';
+    }
+  }
+}
 
 /**
  * GET /api/stocks — list demo stocks
@@ -63,3 +76,4 @@ router.get('/:symbol', (req, res) => {
 });
 
 module.exports = router;
+module.exports.updateStockPrices = updateStockPrices;
