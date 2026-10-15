@@ -11,7 +11,7 @@ export default function IndicesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><BarChart2 size={24} /> Indian Indices</h1>
-          <p className="text-sm muted mt-1">NSE and BSE major market indices · <span className="demo-badge">Demo</span></p>
+          <p className="text-sm muted mt-1">NSE and BSE major market indices · <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">Yahoo Finance</span></p>
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">

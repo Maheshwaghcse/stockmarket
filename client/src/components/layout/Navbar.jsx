@@ -31,15 +31,15 @@ export default function Navbar() {
     navigate('/login')
   }
 
-  const handleSyncApify = async () => {
+  const handleSyncYahoo = async () => {
     setSyncing(true)
-    const toastId = toast.loading('Syncing real Indian market prices from Apify...')
+    const toastId = toast.loading('Syncing latest Indian market prices from Yahoo Finance...')
     try {
-      const { data } = await api.post('/market/sync-apify')
-      toast.success(`Updated ${data.count || 0} symbols with live Apify prices!`, { id: toastId })
+      const { data } = await api.post('/market/sync-yahoo')
+      toast.success(`Updated ${data.count || 0} indices from Yahoo Finance!`, { id: toastId })
       if (fetchIndices) fetchIndices()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Apify sync failed', { id: toastId })
+      toast.error(err.response?.data?.message || 'Yahoo Finance sync failed', { id: toastId })
     } finally {
       setSyncing(false)
     }
@@ -92,15 +92,15 @@ export default function Navbar() {
               </span>
             </div>
 
-            {/* Apify Live Sync Button */}
+            {/* Yahoo Finance Live Sync Button */}
             <button
-              onClick={handleSyncApify}
+              onClick={handleSyncYahoo}
               disabled={syncing}
-              title="Sync Live Indian Market Prices via Apify"
+              title="Sync Latest Indian Market Prices via Yahoo Finance"
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50"
             >
               <RefreshCw size={11} className={syncing ? 'animate-spin' : ''} />
-              <span className="hidden sm:inline">{syncing ? 'Syncing...' : 'Apify Live'}</span>
+              <span className="hidden sm:inline">{syncing ? 'Syncing...' : 'Yahoo Sync'}</span>
             </button>
 
             {/* Connection status */}

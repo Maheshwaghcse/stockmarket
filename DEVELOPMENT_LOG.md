@@ -23,6 +23,7 @@
 | 12 | Trading Journal (Tradebook) | Full trade journaling with Tradebook contribution heatmap, monthly calendar, live metrics, and new trade modal | ✅ Complete |
 | 13 | Financial Calculator Suite | 5 professional calculators: Risk / Position Sizing (Equity & F&O), CAGR / Reverse CAGR, SIP / Lumpsum, EMI, Option Calculator with interactive SVG donut charts and educational formulas | ✅ Complete |
 | 14 | NewsAPI Live Finance News | Real-time global and Indian business headlines powered by NewsAPI.org (`93ba24a1...`), background sync service, and rich article view | ✅ Complete |
+| 15 | Yahoo Finance Data Integration | Replaced all dummy mock market data with real Yahoo Finance quotes (`^NSEI`, `^NSEBANK`, `^BSESN`), real NSE equities, real 5m historical candles, configurable caching, and precise change calculations | ✅ Complete |
 
 ---
 

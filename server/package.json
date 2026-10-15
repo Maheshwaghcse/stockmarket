@@ -9,7 +9,14 @@
     "seed": "node src/scripts/seed.js",
     "test": "echo \"No tests configured yet\" && exit 0"
   },
-  "keywords": ["stock", "market", "india", "nse", "bse", "mern"],
+  "keywords": [
+    "stock",
+    "market",
+    "india",
+    "nse",
+    "bse",
+    "mern"
+  ],
   "author": "StockSense Team",
   "license": "MIT",
   "dependencies": {
@@ -27,7 +34,8 @@
     "nodemailer": "^6.9.15",
     "razorpay": "^2.9.4",
     "socket.io": "^4.8.1",
-    "uuid": "^11.0.2"
+    "uuid": "^11.0.2",
+    "yahoo-finance2": "^4.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"

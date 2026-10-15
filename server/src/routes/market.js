@@ -1,75 +1,154 @@
 const express = require('express');
 const router = express.Router();
-const { getAllIndices, getIndex, getIntradayCandles, isMarketOpen } = require('../services/marketDataService');
+const { getAllIndices, getIndex, getIntradayCandles, isMarketOpen, syncYahooFinanceData } = require('../services/marketDataService');
+const yahooFinanceService = require('../services/yahooFinanceService');
 
 /**
  * GET /api/market/indices
- * Returns all tracked indices with latest quotes.
- * Always includes isDemo flag — UI must display it.
+ * Returns all tracked indices with latest Yahoo Finance quotes.
  */
-router.get('/indices', (req, res) => {
-  const indices = getAllIndices();
-  res.json({
-    success: true,
-    isDemo: true,
-    marketStatus: isMarketOpen() ? 'OPEN' : 'CLOSED',
-    count: indices.length,
-    data: indices,
-    updatedAt: new Date().toISOString(),
-  });
+router.get('/indices', async (req, res, next) => {
+  try {
+    let indices = getAllIndices();
+    if (!indices || indices.length === 0) {
+      indices = await yahooFinanceService.fetchIndexQuotes();
+    }
+
+    res.json({
+      success: true,
+      source: 'Yahoo Finance',
+      dataSourceNote: 'Latest available Yahoo Finance data',
+      marketStatus: isMarketOpen() ? 'OPEN' : 'CLOSED',
+      count: indices.length,
+      data: indices,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
  * GET /api/market/indices/:symbol
- * Returns single index quote.
+ * Returns single index quote from Yahoo Finance.
  */
-router.get('/indices/:symbol', (req, res) => {
-  const quote = getIndex(req.params.symbol.toUpperCase());
-  if (!quote) {
-    return res.status(404).json({ success: false, message: 'Index not found.' });
+router.get('/indices/:symbol', async (req, res, next) => {
+  try {
+    const symbol = req.params.symbol.toUpperCase();
+    let quote = getIndex(symbol);
+
+    if (!quote) {
+      quote = await yahooFinanceService.fetchIndexQuote(symbol);
+    }
+
+    if (!quote) {
+      return res.status(404).json({
+        success: false,
+        message: `Index ${symbol} not found on Yahoo Finance.`,
+      });
+    }
+
+    res.json({
+      success: true,
+      source: 'Yahoo Finance',
+      dataSourceNote: 'Latest available Yahoo Finance data',
+      data: quote,
+    });
+  } catch (err) {
+    next(err);
   }
-  res.json({ success: true, isDemo: true, data: quote });
 });
 
 /**
  * GET /api/market/indices/:symbol/intraday?interval=5
- * Returns OHLCV candles for intraday chart.
+ * Returns real historical/intraday OHLCV candles from Yahoo Finance.
  */
-router.get('/indices/:symbol/intraday', (req, res) => {
-  const symbol = req.params.symbol.toUpperCase();
-  const interval = parseInt(req.query.interval, 10) || 5;
+router.get('/indices/:symbol/intraday', async (req, res, next) => {
+  try {
+    const symbol = req.params.symbol.toUpperCase();
+    const interval = parseInt(req.query.interval, 10) || 5;
 
-  if (interval < 1 || interval > 60) {
-    return res.status(400).json({ success: false, message: 'Interval must be 1–60 minutes.' });
+    if (interval < 1 || interval > 60) {
+      return res.status(400).json({ success: false, message: 'Interval must be 1–60 minutes.' });
+    }
+
+    const candles = await getIntradayCandles(symbol, interval);
+
+    if (!candles || !candles.length) {
+      return res.status(404).json({
+        success: false,
+        message: `No Yahoo Finance historical candle data available for ${symbol}.`,
+      });
+    }
+
+    res.json({
+      success: true,
+      source: 'Yahoo Finance',
+      dataSourceNote: 'Latest available Yahoo Finance data',
+      symbol,
+      interval: `${interval}m`,
+      count: candles.length,
+      data: candles,
+      lastCandleTime: candles.length > 0 ? new Date(candles[candles.length - 1].time * 1000).toISOString() : null,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    next(err);
   }
+});
 
-  const candles = getIntradayCandles(symbol, interval);
-  if (!candles.length) {
-    return res.status(404).json({ success: false, message: 'Symbol not found or no data yet.' });
+/**
+ * GET /api/market/indices/:symbol/history
+ * Alias for historical data
+ */
+router.get('/indices/:symbol/history', async (req, res, next) => {
+  try {
+    const symbol = req.params.symbol.toUpperCase();
+    const interval = req.query.interval || '1d';
+    const chart = await yahooFinanceService.fetchIndexChart(symbol, interval);
+
+    if (!chart || !chart.data || !chart.data.length) {
+      return res.status(404).json({
+        success: false,
+        message: `No historical chart data available for ${symbol}.`,
+      });
+    }
+
+    res.json({
+      success: true,
+      source: 'Yahoo Finance',
+      dataSourceNote: 'Latest available Yahoo Finance data',
+      ...chart,
+    });
+  } catch (err) {
+    next(err);
   }
-
-  res.json({
-    success: true,
-    isDemo: true,
-    symbol,
-    interval,
-    count: candles.length,
-    data: candles,
-  });
 });
 
 /**
  * GET /api/market/gainers-losers
- * Returns top 5 gainers and losers from tracked indices.
+ * Returns top 5 gainers and losers from tracked indices/stocks.
  */
-router.get('/gainers-losers', (req, res) => {
-  const indices = getAllIndices().sort((a, b) => b.changePct - a.changePct);
-  res.json({
-    success: true,
-    isDemo: true,
-    gainers: indices.slice(0, 5),
-    losers: indices.slice(-5).reverse(),
-  });
+router.get('/gainers-losers', async (req, res, next) => {
+  try {
+    let indices = getAllIndices();
+    if (!indices.length) {
+      indices = await yahooFinanceService.fetchIndexQuotes();
+    }
+
+    const sorted = [...indices].sort((a, b) => (b.changePct || 0) - (a.changePct || 0));
+
+    res.json({
+      success: true,
+      source: 'Yahoo Finance',
+      dataSourceNote: 'Latest available Yahoo Finance data',
+      gainers: sorted.slice(0, 5),
+      losers: sorted.slice(-5).reverse(),
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
@@ -84,23 +163,24 @@ router.get('/status', (req, res) => {
     exchange: 'NSE/BSE',
     timezone: 'Asia/Kolkata',
     timestamp: new Date().toISOString(),
-    isDemo: true,
+    source: 'Yahoo Finance',
+    dataSourceNote: 'Latest available Yahoo Finance data',
   });
 });
 
 /**
- * POST /api/market/sync-apify
- * Triggers on-demand sync of real Indian stock market quotes via Apify.
+ * POST /api/market/sync-yahoo
+ * Triggers on-demand sync of real Indian stock market quotes via Yahoo Finance.
  */
-router.post('/sync-apify', async (req, res, next) => {
+router.post('/sync-yahoo', async (req, res, next) => {
   try {
-    const { syncWithApify } = require('../services/marketDataService');
-    const data = await syncWithApify();
+    const data = await syncYahooFinanceData(true);
     res.json({
       success: true,
-      message: 'Successfully synchronized live market quotes from Apify',
+      message: 'Successfully synchronized live market quotes from Yahoo Finance',
       count: data ? data.length : 0,
       timestamp: new Date().toISOString(),
+      source: 'Yahoo Finance',
       data,
     });
   } catch (err) {
@@ -109,19 +189,18 @@ router.post('/sync-apify', async (req, res, next) => {
 });
 
 /**
- * GET /api/market/apify-live
- * Direct fetch of real-time quotes using Apify without mutating cache.
+ * POST /api/market/sync-apify (Kept for backwards compatibility)
  */
-router.get('/apify-live', async (req, res, next) => {
+router.post('/sync-apify', async (req, res, next) => {
   try {
-    const { fetchApifyQuotes } = require('../services/apifyMarketService');
-    const quotes = await fetchApifyQuotes();
+    const data = await syncYahooFinanceData(true);
     res.json({
       success: true,
-      provider: 'Apify (architjn/yahoo-finance)',
-      count: quotes.length,
+      message: 'Successfully synchronized live market quotes from Yahoo Finance',
+      count: data ? data.length : 0,
       timestamp: new Date().toISOString(),
-      data: quotes,
+      source: 'Yahoo Finance',
+      data,
     });
   } catch (err) {
     next(err);

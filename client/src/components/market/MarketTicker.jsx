@@ -13,10 +13,11 @@ export default function MarketTicker() {
   return (
     <div className="overflow-hidden border-b relative"
          style={{ background: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.05)', height: 32 }}>
-      <div className="demo-badge absolute left-3 top-1/2 -translate-y-1/2 z-10" style={{ fontSize: '0.55rem' }}>
-        DEMO
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <span>YAHOO DATA</span>
       </div>
-      <div className="flex items-center h-full" style={{ paddingLeft: 80 }}>
+      <div className="flex items-center h-full" style={{ paddingLeft: 120 }}>
         <div className="flex animate-[ticker_40s_linear_infinite] whitespace-nowrap gap-8">
           {doubled.map((idx, i) => {
             const isGain = idx.changePct >= 0

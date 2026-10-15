@@ -43,7 +43,7 @@ export default function Footer() {
             <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Legal</h4>
             <ul className="space-y-2 text-sm muted">
               <li>For educational purposes only</li>
-              <li>Demo data is not real</li>
+              <li>Market quotes sourced from Yahoo Finance</li>
               <li>Not SEBI registered</li>
             </ul>
           </div>
@@ -52,7 +52,9 @@ export default function Footer() {
         <div className="border-t mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4"
              style={{ borderColor: 'var(--color-border)' }}>
           <p className="text-xs muted">© {new Date().getFullYear()} StockSense India. All rights reserved.</p>
-          <div className="demo-badge">⚠ Demo Mode — Not Real Market Data</div>
+          <div className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            Market Data Powered by Yahoo Finance
+          </div>
         </div>
       </div>
     </footer>

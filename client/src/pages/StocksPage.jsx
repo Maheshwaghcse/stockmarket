@@ -19,7 +19,7 @@ export default function StocksPage() {
     <div className="space-y-6 fade-in">
       <div>
         <h1 className="text-2xl font-bold">Stocks</h1>
-        <p className="text-sm muted mt-1">NSE listed stocks · <span className="demo-badge">Demo Data</span></p>
+        <p className="text-sm muted mt-1">NSE listed equities · <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">Yahoo Finance (NSE)</span></p>
       </div>
 
       <div className="relative max-w-md">
