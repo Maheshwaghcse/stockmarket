@@ -22,7 +22,7 @@ import { formatINR, computeJournalAnalytics } from '../../lib/journalAnalytics'
 export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = null }) {
   const [activeTab, setActiveTab] = useState('equity') // 'equity', 'waterfall', 'streaks', 'ratios', 'symbols'
   const [waterfallSort, setWaterfallSort] = useState('chrono') // 'chrono' or 'ranked'
-  const [equityVisualMode, setEquityVisualMode] = useState('line') // 'line', 'mountain', 'stepped', 'drawdown'
+  const [equityVisualMode, setEquityVisualMode] = useState('bar') // 'bar', 'line', 'mountain', 'stepped', 'drawdown'
   const [tradeOffVisualMode, setTradeOffVisualMode] = useState('waterfall') // 'waterfall', 'ranked', 'tradeoff', 'scatter'
   const [hoveredTrade, setHoveredTrade] = useState(null)
   const [hoveredPoint, setHoveredPoint] = useState(null)
@@ -535,6 +535,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
               <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
                 <span className="text-[10px] text-slate-400 px-2 font-medium">Visual:</span>
                 {[
+                  { id: 'bar', label: 'Bar Chart' },
                   { id: 'line', label: 'Line Chart' },
                   { id: 'mountain', label: 'Mountain / Area' },
                   { id: 'stepped', label: 'Milestone Steps' },
@@ -601,6 +602,14 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   <linearGradient id="drawdownGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#ef4444" stopOpacity="0.1" />
                     <stop offset="100%" stopColor="#ef4444" stopOpacity="0.5" />
+                  </linearGradient>
+                  <linearGradient id="equityBarGradGreen" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#34d399" stopOpacity="0.95" />
+                    <stop offset="100%" stopColor="#059669" stopOpacity="0.8" />
+                  </linearGradient>
+                  <linearGradient id="equityBarGradRed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f87171" stopOpacity="0.95" />
+                    <stop offset="100%" stopColor="#dc2626" stopOpacity="0.8" />
                   </linearGradient>
                 </defs>
 
@@ -678,7 +687,52 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   />
                 )}
 
-                {/* 1. VISUAL MODE: Mountain / Area */}
+                {/* 1. VISUAL MODE: Bar Chart (Equity Bars) */}
+                {equityVisualMode === 'bar' && (
+                  <g className="equity-bars">
+                    {equityPoints.map((pt, i) => {
+                      const isPositive = pt.cumulativePnl >= 0
+                      const barWidth = Math.min(32, Math.max(8, (plotWidth / Math.max(1, equityPoints.length)) * 0.72))
+                      const barX = pt.x - barWidth / 2
+                      const barY = isPositive ? pt.y : zeroY
+                      const barH = isPositive ? Math.max(3, zeroY - pt.y) : Math.max(3, pt.y - zeroY)
+                      const isHovered = hoveredPoint?.index === pt.index
+
+                      return (
+                        <g key={`equity-bar-${i}`} className="cursor-pointer">
+                          <rect
+                            x={barX}
+                            y={barY}
+                            width={barWidth}
+                            height={barH}
+                            rx="3"
+                            fill={isPositive ? 'url(#equityBarGradGreen)' : 'url(#equityBarGradRed)'}
+                            stroke={isHovered ? '#60a5fa' : isPositive ? '#10b981' : '#ef4444'}
+                            strokeWidth={isHovered ? 2 : 1}
+                            className={`transition-all duration-150 ${isHovered ? 'brightness-125 filter drop-shadow' : 'hover:brightness-110'}`}
+                            onMouseEnter={() => setHoveredPoint(pt)}
+                            onMouseLeave={() => setHoveredPoint(null)}
+                          />
+                          {/* Date label at bottom for milestones */}
+                          {(i === 0 || i === equityPoints.length - 1 || i % Math.ceil(equityPoints.length / 5) === 0) && (
+                            <text
+                              x={pt.x}
+                              y={padding.top + plotHeight + 18}
+                              fill="#64748b"
+                              fontSize="9"
+                              textAnchor="middle"
+                              fontFamily="monospace"
+                            >
+                              {new Date(pt.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                            </text>
+                          )}
+                        </g>
+                      )
+                    })}
+                  </g>
+                )}
+
+                {/* 2. VISUAL MODE: Mountain / Area */}
                 {equityVisualMode === 'mountain' && equityAreaD && (
                   <path
                     d={equityAreaD}
@@ -686,7 +740,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   />
                 )}
 
-                {/* 2. VISUAL MODE: Underwater Drawdown */}
+                {/* 3. VISUAL MODE: Underwater Drawdown */}
                 {equityVisualMode === 'drawdown' && (
                   <>
                     {drawdownAreaD && (
@@ -705,7 +759,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   </>
                 )}
 
-                {/* 3. VISUAL MODE: Stepped Staircase */}
+                {/* 4. VISUAL MODE: Stepped Staircase */}
                 {equityVisualMode === 'stepped' && equitySteppedPathD && (
                   <path
                     d={equitySteppedPathD}
@@ -718,7 +772,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   />
                 )}
 
-                {/* 4. VISUAL MODE: Line Chart (Default) */}
+                {/* 5. VISUAL MODE: Line Chart */}
                 {equityVisualMode === 'line' && equityPathD && (
                   <path
                     d={equityPathD}
@@ -731,8 +785,8 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   />
                 )}
 
-                {/* Interactive Data Points along the Line/Steps */}
-                {equityPoints.map((pt, i) => (
+                {/* Interactive Data Points along the Line/Steps (for non-bar modes) */}
+                {equityVisualMode !== 'bar' && equityPoints.map((pt, i) => (
                   <g key={i}>
                     <circle
                       cx={pt.x}
