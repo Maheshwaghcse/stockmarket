@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react'
 import api from '../lib/api'
+import TechnicalAnalysisChart from '../components/chart/TechnicalAnalysisChart'
 
 export default function StockDetailPage() {
   const { symbol } = useParams()
@@ -99,6 +100,16 @@ export default function StockDetailPage() {
                 </div>
               </div>
             )}
+            {/* Technical Analysis & 2-Year Historical Chart */}
+            <div className="mt-6 pt-6 border-t border-slate-800">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-white">Interactive Chart &amp; Technical Analysis</h2>
+                  <p className="text-xs muted">Live intraday candles up to 2-year multi-timeframe price history</p>
+                </div>
+              </div>
+              <TechnicalAnalysisChart defaultSymbol={s.symbol} height={420} />
+            </div>
           </div>
 
           <div className="card text-xs muted flex flex-col sm:flex-row items-center justify-between gap-2">

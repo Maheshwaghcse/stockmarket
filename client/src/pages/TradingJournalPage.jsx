@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, Fragment } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Calendar, TrendingUp, TrendingDown, HelpCircle, 
@@ -252,6 +252,45 @@ export default function TradingJournalPage() {
     return weeks
   }, [viewDate, calendarMap])
 
+  // Heatmap consistency and streak summary for right-side dashboard
+  const heatmapStats = useMemo(() => {
+    let greenDays = 0
+    let redDays = 0
+    let breakEvenDays = 0
+    let totalPnl = 0
+    let maxGreenDay = { pnl: 0, dateKey: null }
+    let maxRedDay = { pnl: 0, dateKey: null }
+
+    Object.entries(calendarMap || {}).forEach(([dateKey, d]) => {
+      if (d && d.count > 0) {
+        totalPnl += d.pnl || 0
+        if (d.pnl > 0) {
+          greenDays++
+          if (d.pnl > maxGreenDay.pnl) maxGreenDay = { pnl: d.pnl, dateKey }
+        } else if (d.pnl < 0) {
+          redDays++
+          if (d.pnl < maxRedDay.pnl) maxRedDay = { pnl: d.pnl, dateKey }
+        } else {
+          breakEvenDays++
+        }
+      }
+    })
+
+    const totalActiveDays = greenDays + redDays + breakEvenDays
+    const dayWinRate = totalActiveDays > 0 ? Math.round((greenDays / totalActiveDays) * 100) : 0
+
+    return {
+      greenDays,
+      redDays,
+      breakEvenDays,
+      totalActiveDays,
+      dayWinRate,
+      totalPnl,
+      maxGreenDay,
+      maxRedDay,
+    }
+  }, [calendarMap])
+
   const handlePrevMonth = () => {
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))
   }
@@ -370,12 +409,14 @@ export default function TradingJournalPage() {
         </div>
       )}
 
-      {/* ─── Top Section: Tradebook Heatmap (Matches Screenshot 2) ─────────── */}
+      {/* ─── Top Section: Tradebook Heatmap ─────────── */}
       <div className="card bg-[#0b1329]/90 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold tracking-wide text-slate-300">Tradebook</h2>
-            <span className="sm:hidden text-[10px] text-slate-500 font-normal">← Swipe heatmap →</span>
+            <h2 className="text-sm font-semibold tracking-wide text-slate-200">Tradebook 52-Week P&amp;L Heatmap</h2>
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium hidden sm:inline">
+              Daily Trading Consistency
+            </span>
           </div>
           {selectedDayKey && (
             <div className="flex items-center gap-2 text-xs">
@@ -390,85 +431,158 @@ export default function TradingJournalPage() {
           )}
         </div>
 
-        {/* Heatmap Grid */}
-        <div className="overflow-x-auto touch-scroll pb-2">
-          <div className="min-w-[760px]">
-            <div className="flex gap-1.5 items-center">
-              {/* Day Labels */}
-              <div className="flex flex-col gap-1.5 text-[10px] text-slate-500 font-mono pr-2">
-                <span>Mo</span>
-                <span>Tu</span>
-                <span>We</span>
-                <span>Th</span>
-                <span>Fr</span>
-                <span>Sa</span>
-                <span>Su</span>
+        {/* 2-Column Responsive Layout: Heatmap (centered) + Consistency Sidebar */}
+        <div className="flex flex-col xl:flex-row items-stretch gap-6">
+          {/* Main Heatmap Container - centered */}
+          <div className="flex-1 overflow-x-auto touch-scroll pb-2 flex flex-col justify-center">
+            <div className="min-w-[760px] mx-auto">
+              <div className="flex gap-1.5 items-center justify-center">
+                {/* Day Labels */}
+                <div className="flex flex-col gap-1.5 text-[10px] text-slate-500 font-mono pr-2">
+                  <span>Mo</span>
+                  <span>Tu</span>
+                  <span>We</span>
+                  <span>Th</span>
+                  <span>Fr</span>
+                  <span>Sa</span>
+                  <span>Su</span>
+                </div>
+
+                {/* Weeks */}
+                <div className="flex gap-1">
+                  {heatmapWeeks.map((week, wIdx) => (
+                    <div key={wIdx} className="flex flex-col gap-1">
+                      {week.map((day, dIdx) => {
+                        const pnl = day.data?.pnl || 0
+                        const count = day.data?.count || 0
+                        const isSelected = selectedDayKey === day.dateKey
+
+                        let cellColor = '#151e32' // default no trade
+                        if (count > 0) {
+                          if (pnl > 5000) cellColor = '#15803d'
+                          else if (pnl > 0) cellColor = '#22c55e'
+                          else if (pnl < -2000) cellColor = '#b91c1c'
+                          else cellColor = '#ef4444'
+                        }
+
+                        return (
+                          <div
+                            key={dIdx}
+                            onClick={() => {
+                              if (count > 0) {
+                                setSelectedDayKey(day.dateKey)
+                                setDayModalOpen(true)
+                              }
+                            }}
+                            title={`${day.dateKey}: ${count} trades, P&L: ₹${pnl.toLocaleString('en-IN')} (Click to view ${count} trades & 3 reasons)`}
+                            className={`w-3.5 h-3.5 rounded-sm transition-all cursor-pointer ${
+                              isSelected ? 'ring-2 ring-white scale-110 shadow-lg shadow-blue-500/50' : 'hover:scale-125 hover:z-10'
+                            }`}
+                            style={{ background: cellColor }}
+                          />
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Weeks */}
-              <div className="flex gap-1">
-                {heatmapWeeks.map((week, wIdx) => (
-                  <div key={wIdx} className="flex flex-col gap-1">
-                    {week.map((day, dIdx) => {
-                      const pnl = day.data?.pnl || 0
-                      const count = day.data?.count || 0
-                      const isSelected = selectedDayKey === day.dateKey
+              {/* Months row */}
+              <div className="flex justify-between text-[11px] text-slate-500 pt-3 pl-8 font-medium">
+                <span>Nov</span>
+                <span>Dec</span>
+                <span>Jan</span>
+                <span>Feb</span>
+                <span>Mar</span>
+                <span>Apr</span>
+                <span>May</span>
+                <span>Jun</span>
+                <span>Jul</span>
+                <span>Aug</span>
+                <span>Sept</span>
+                <span>Oct</span>
+              </div>
 
-                      let cellColor = '#151e32' // default no trade
-                      if (count > 0) {
-                        if (pnl > 5000) cellColor = '#15803d'
-                        else if (pnl > 0) cellColor = '#22c55e'
-                        else if (pnl < -2000) cellColor = '#b91c1c'
-                        else cellColor = '#ef4444'
-                      }
+              {/* Heatmap Legend */}
+              <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2.5 pt-2 border-t border-slate-800/60">
+                <span className="text-[10px] text-slate-500">Tap any colored square to inspect daily trades &amp; 3 setup reasons</span>
+                <div className="flex items-center gap-1.5">
+                  <span>Max Loss</span>
+                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#b91c1c' }} />
+                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#ef4444' }} />
+                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#151e32' }} />
+                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#22c55e' }} />
+                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#15803d' }} />
+                  <span>Max Profit</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-                      return (
-                        <div
-                          key={dIdx}
-                          onClick={() => {
-                            if (count > 0) {
-                              setSelectedDayKey(day.dateKey)
-                              setDayModalOpen(true)
-                            }
-                          }}
-                          title={`${day.dateKey}: ${count} trades, P&L: ₹${pnl.toLocaleString('en-IN')} (Click to view ${count} trades & 3 reasons)`}
-                          className={`w-3.5 h-3.5 rounded-sm transition-all cursor-pointer ${
-                            isSelected ? 'ring-2 ring-white scale-110 shadow-lg shadow-blue-500/50' : 'hover:scale-125 hover:z-10'
-                          }`}
-                          style={{ background: cellColor }}
-                        />
-                      )
-                    })}
+          {/* Right Side Feature: Consistency & Day Distribution Metrics */}
+          <div className="xl:w-72 2xl:w-80 bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 flex flex-col justify-between shrink-0">
+            <div>
+              <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-800">
+                <span className="text-xs font-bold text-slate-200">Consistency Matrix</span>
+                <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                  {heatmapStats.dayWinRate}% Green Days
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                <div className="p-2 rounded-lg bg-[#0b1329] border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block">Green Days</span>
+                  <span className="text-sm font-bold text-emerald-400 font-mono">
+                    {heatmapStats.greenDays}
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-[#0b1329] border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block">Red Days</span>
+                  <span className="text-sm font-bold text-rose-400 font-mono">
+                    {heatmapStats.redDays}
+                  </span>
+                </div>
+              </div>
+
+              {heatmapStats.maxGreenDay.dateKey && (
+                <div className="p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-500/20 mb-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-emerald-300 font-medium">Best Day P&amp;L</span>
+                    <span className="font-bold font-mono text-emerald-400">
+                      +₹{heatmapStats.maxGreenDay.pnl.toLocaleString('en-IN')}
+                    </span>
                   </div>
-                ))}
-              </div>
+                  <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                    {heatmapStats.maxGreenDay.dateKey}
+                  </span>
+                </div>
+              )}
+
+              {heatmapStats.maxRedDay.dateKey && (
+                <div className="p-2.5 rounded-lg bg-rose-950/20 border border-rose-500/20 mb-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-rose-300 font-medium">Worst Day P&amp;L</span>
+                    <span className="font-bold font-mono text-rose-400">
+                      ₹{heatmapStats.maxRedDay.pnl.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                    {heatmapStats.maxRedDay.dateKey}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Months row */}
-            <div className="flex justify-between text-[11px] text-slate-500 pt-3 pl-8 font-medium">
-              <span>Nov</span>
-              <span>Dec</span>
-              <span>Jan</span>
-              <span>Feb</span>
-              <span>Mar</span>
-              <span>Apr</span>
-              <span>May</span>
-              <span>Jun</span>
-              <span>Jul</span>
-              <span>Aug</span>
-              <span>Sept</span>
-              <span>Oct</span>
-            </div>
-
-            {/* Heatmap Legend */}
-            <div className="flex items-center justify-end gap-1.5 text-[11px] text-slate-400 mt-2">
-              <span>Max Loss</span>
-              <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#b91c1c' }} />
-              <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#ef4444' }} />
-              <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#151e32' }} />
-              <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#22c55e' }} />
-              <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#15803d' }} />
-              <span>Max Profit</span>
+            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Active Sessions: <strong className="text-white font-mono">{heatmapStats.totalActiveDays}</strong></span>
+              {selectedDayKey && (
+                <button
+                  onClick={() => setSelectedDayKey(null)}
+                  className="text-blue-400 hover:underline font-semibold"
+                >
+                  Reset Filter
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -777,21 +891,21 @@ export default function TradingJournalPage() {
           </div>
         ) : (
           <>
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto touch-scroll">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
+            {/* Desktop Table View - Full Scape with Sticky Aligned Headers */}
+            <div className="hidden md:block overflow-x-auto touch-scroll border border-slate-800/90 rounded-2xl bg-[#080d1a] shadow-2xl">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="sticky top-0 z-20 bg-[#0d162d] border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px] backdrop-blur-md">
                   <tr>
-                    <th className="py-3 px-3">Symbol</th>
-                    <th className="py-3 px-3">Type</th>
-                    <th className="py-3 px-3">Entry Date</th>
-                    <th className="py-3 px-3">Entry Price</th>
-                    <th className="py-3 px-3">Exit Price</th>
-                    <th className="py-3 px-3">Qty</th>
-                    <th className="py-3 px-3">Net P&amp;L</th>
-                    <th className="py-3 px-3">3 Setup Reasons</th>
-                    <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-3 text-right">Actions</th>
+                    <th className="py-3.5 px-4 font-bold text-left">Symbol</th>
+                    <th className="py-3.5 px-3 font-semibold text-center">Type</th>
+                    <th className="py-3.5 px-3 font-semibold text-left">Entry Date</th>
+                    <th className="py-3.5 px-3 font-semibold text-right">Entry Price</th>
+                    <th className="py-3.5 px-3 font-semibold text-right">Exit Price</th>
+                    <th className="py-3.5 px-3 font-semibold text-center">Qty</th>
+                    <th className="py-3.5 px-4 font-semibold text-right">Net P&amp;L</th>
+                    <th className="py-3.5 px-3 font-semibold text-center">3 Setup Reasons</th>
+                    <th className="py-3.5 px-3 font-semibold text-center">Status</th>
+                    <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -803,14 +917,14 @@ export default function TradingJournalPage() {
                     const hasReasons = !!(trade.entryReason?.trim() || trade.exitReason?.trim() || trade.lessonLearned?.trim())
 
                     return (
-                      <tbody key={trade._id} className="divide-y divide-slate-800/40">
-                        <tr className="hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3 px-3 font-bold text-slate-200 flex items-center gap-1.5">
+                      <Fragment key={trade._id}>
+                        <tr className="hover:bg-slate-800/50 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-slate-100 text-left">
                             {trade.symbol}
                           </td>
-                          <td className="py-3 px-3">
+                          <td className="py-3.5 px-3 text-center">
                             <span
-                              className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                              className={`px-2.5 py-0.5 rounded text-[11px] font-semibold ${
                                 trade.tradeType === 'Long'
                                   ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                                   : 'bg-red-500/10 text-red-400 border border-red-500/20'
@@ -819,23 +933,23 @@ export default function TradingJournalPage() {
                               {trade.tradeType}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-slate-400">
+                          <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px] text-left">
                             {new Date(trade.entryDate).toLocaleDateString('en-IN', {
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric',
                             })}
                           </td>
-                          <td className="py-3 px-3 font-mono text-slate-200">
+                          <td className="py-3.5 px-3 font-mono text-slate-200 text-right">
                             ₹{trade.entryPrice?.toLocaleString('en-IN')}
                           </td>
-                          <td className="py-3 px-3 font-mono text-slate-200">
+                          <td className="py-3.5 px-3 font-mono text-slate-200 text-right">
                             {trade.exitPrice ? `₹${trade.exitPrice.toLocaleString('en-IN')}` : '—'}
                           </td>
-                          <td className="py-3 px-3 font-mono text-slate-300">
+                          <td className="py-3.5 px-3 font-mono text-slate-300 text-center">
                             {trade.quantity}
                           </td>
-                          <td className="py-3 px-3 font-mono font-bold">
+                          <td className="py-3.5 px-4 font-mono font-bold text-right">
                             {isClosed ? (
                               <span className={isProfitable ? 'text-green-400' : 'text-red-400'}>
                                 {isProfitable ? '+' : ''}₹{pnl.toLocaleString('en-IN')}{' '}
@@ -847,7 +961,7 @@ export default function TradingJournalPage() {
                               <span className="text-slate-500">Open</span>
                             )}
                           </td>
-                          <td className="py-3 px-3">
+                          <td className="py-3.5 px-3 text-center">
                             <button
                               onClick={() => setExpandedTradeId(isExpanded ? null : trade._id)}
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${
@@ -863,14 +977,14 @@ export default function TradingJournalPage() {
                               {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                             </button>
                           </td>
-                          <td className="py-3 px-3">
+                          <td className="py-3.5 px-3 text-center">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                               isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
                             }`}>
                               {trade.status}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-right">
+                          <td className="py-3.5 px-4 text-right">
                             <button
                               onClick={() => {
                                 if (window.confirm(`Delete trade for ${trade.symbol}?`)) {
@@ -939,7 +1053,7 @@ export default function TradingJournalPage() {
                             </td>
                           </tr>
                         )}
-                      </tbody>
+                      </Fragment>
                     )
                   })}
                 </tbody>

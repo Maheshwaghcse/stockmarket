@@ -82,6 +82,7 @@ const TIMEFRAMES = [
   { label: '1M', range: '1mo', interval: '1h' },
   { label: '6M', range: '6mo', interval: '1d' },
   { label: '1Y', range: '1y', interval: '1d' },
+  { label: '2Y', range: '2y', interval: '1d' },
 ]
 
 export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', height = 480 }) {

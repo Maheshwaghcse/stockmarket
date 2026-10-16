@@ -391,7 +391,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
               )}
             </div>
 
-            {/* SVG Interactive Area Chart */}
+            {/* SVG Interactive Line Chart */}
             <div className="relative overflow-x-auto touch-scroll bg-[#080d1a] rounded-xl border border-slate-800/80 p-2">
               <svg
                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -399,17 +399,18 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                 style={{ overflow: 'visible' }}
               >
                 <defs>
-                  <linearGradient id="equityGradGreen" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-                  </linearGradient>
-                  <linearGradient id="equityGradRed" x1="0" y1="1" x2="0" y2="0">
-                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
-                  </linearGradient>
+                  <filter id="equityLineGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow
+                      dx="0"
+                      dy="2"
+                      stdDeviation="3"
+                      floodColor={netPnl >= 0 ? '#10b981' : '#ef4444'}
+                      floodOpacity="0.45"
+                    />
+                  </filter>
                 </defs>
 
-                {/* Grid Lines */}
+                {/* Horizontal Grid Lines */}
                 <line
                   x1={padding.left}
                   y1={padding.top}
@@ -425,6 +426,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   y2={zeroY}
                   stroke="#334155"
                   strokeWidth="1.5"
+                  strokeDasharray="3 3"
                 />
                 <line
                   x1={padding.left}
@@ -435,7 +437,17 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   strokeDasharray="4 4"
                 />
 
-                {/* Zero label */}
+                {/* Y-Axis Value Labels */}
+                <text
+                  x={padding.left - 8}
+                  y={padding.top + 4}
+                  fill="#64748b"
+                  fontSize="10"
+                  textAnchor="end"
+                  fontFamily="monospace"
+                >
+                  +{formatINR(Math.max(...equityCurve.map(p => p.cumulativePnl), 0), { compact: true })}
+                </text>
                 <text
                   x={padding.left - 8}
                   y={zeroY + 4}
@@ -443,45 +455,63 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   fontSize="10"
                   textAnchor="end"
                   fontFamily="monospace"
+                  fontWeight="bold"
                 >
                   ₹0
                 </text>
+                <text
+                  x={padding.left - 8}
+                  y={padding.top + plotHeight + 3}
+                  fill="#64748b"
+                  fontSize="10"
+                  textAnchor="end"
+                  fontFamily="monospace"
+                >
+                  {formatINR(Math.min(...equityCurve.map(p => p.cumulativePnl), 0), { compact: true })}
+                </text>
 
-                {/* Shaded Area under Curve */}
-                {equityAreaD && (
-                  <path
-                    d={equityAreaD}
-                    fill={netPnl >= 0 ? 'url(#equityGradGreen)' : 'url(#equityGradRed)'}
+                {/* Vertical Crosshair Guideline on Hover */}
+                {hoveredPoint && (
+                  <line
+                    x1={hoveredPoint.x}
+                    y1={padding.top}
+                    x2={hoveredPoint.x}
+                    y2={padding.top + plotHeight}
+                    stroke="#3b82f6"
+                    strokeWidth="1"
+                    strokeDasharray="3 3"
+                    opacity="0.7"
                   />
                 )}
 
-                {/* Curve Line */}
+                {/* Pure Line Chart Stroke */}
                 {equityPathD && (
                   <path
                     d={equityPathD}
                     fill="none"
                     stroke={netPnl >= 0 ? '#10b981' : '#ef4444'}
-                    strokeWidth="2.5"
+                    strokeWidth="3"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    filter="url(#equityLineGlow)"
                   />
                 )}
 
-                {/* Interactive Data Points */}
+                {/* Interactive Data Points along the Line */}
                 {equityPoints.map((pt, i) => (
                   <g key={i}>
                     <circle
                       cx={pt.x}
                       cy={pt.y}
                       r={hoveredPoint?.index === pt.index ? 6 : 3.5}
-                      fill={pt.pnl >= 0 ? '#10b981' : '#ef4444'}
+                      fill={pt.cumulativePnl >= 0 ? '#10b981' : '#ef4444'}
                       stroke="#080d1a"
                       strokeWidth="2"
                       className="cursor-pointer transition-all"
                       onMouseEnter={() => setHoveredPoint(pt)}
                       onMouseLeave={() => setHoveredPoint(null)}
                     />
-                    {/* Date label at bottom for selected milestones */}
+                    {/* Date label at bottom for milestones */}
                     {(i === 0 || i === equityPoints.length - 1 || i % Math.ceil(equityPoints.length / 5) === 0) && (
                       <text
                         x={pt.x}
@@ -499,8 +529,11 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
               </svg>
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-              <span>Trajectory shows chronological account growth as positions close.</span>
-              <span>Hover points to inspect individual trade impacts.</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-400" />
+                Line Chart trajectory tracking chronological account growth.
+              </span>
+              <span>Hover points along the line to inspect individual trade impacts.</span>
             </div>
           </div>
         )}

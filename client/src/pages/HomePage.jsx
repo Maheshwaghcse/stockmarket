@@ -78,19 +78,19 @@ export default function HomePage() {
       </div>
 
       {/* ── Main Chart + Sidebar ───────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 xl:items-start">
         {/* Chart */}
         <div className="xl:col-span-2 card">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2">
             <div>
-              <h2 className="font-semibold">Nifty 50 — Intraday</h2>
+              <h2 className="font-semibold text-base">Nifty 50 — Intraday</h2>
               <p className="text-xs muted">5-minute candles · Market Reference</p>
             </div>
-            <Link to="/indices/NIFTY50" className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300">
+            <Link to="/indices/NIFTY50" className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium">
               Full view <ArrowRight size={12} />
             </Link>
           </div>
-          <IndexChart symbol="NIFTY50" height={280} />
+          <IndexChart symbol="NIFTY50" height={300} />
         </div>
 
         {/* Gainers / Losers */}
