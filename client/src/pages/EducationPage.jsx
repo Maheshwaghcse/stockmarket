@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Sliders,
   RefreshCw,
+  Info,
 } from 'lucide-react'
 import TechnicalAnalysisChart from '../components/chart/TechnicalAnalysisChart'
 
