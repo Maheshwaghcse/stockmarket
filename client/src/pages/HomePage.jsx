@@ -1,8 +1,9 @@
+import { useMemo } from 'react'
 import { useMarketStore } from '../store/marketStore'
 import IndexCard from '../components/market/IndexCard'
 import IndexChart from '../components/market/IndexChart'
 import { Link } from 'react-router-dom'
-import { TrendingUp, TrendingDown, Zap, BookOpen, BarChart2, ArrowRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, Zap, BookOpen, BarChart2, ArrowRight, Star } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
 import { formatDistanceToNow } from 'date-fns'
@@ -40,6 +41,42 @@ export default function HomePage() {
     queryFn: () => api.get('/news/featured').then(r => r.data),
     staleTime: 5 * 60_000,
   })
+
+  const { data: watchlistData } = useQuery({
+    queryKey: ['watchlists'],
+    queryFn: () => api.get('/watchlist').then(r => r.data).catch(() => ({ data: [] })),
+  })
+
+  const { data: stocksData } = useQuery({
+    queryKey: ['stocks'],
+    queryFn: () => api.get('/stocks').then(r => r.data),
+    staleTime: 30_000,
+  })
+
+  const allStocks = stocksData?.data || []
+  const userLists = watchlistData?.data || []
+  const activeWatchlist = userLists[0]
+  const watchlistItems = activeWatchlist?.items || []
+
+  const defaultWishlistSymbols = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN']
+  const displayWatchlistStocks = useMemo(() => {
+    if (watchlistItems.length > 0) {
+      return watchlistItems.map((item) => {
+        const found = allStocks.find((s) => s.symbol === item.symbol)
+        return found || {
+          symbol: item.symbol,
+          name: item.name || item.symbol,
+          price: 0,
+          changePct: 0,
+          sector: item.exchange || 'NSE',
+        }
+      })
+    }
+    return defaultWishlistSymbols.map((sym) => {
+      const found = allStocks.find((s) => s.symbol === sym)
+      return found || { symbol: sym, name: sym, price: 0, changePct: 0 }
+    })
+  }, [watchlistItems, allStocks])
 
   return (
     <div className="space-y-8 fade-in">
@@ -90,7 +127,68 @@ export default function HomePage() {
               Full view <ArrowRight size={12} />
             </Link>
           </div>
-          <IndexChart symbol="NIFTY50" height={300} />
+          <IndexChart symbol="NIFTY50" height={280} />
+
+          {/* ── Down Area: My Watchlist Stocks ───────────────────── */}
+          <div className="mt-4 pt-3.5 border-t border-slate-800">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2">
+                <Star size={14} className="text-amber-400 fill-amber-400/20" />
+                <h3 className="text-xs font-semibold text-slate-100 uppercase tracking-wider">
+                  {watchlistItems.length > 0 ? (activeWatchlist.name || 'My Watchlist Stocks') : 'My Wishlist Stocks'}
+                </h3>
+                <span className="text-[10px] px-2 py-0.2 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                  {displayWatchlistStocks.length} tracked
+                </span>
+              </div>
+              <Link
+                to="/watchlist"
+                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium transition-colors"
+              >
+                <span>Edit Watchlist</span>
+                <ArrowRight size={11} />
+              </Link>
+            </div>
+
+            {/* Grid of Watchlist Stocks */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              {displayWatchlistStocks.slice(0, 6).map((stk) => {
+                const isGain = (stk.changePct || 0) >= 0
+                return (
+                  <Link
+                    key={stk.symbol}
+                    to={`/stocks/${stk.symbol}`}
+                    className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all flex flex-col justify-between group"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-slate-100 group-hover:text-blue-400 transition-colors">
+                          {stk.symbol}
+                        </span>
+                        {stk.sector && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                            {stk.sector.slice(0, 3)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] muted truncate mt-0.5" title={stk.name}>
+                        {stk.name}
+                      </p>
+                    </div>
+
+                    <div className="mt-1.5 pt-1 border-t border-slate-800/60 flex items-baseline justify-between">
+                      <span className="font-mono text-xs font-bold text-slate-200">
+                        {stk.price > 0 ? `₹${stk.price?.toLocaleString('en-IN', { maximumFractionDigits: 1 })}` : '—'}
+                      </span>
+                      <span className={`text-[10px] font-mono font-bold ${isGain ? 'gain' : 'loss'}`}>
+                        {isGain ? '+' : ''}{stk.changePct?.toFixed(1)}%
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Gainers / Losers */}

@@ -22,6 +22,8 @@ import { formatINR, computeJournalAnalytics } from '../../lib/journalAnalytics'
 export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = null }) {
   const [activeTab, setActiveTab] = useState('equity') // 'equity', 'waterfall', 'streaks', 'ratios', 'symbols'
   const [waterfallSort, setWaterfallSort] = useState('chrono') // 'chrono' or 'ranked'
+  const [equityVisualMode, setEquityVisualMode] = useState('line') // 'line', 'mountain', 'stepped', 'drawdown'
+  const [tradeOffVisualMode, setTradeOffVisualMode] = useState('waterfall') // 'waterfall', 'ranked', 'tradeoff', 'scatter'
   const [hoveredTrade, setHoveredTrade] = useState(null)
   const [hoveredPoint, setHoveredPoint] = useState(null)
 
@@ -72,11 +74,32 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
       origIndex: idx + 1,
     }))
 
-    if (waterfallSort === 'ranked') {
+    if (waterfallSort === 'ranked' || tradeOffVisualMode === 'ranked') {
       return [...list].sort((a, b) => b.pnlNum - a.pnlNum)
     }
     return list
-  }, [closedTrades, waterfallSort])
+  }, [closedTrades, waterfallSort, tradeOffVisualMode])
+
+  // Cumulative Trade-off (Gains vs Losses over time)
+  const cumulativeTradeOff = useMemo(() => {
+    if (closedTrades.length === 0) return []
+    let cumWin = 0
+    let cumLoss = 0
+    return closedTrades.map((t, idx) => {
+      const p = typeof t.pnl === 'number' ? t.pnl : parseFloat(t.pnl) || 0
+      if (p > 0) cumWin += p
+      else if (p < 0) cumLoss += Math.abs(p)
+      return {
+        index: idx + 1,
+        symbol: t.symbol,
+        date: t.entryDate || t.createdAt,
+        pnl: p,
+        cumWin,
+        cumLoss,
+        tradeOffRatio: cumLoss > 0 ? (cumWin / cumLoss).toFixed(2) : cumWin.toFixed(0),
+      }
+    })
+  }, [closedTrades])
 
   // Calculate SVG Dimensions & Path for Equity Curve
   const svgWidth = 800
@@ -122,6 +145,18 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
     }, '')
   }, [equityPoints, padding.left, plotWidth])
 
+  const equitySteppedPathD = useMemo(() => {
+    if (equityPoints.length === 0) return ''
+    if (equityPoints.length === 1) {
+      return `M ${padding.left} ${equityPoints[0].y} L ${padding.left + plotWidth} ${equityPoints[0].y}`
+    }
+    return equityPoints.reduce((acc, pt, i) => {
+      if (i === 0) return `M ${pt.x} ${pt.y}`
+      const prev = equityPoints[i - 1]
+      return `${acc} L ${pt.x} ${prev.y} L ${pt.x} ${pt.y}`
+    }, '')
+  }, [equityPoints, padding.left, plotWidth])
+
   const equityAreaD = useMemo(() => {
     if (equityPoints.length === 0) return ''
     const firstX = equityPoints[0].x
@@ -129,12 +164,132 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
     return `${equityPathD} L ${lastX} ${zeroY} L ${firstX} ${zeroY} Z`
   }, [equityPathD, equityPoints, zeroY])
 
+  // Underwater Drawdown Points & Area
+  const drawdownPoints = useMemo(() => {
+    if (equityCurve.length === 0) return []
+    let peak = 0
+    const rawDd = equityCurve.map((point) => {
+      peak = Math.max(peak, point.cumulativePnl)
+      const dd = point.cumulativePnl - peak // <= 0
+      return { ...point, peak, dd }
+    })
+    const minDd = Math.min(0, ...rawDd.map((d) => d.dd)) || -1
+    return rawDd.map((point, i) => {
+      const x = padding.left + (i / Math.max(1, rawDd.length - 1)) * plotWidth
+      const y = padding.top + (Math.abs(point.dd) / Math.abs(minDd)) * plotHeight
+      return {
+        ...point,
+        x,
+        y,
+      }
+    })
+  }, [equityCurve, plotWidth, plotHeight, padding.left, padding.top])
+
+  const drawdownPathD = useMemo(() => {
+    if (drawdownPoints.length === 0) return ''
+    return drawdownPoints.reduce((acc, pt, i) => {
+      return i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`
+    }, '')
+  }, [drawdownPoints])
+
+  const drawdownAreaD = useMemo(() => {
+    if (drawdownPoints.length === 0) return ''
+    const firstX = drawdownPoints[0].x
+    const lastX = drawdownPoints[drawdownPoints.length - 1].x
+    return `${drawdownPathD} L ${lastX} ${padding.top} L ${firstX} ${padding.top} Z`
+  }, [drawdownPathD, drawdownPoints, padding.top])
+
   // Waterfall Chart Max Value
   const maxAbsPnl = useMemo(() => {
     if (waterfallBars.length === 0) return 1
     const maxVal = Math.max(...waterfallBars.map((b) => Math.abs(b.pnlNum)))
     return maxVal || 1
   }, [waterfallBars])
+
+  // Trade-off Cumulative Paths (Win vs Loss comparison)
+  const tradeOffMax = useMemo(() => {
+    if (cumulativeTradeOff.length === 0) return 1
+    const maxWin = cumulativeTradeOff[cumulativeTradeOff.length - 1]?.cumWin || 0
+    const maxLoss = cumulativeTradeOff[cumulativeTradeOff.length - 1]?.cumLoss || 0
+    return Math.max(maxWin, maxLoss, 1)
+  }, [cumulativeTradeOff])
+
+  const tradeOffWinPoints = useMemo(() => {
+    return cumulativeTradeOff.map((pt, i) => {
+      const x = padding.left + (i / Math.max(1, cumulativeTradeOff.length - 1)) * plotWidth
+      const y = padding.top + plotHeight - (pt.cumWin / tradeOffMax) * plotHeight
+      return { ...pt, x, y }
+    })
+  }, [cumulativeTradeOff, tradeOffMax, plotWidth, plotHeight, padding.left, padding.top])
+
+  const tradeOffLossPoints = useMemo(() => {
+    return cumulativeTradeOff.map((pt, i) => {
+      const x = padding.left + (i / Math.max(1, cumulativeTradeOff.length - 1)) * plotWidth
+      const y = padding.top + plotHeight - (pt.cumLoss / tradeOffMax) * plotHeight
+      return { ...pt, x, y }
+    })
+  }, [cumulativeTradeOff, tradeOffMax, plotWidth, plotHeight, padding.left, padding.top])
+
+  const tradeOffWinPathD = useMemo(() => {
+    if (tradeOffWinPoints.length === 0) return ''
+    return tradeOffWinPoints.reduce((acc, pt, i) => (i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`), '')
+  }, [tradeOffWinPoints])
+
+  const tradeOffLossPathD = useMemo(() => {
+    if (tradeOffLossPoints.length === 0) return ''
+    return tradeOffLossPoints.reduce((acc, pt, i) => (i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`), '')
+  }, [tradeOffLossPoints])
+
+  const tradeOffWinAreaD = useMemo(() => {
+    if (tradeOffWinPoints.length === 0) return ''
+    const firstX = tradeOffWinPoints[0].x
+    const lastX = tradeOffWinPoints[tradeOffWinPoints.length - 1].x
+    const baseY = padding.top + plotHeight
+    return `${tradeOffWinPathD} L ${lastX} ${baseY} L ${firstX} ${baseY} Z`
+  }, [tradeOffWinPathD, tradeOffWinPoints, padding.top, plotHeight])
+
+  const tradeOffLossAreaD = useMemo(() => {
+    if (tradeOffLossPoints.length === 0) return ''
+    const firstX = tradeOffLossPoints[0].x
+    const lastX = tradeOffLossPoints[tradeOffLossPoints.length - 1].x
+    const baseY = padding.top + plotHeight
+    return `${tradeOffLossPathD} L ${lastX} ${baseY} L ${firstX} ${baseY} Z`
+  }, [tradeOffLossPathD, tradeOffLossPoints, padding.top, plotHeight])
+
+  // Scatter plot points (Outlay vs Return trade-off)
+  const scatterPoints = useMemo(() => {
+    if (closedTrades.length === 0) return []
+    const pnls = closedTrades.map((t) => (typeof t.pnl === 'number' ? t.pnl : parseFloat(t.pnl) || 0))
+    const outlays = closedTrades.map((t) => {
+      const q = parseFloat(t.quantity) || 1
+      const ep = parseFloat(t.entryPrice) || 100
+      return q * ep
+    })
+    const minPnl = Math.min(...pnls, 0)
+    const maxPnl = Math.max(...pnls, 0)
+    const pnlRange = maxPnl - minPnl || 1
+    const minOutlay = Math.min(...outlays, 0)
+    const maxOutlay = Math.max(...outlays, 1000)
+    const outlayRange = maxOutlay - minOutlay || 1
+
+    return closedTrades.map((t, i) => {
+      const p = typeof t.pnl === 'number' ? t.pnl : parseFloat(t.pnl) || 0
+      const q = parseFloat(t.quantity) || 1
+      const ep = parseFloat(t.entryPrice) || 100
+      const outlay = q * ep
+      const x = padding.left + ((outlay - minOutlay) / outlayRange) * plotWidth
+      const y = padding.top + plotHeight - ((p - minPnl) / pnlRange) * plotHeight
+      return {
+        ...t,
+        id: t._id || t.id || i,
+        index: i + 1,
+        pnlNum: p,
+        outlay,
+        x,
+        y,
+      }
+    })
+  }, [closedTrades, plotWidth, plotHeight, padding.left, padding.top])
 
   if (closedTradesCount === 0) {
     return (
@@ -328,7 +483,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
           <div className="flex items-center gap-1 overflow-x-auto touch-scroll pb-1 scrollbar-none">
             {[
               { id: 'equity', label: 'Equity Curve', icon: TrendingUp },
-              { id: 'waterfall', label: 'Trade-by-Trade P&L', icon: BarChart3 },
+              { id: 'waterfall', label: 'Trade-off & Bars', icon: BarChart3 },
               { id: 'streaks', label: 'Streak Visualizer', icon: Flame },
               { id: 'ratios', label: 'Win/Loss & Risk', icon: PieChart },
               { id: 'symbols', label: 'Symbol Breakdown', icon: Layers },
@@ -356,7 +511,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
         {/* ── TAB 1: Equity Curve (Cumulative Growth) ── */}
         {activeTab === 'equity' && (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-4">
                 <div>
                   <span className="text-slate-400 block text-[11px]">Net Cumulative P&amp;L</span>
@@ -376,22 +531,49 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                 </div>
               </div>
 
-              {hoveredPoint && (
-                <div className="bg-slate-900/90 border border-blue-500/40 px-3 py-1 rounded-lg text-xs font-mono flex items-center gap-2 shadow-lg">
+              {/* Visual Mode Selector for Equity Curve */}
+              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+                <span className="text-[10px] text-slate-400 px-2 font-medium">Visual:</span>
+                {[
+                  { id: 'line', label: 'Line Chart' },
+                  { id: 'mountain', label: 'Mountain / Area' },
+                  { id: 'stepped', label: 'Milestone Steps' },
+                  { id: 'drawdown', label: 'Drawdown Curve' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setEquityVisualMode(mode.id)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                      equityVisualMode === mode.id
+                        ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {hoveredPoint && (
+              <div className="bg-slate-900/90 border border-blue-500/40 px-3.5 py-1.5 rounded-xl text-xs font-mono flex items-center justify-between shadow-lg">
+                <div className="flex items-center gap-2">
                   <span className="text-blue-300 font-bold">{hoveredPoint.symbol}</span>
-                  <span className="text-slate-400">Trade P&L:</span>
-                  <span className={hoveredPoint.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                  <span className="text-slate-400">Trade:</span>
+                  <span className={hoveredPoint.pnl >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
                     {formatINR(hoveredPoint.pnl, { compact: true, showSign: true })}
                   </span>
-                  <span className="text-slate-400">| Cumulative:</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-400">Equity at Close:</span>
                   <span className="font-bold text-white">
                     {formatINR(hoveredPoint.cumulativePnl, { compact: true, showSign: true })}
                   </span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* SVG Interactive Line Chart */}
+            {/* SVG Interactive Multi-Visual Equity Chart */}
             <div className="relative overflow-x-auto touch-scroll bg-[#080d1a] rounded-xl border border-slate-800/80 p-2">
               <svg
                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -408,9 +590,21 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                       floodOpacity="0.45"
                     />
                   </filter>
+                  <linearGradient id="equityGradGreen" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.45" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="equityGradRed" x1="0" y1="1" x2="0" y2="0">
+                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.45" />
+                    <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="drawdownGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.1" />
+                    <stop offset="100%" stopColor="#ef4444" stopOpacity="0.5" />
+                  </linearGradient>
                 </defs>
 
-                {/* Horizontal Grid Lines */}
+                {/* Grid Lines */}
                 <line
                   x1={padding.left}
                   y1={padding.top}
@@ -484,8 +678,48 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   />
                 )}
 
-                {/* Pure Line Chart Stroke */}
-                {equityPathD && (
+                {/* 1. VISUAL MODE: Mountain / Area */}
+                {equityVisualMode === 'mountain' && equityAreaD && (
+                  <path
+                    d={equityAreaD}
+                    fill={netPnl >= 0 ? 'url(#equityGradGreen)' : 'url(#equityGradRed)'}
+                  />
+                )}
+
+                {/* 2. VISUAL MODE: Underwater Drawdown */}
+                {equityVisualMode === 'drawdown' && (
+                  <>
+                    {drawdownAreaD && (
+                      <path d={drawdownAreaD} fill="url(#drawdownGrad)" />
+                    )}
+                    {drawdownPathD && (
+                      <path
+                        d={drawdownPathD}
+                        fill="none"
+                        stroke="#f43f5e"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+                  </>
+                )}
+
+                {/* 3. VISUAL MODE: Stepped Staircase */}
+                {equityVisualMode === 'stepped' && equitySteppedPathD && (
+                  <path
+                    d={equitySteppedPathD}
+                    fill="none"
+                    stroke={netPnl >= 0 ? '#10b981' : '#ef4444'}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    filter="url(#equityLineGlow)"
+                  />
+                )}
+
+                {/* 4. VISUAL MODE: Line Chart (Default) */}
+                {equityVisualMode === 'line' && equityPathD && (
                   <path
                     d={equityPathD}
                     fill="none"
@@ -497,12 +731,12 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   />
                 )}
 
-                {/* Interactive Data Points along the Line */}
+                {/* Interactive Data Points along the Line/Steps */}
                 {equityPoints.map((pt, i) => (
                   <g key={i}>
                     <circle
                       cx={pt.x}
-                      cy={pt.y}
+                      cy={equityVisualMode === 'drawdown' ? (drawdownPoints[i]?.y || pt.y) : pt.y}
                       r={hoveredPoint?.index === pt.index ? 6 : 3.5}
                       fill={pt.cumulativePnl >= 0 ? '#10b981' : '#ef4444'}
                       stroke="#080d1a"
@@ -528,164 +762,440 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                 ))}
               </svg>
             </div>
+
             <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-blue-400" />
-                Line Chart trajectory tracking chronological account growth.
+                Active Visual: <strong className="text-slate-300 capitalize">{equityVisualMode} Representation</strong>
               </span>
-              <span>Hover points along the line to inspect individual trade impacts.</span>
+              <span>Click visual buttons above to switch graph style.</span>
             </div>
           </div>
         )}
 
-        {/* ── TAB 2: Trade-by-Trade P&L Waterfall (With Highest / Lowest Callouts) ── */}
+        {/* ── TAB 2: Trade-by-Trade P&L Waterfall & Visual Trade-off ── */}
         {activeTab === 'waterfall' && (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-3">
-                <span className="text-slate-400">Order by:</span>
-                <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
-                  <button
-                    onClick={() => setWaterfallSort('chrono')}
-                    className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
-                      waterfallSort === 'chrono' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Chronological
-                  </button>
-                  <button
-                    onClick={() => setWaterfallSort('ranked')}
-                    className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
-                      waterfallSort === 'ranked' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Ranked (Best to Worst)
-                  </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-4">
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Profit Factor</span>
+                  <span className="text-base font-bold font-mono text-emerald-400">
+                    {profitFactor}x
+                  </span>
+                </div>
+                <div className="border-l border-slate-800 pl-4">
+                  <span className="text-slate-400 block text-[11px]">Win / Loss Ratio</span>
+                  <span className="text-base font-bold font-mono text-slate-200">
+                    {winCount}W / {lossCount}L
+                  </span>
+                </div>
+                <div className="border-l border-slate-800 pl-4 hidden sm:block">
+                  <span className="text-slate-400 block text-[11px]">Win Rate</span>
+                  <span className="text-base font-bold font-mono text-blue-400">
+                    {winRate}%
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 text-[11px]">
-                <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500" />
-                  Winner
-                </span>
-                <span className="flex items-center gap-1.5 text-rose-400 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-xs bg-rose-500" />
-                  Loser
-                </span>
-                <span className="flex items-center gap-1.5 text-amber-300 font-medium">
-                  <Trophy size={11} className="text-amber-400" />
-                  Highest Win
-                </span>
-                <span className="flex items-center gap-1.5 text-rose-300 font-medium">
-                  <AlertTriangle size={11} className="text-rose-400" />
-                  Max Loss
-                </span>
+              {/* Trade-off Visual Switcher */}
+              <div className="flex flex-wrap items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+                <span className="text-[10px] text-slate-400 px-2 font-medium">Visual:</span>
+                {[
+                  { id: 'waterfall', label: 'Waterfall Bars' },
+                  { id: 'ranked', label: 'Ranked Spectrum' },
+                  { id: 'tradeoff', label: 'Win vs Loss Trade-off' },
+                  { id: 'scatter', label: 'R:R Scatter Plot' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => {
+                      setTradeOffVisualMode(mode.id)
+                      if (mode.id === 'ranked') setWaterfallSort('ranked')
+                      if (mode.id === 'waterfall') setWaterfallSort('chrono')
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                      tradeOffVisualMode === mode.id
+                        ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Waterfall Bars Container */}
-            <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-4 overflow-x-auto">
-              <div className="min-w-[620px] flex items-end gap-2 h-52 relative border-b border-slate-700/60 pb-1">
-                {/* Zero Reference Line */}
-                <div
-                  className="absolute w-full border-b border-slate-600/80 border-dashed z-0"
-                  style={{ bottom: '50%' }}
-                />
+            {/* VISUAL 1 & 2: Waterfall / Ranked Bars */}
+            {(tradeOffVisualMode === 'waterfall' || tradeOffVisualMode === 'ranked') && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-medium">
+                    {tradeOffVisualMode === 'ranked' ? 'Sorted from Highest Win to Max Loss' : 'Chronological sequence of closed trades'}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                      <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500" />
+                      Winner
+                    </span>
+                    <span className="flex items-center gap-1.5 text-rose-400 font-medium">
+                      <span className="w-2.5 h-2.5 rounded-xs bg-rose-500" />
+                      Loser
+                    </span>
+                    <span className="flex items-center gap-1.5 text-amber-300 font-medium">
+                      <Trophy size={11} className="text-amber-400" />
+                      Highest Win
+                    </span>
+                    <span className="flex items-center gap-1.5 text-rose-300 font-medium">
+                      <AlertTriangle size={11} className="text-rose-400" />
+                      Max Loss
+                    </span>
+                  </div>
+                </div>
 
-                {waterfallBars.map((bar, idx) => {
-                  const isWin = bar.pnlNum >= 0
-                  const heightPercent = Math.min(100, Math.max(8, (Math.abs(bar.pnlNum) / maxAbsPnl) * 100))
-                  const isHighest = highestProfitTrade && bar.id === highestProfitTrade.id
-                  const isLowest = lowestProfitTrade && bar.id === lowestProfitTrade.id
-
-                  return (
+                <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-4 overflow-x-auto touch-scroll">
+                  <div className="min-w-[620px] flex items-end gap-2 h-52 relative border-b border-slate-700/60 pb-1">
+                    {/* Zero Reference Line */}
                     <div
-                      key={bar.id || idx}
-                      className="flex-1 flex flex-col items-center justify-center relative group cursor-pointer z-10"
-                      style={{ height: '100%' }}
-                      onMouseEnter={() => setHoveredTrade(bar)}
-                      onMouseLeave={() => setHoveredTrade(null)}
-                    >
-                      {/* Callout Pins for Highest and Lowest */}
-                      {isHighest && (
-                        <div className="absolute top-0 flex flex-col items-center animate-bounce z-20">
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 shadow-md">
-                            🏆 Highest
-                          </span>
-                        </div>
-                      )}
-                      {isLowest && (
-                        <div className="absolute bottom-0 flex flex-col items-center z-20">
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-rose-500 text-white shadow-md">
-                            ⚠️ Max Loss
-                          </span>
-                        </div>
-                      )}
+                      className="absolute w-full border-b border-slate-600/80 border-dashed z-0"
+                      style={{ bottom: '50%' }}
+                    />
 
-                      {/* Bar body anchored at 50% */}
-                      <div
-                        className="w-full relative flex items-center justify-center"
-                        style={{ height: '100%' }}
-                      >
+                    {waterfallBars.map((bar, idx) => {
+                      const isWin = bar.pnlNum >= 0
+                      const heightPercent = Math.min(100, Math.max(8, (Math.abs(bar.pnlNum) / maxAbsPnl) * 100))
+                      const isHighest = highestProfitTrade && bar.id === highestProfitTrade.id
+                      const isLowest = lowestProfitTrade && bar.id === lowestProfitTrade.id
+
+                      return (
                         <div
-                          className={`w-full max-w-[32px] rounded-sm transition-all ${
-                            isWin
-                              ? isHighest
-                                ? 'bg-gradient-to-t from-emerald-600 to-amber-300 ring-2 ring-amber-400/80 shadow-lg shadow-emerald-500/30'
-                                : 'bg-emerald-500 hover:bg-emerald-400'
-                              : isLowest
-                              ? 'bg-gradient-to-b from-rose-600 to-rose-900 ring-2 ring-rose-400/80 shadow-lg shadow-rose-500/30'
-                              : 'bg-rose-500 hover:bg-rose-400'
-                          } ${hoveredTrade?.id === bar.id ? 'brightness-125 scale-105' : ''}`}
-                          style={{
-                            height: `${heightPercent * 0.45}%`,
-                            position: 'absolute',
-                            bottom: isWin ? '50%' : 'auto',
-                            top: !isWin ? '50%' : 'auto',
-                          }}
-                        />
-                      </div>
+                          key={bar.id || idx}
+                          className="flex-1 flex flex-col items-center justify-center relative group cursor-pointer z-10"
+                          style={{ height: '100%' }}
+                          onMouseEnter={() => setHoveredTrade(bar)}
+                          onMouseLeave={() => setHoveredTrade(null)}
+                        >
+                          {/* Callout Pins for Highest and Lowest */}
+                          {isHighest && (
+                            <div className="absolute top-0 flex flex-col items-center animate-bounce z-20">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 shadow-md">
+                                🏆 Highest
+                              </span>
+                            </div>
+                          )}
+                          {isLowest && (
+                            <div className="absolute bottom-0 flex flex-col items-center z-20">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-rose-500 text-white shadow-md">
+                                ⚠️ Max Loss
+                              </span>
+                            </div>
+                          )}
 
-                      {/* Symbol label */}
-                      <span className="text-[10px] text-slate-400 font-mono truncate max-w-[42px] absolute -bottom-5">
-                        {bar.symbol}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
+                          {/* Bar body anchored at 50% */}
+                          <div
+                            className="w-full relative flex items-center justify-center"
+                            style={{ height: '100%' }}
+                          >
+                            <div
+                              className={`w-full max-w-[32px] rounded-sm transition-all ${
+                                isWin
+                                  ? isHighest
+                                    ? 'bg-gradient-to-t from-emerald-600 to-amber-300 ring-2 ring-amber-400/80 shadow-lg shadow-emerald-500/30'
+                                    : 'bg-emerald-500 hover:bg-emerald-400'
+                                  : isLowest
+                                  ? 'bg-gradient-to-b from-rose-600 to-rose-900 ring-2 ring-rose-400/80 shadow-lg shadow-rose-500/30'
+                                  : 'bg-rose-500 hover:bg-rose-400'
+                              } ${hoveredTrade?.id === bar.id ? 'brightness-125 scale-105' : ''}`}
+                              style={{
+                                height: `${heightPercent * 0.45}%`,
+                                position: 'absolute',
+                                bottom: isWin ? '50%' : 'auto',
+                                top: !isWin ? '50%' : 'auto',
+                              }}
+                            />
+                          </div>
 
-              {/* Hover Inspection Drawer */}
-              {hoveredTrade && (
-                <div className="mt-6 p-3 rounded-lg bg-slate-900/90 border border-slate-700/80 text-xs flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-100">{hoveredTrade.symbol}</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                      hoveredTrade.tradeType === 'Long' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
-                    }`}>
-                      {hoveredTrade.tradeType}
-                    </span>
-                    <span className="text-slate-400 text-[11px]">
-                      {new Date(hoveredTrade.entryDate).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </span>
+                          {/* Symbol label */}
+                          <span className="text-[10px] text-slate-400 font-mono truncate max-w-[42px] absolute -bottom-5">
+                            {bar.symbol}
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
-                  <div className="flex items-center gap-4 font-mono">
-                    <span className="text-slate-400">
-                      Entry: ₹{hoveredTrade.entryPrice} → Exit: ₹{hoveredTrade.exitPrice || '—'}
+
+                  {/* Hover Inspection Drawer */}
+                  {hoveredTrade && (
+                    <div className="mt-6 p-3 rounded-lg bg-slate-900/90 border border-slate-700/80 text-xs flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-100">{hoveredTrade.symbol}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                          hoveredTrade.tradeType === 'Long' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                        }`}>
+                          {hoveredTrade.tradeType}
+                        </span>
+                        <span className="text-slate-400 text-[11px]">
+                          {new Date(hoveredTrade.entryDate).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 font-mono">
+                        <span className="text-slate-400">
+                          Entry: ₹{hoveredTrade.entryPrice} → Exit: ₹{hoveredTrade.exitPrice || '—'}
+                        </span>
+                        <span className={`font-bold ${hoveredTrade.pnlNum >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {formatINR(hoveredTrade.pnlNum, { compact: false, showSign: true })}
+                          {hoveredTrade.pnlPercent ? ` (${hoveredTrade.pnlPercent > 0 ? '+' : ''}${hoveredTrade.pnlPercent}%)` : ''}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* VISUAL 3: Win vs Loss Cumulative Trade-Off Dual Graph */}
+            {tradeOffVisualMode === 'tradeoff' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-medium">
+                    Cumulative Gross Profit (+{formatINR(totalWinPnl, { compact: true })}) vs Gross Loss Bleed (-{formatINR(totalLossPnl, { compact: true })})
+                  </span>
+                  <div className="flex items-center gap-4">
+                    <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                      <span className="w-2.5 h-1 rounded-full bg-emerald-400" />
+                      Cumulative Wins
                     </span>
-                    <span className={`font-bold ${hoveredTrade.pnlNum >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {formatINR(hoveredTrade.pnlNum, { compact: false, showSign: true })}
-                      {hoveredTrade.pnlPercent ? ` (${hoveredTrade.pnlPercent > 0 ? '+' : ''}${hoveredTrade.pnlPercent}%)` : ''}
+                    <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
+                      <span className="w-2.5 h-1 rounded-full bg-rose-400" />
+                      Cumulative Losses
                     </span>
                   </div>
                 </div>
-              )}
-            </div>
+
+                <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-3 overflow-x-auto touch-scroll">
+                  <svg
+                    viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                    className="w-full h-auto min-w-[500px] sm:min-w-[640px] select-none"
+                    style={{ overflow: 'visible' }}
+                  >
+                    <defs>
+                      <linearGradient id="tradeOffWinGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                      </linearGradient>
+                      <linearGradient id="tradeOffLossGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Horizontal Grid */}
+                    {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
+                      const y = padding.top + pct * plotHeight
+                      return (
+                        <g key={idx}>
+                          <line
+                            x1={padding.left}
+                            y1={y}
+                            x2={padding.left + plotWidth}
+                            y2={y}
+                            stroke="#1e293b"
+                            strokeWidth="1"
+                            strokeDasharray="4 4"
+                          />
+                          <text
+                            x={padding.left - 8}
+                            y={y + 4}
+                            fill="#64748b"
+                            fontSize="10"
+                            textAnchor="end"
+                            fontFamily="monospace"
+                          >
+                            ₹{formatINR(tradeOffMax * (1 - pct), { compact: true })}
+                          </text>
+                        </g>
+                      )
+                    })}
+
+                    {/* Area Fills */}
+                    {tradeOffWinAreaD && (
+                      <path d={tradeOffWinAreaD} fill="url(#tradeOffWinGrad)" />
+                    )}
+                    {tradeOffLossAreaD && (
+                      <path d={tradeOffLossAreaD} fill="url(#tradeOffLossGrad)" />
+                    )}
+
+                    {/* Lines */}
+                    {tradeOffWinPathD && (
+                      <path
+                        d={tradeOffWinPathD}
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+                    {tradeOffLossPathD && (
+                      <path
+                        d={tradeOffLossPathD}
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+
+                    {/* Points on Win Curve */}
+                    {tradeOffWinPoints.map((pt, i) => (
+                      <circle
+                        key={`win-${i}`}
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={hoveredPoint?.id === pt.id ? 6 : 3}
+                        fill="#10b981"
+                        stroke="#080d1a"
+                        strokeWidth="2"
+                        className="cursor-pointer"
+                        onMouseEnter={() => setHoveredPoint(pt)}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                      />
+                    ))}
+
+                    {/* Points on Loss Curve */}
+                    {tradeOffLossPoints.map((pt, i) => (
+                      <circle
+                        key={`loss-${i}`}
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={hoveredPoint?.id === pt.id ? 6 : 3}
+                        fill="#ef4444"
+                        stroke="#080d1a"
+                        strokeWidth="2"
+                        className="cursor-pointer"
+                        onMouseEnter={() => setHoveredPoint(pt)}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                      />
+                    ))}
+                  </svg>
+
+                  {hoveredPoint && (
+                    <div className="mt-3 p-3 rounded-lg bg-slate-900/90 border border-slate-700/80 text-xs flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-100">{hoveredPoint.symbol}</span>
+                        <span className="text-slate-400">Trade P&amp;L:</span>
+                        <span className={`font-bold ${hoveredPoint.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {formatINR(hoveredPoint.pnl, { compact: false, showSign: true })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 font-mono">
+                        <span className="text-emerald-400">Cum Wins: +{formatINR(hoveredPoint.cumWin, { compact: true })}</span>
+                        <span className="text-rose-400">Cum Loss: -{formatINR(hoveredPoint.cumLoss, { compact: true })}</span>
+                        <span className="text-blue-400 font-bold">Edge Ratio: {hoveredPoint.tradeOffRatio}x</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* VISUAL 4: Risk / Reward Outlay vs Return Scatter Plot */}
+            {tradeOffVisualMode === 'scatter' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-medium">
+                    Trade Outlay (Size × Price) vs Realized P&amp;L Distribution
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      Win Outlay
+                    </span>
+                    <span className="flex items-center gap-1.5 text-rose-400 font-medium">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                      Loss Outlay
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-3 overflow-x-auto touch-scroll">
+                  <svg
+                    viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                    className="w-full h-auto min-w-[500px] sm:min-w-[640px] select-none"
+                    style={{ overflow: 'visible' }}
+                  >
+                    {/* Zero Reference Line */}
+                    <line
+                      x1={padding.left}
+                      y1={zeroY}
+                      x2={padding.left + plotWidth}
+                      y2={zeroY}
+                      stroke="#475569"
+                      strokeWidth="1.5"
+                      strokeDasharray="4 4"
+                    />
+                    <text
+                      x={padding.left - 8}
+                      y={zeroY + 4}
+                      fill="#94a3b8"
+                      fontSize="10"
+                      textAnchor="end"
+                      fontFamily="monospace"
+                      fontWeight="bold"
+                    >
+                      ₹0
+                    </text>
+
+                    {/* Scatter nodes */}
+                    {scatterPoints.map((pt, i) => {
+                      const isWin = pt.pnlNum >= 0
+                      const isHighest = highestProfitTrade && pt.id === highestProfitTrade.id
+                      const isLowest = lowestProfitTrade && pt.id === lowestProfitTrade.id
+                      const isHovered = hoveredTrade?.id === pt.id
+
+                      return (
+                        <g key={i}>
+                          <circle
+                            cx={pt.x}
+                            cy={pt.y}
+                            r={isHighest || isLowest ? 7 : isHovered ? 6 : 4.5}
+                            fill={isWin ? '#10b981' : '#ef4444'}
+                            stroke={isHighest ? '#fbbf24' : isLowest ? '#f87171' : '#080d1a'}
+                            strokeWidth={isHighest || isLowest ? 2.5 : 1.5}
+                            className="cursor-pointer transition-all hover:scale-125"
+                            onMouseEnter={() => setHoveredTrade(pt)}
+                            onMouseLeave={() => setHoveredTrade(null)}
+                          />
+                        </g>
+                      )
+                    })}
+                  </svg>
+
+                  {hoveredTrade && (
+                    <div className="mt-3 p-3 rounded-lg bg-slate-900/90 border border-slate-700/80 text-xs flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-100">{hoveredTrade.symbol}</span>
+                        <span className="text-slate-400">Trade Outlay:</span>
+                        <span className="font-mono text-slate-200">
+                          {formatINR(hoveredTrade.outlay || hoveredTrade.quantity * hoveredTrade.entryPrice, { compact: false })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 font-mono">
+                        <span className="text-slate-400">P&amp;L:</span>
+                        <span className={`font-bold ${hoveredTrade.pnlNum >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {formatINR(hoveredTrade.pnlNum, { compact: false, showSign: true })}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

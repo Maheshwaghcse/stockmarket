@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import api from '../lib/api'
+import TechnicalAnalysisChart from '../components/chart/TechnicalAnalysisChart'
 
 // Sector color accents for badges
 const SECTOR_COLORS = {
@@ -65,6 +66,7 @@ export default function StocksPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25) // 25, 50, 100
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [chartModalStock, setChartModalStock] = useState(null)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['stocks'],
@@ -560,14 +562,14 @@ export default function StocksPage() {
                     {/* Quick Actions */}
                     <td className="py-3 px-4 text-right">
                       <div className="inline-flex items-center gap-1.5">
-                        <Link
-                          to={`/education?symbol=${s.symbol}`}
-                          className="px-2 py-1 rounded text-[11px] font-medium text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all flex items-center gap-1"
-                          title="Open Technical Chart"
+                        <button
+                          onClick={() => setChartModalStock(s)}
+                          className="px-2 py-1 rounded text-[11px] font-medium text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all flex items-center gap-1 cursor-pointer"
+                          title="Open 2-Year Interactive Historical Chart"
                         >
                           <BarChart2 size={12} />
-                          <span>Chart</span>
-                        </Link>
+                          <span>Chart (2Y)</span>
+                        </button>
                         <Link
                           to={`/journal?symbol=${s.symbol}`}
                           className="px-2 py-1 rounded text-[11px] font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all flex items-center gap-1"
@@ -672,12 +674,13 @@ export default function StocksPage() {
                 >
                   <span className="text-[11px] muted mono">Vol: {formatVolume(s.volume)}</span>
                   <div className="flex items-center gap-2">
-                    <Link
-                      to={`/education?symbol=${s.symbol}`}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                    <button
+                      onClick={() => setChartModalStock(s)}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                      title="Open 2-Year Interactive Historical Chart"
                     >
-                      <BarChart2 size={12} /> Chart
-                    </Link>
+                      <BarChart2 size={12} /> Chart (2Y)
+                    </button>
                     <Link
                       to={`/journal?symbol=${s.symbol}`}
                       className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
@@ -743,6 +746,58 @@ export default function StocksPage() {
               >
                 <ChevronRight size={16} />
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick 2-Year Interactive Historical Chart Modal ── */}
+      {chartModalStock && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+          <div className="bg-[#0b1329] border border-slate-700/80 rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl p-4 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold">
+                  {chartModalStock.symbol.slice(0, 2)}
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-bold text-white">{chartModalStock.symbol}</h3>
+                    <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                      {chartModalStock.sector || 'NSE'}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30">
+                      2-Year Historical Graph
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">{chartModalStock.name}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  to={`/stocks/${chartModalStock.symbol}`}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 px-3 py-1.5 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/10 transition-colors flex items-center gap-1 font-medium"
+                >
+                  <span>Full Details</span>
+                  <ArrowRight size={12} />
+                </Link>
+                <button
+                  onClick={() => setChartModalStock(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Close Chart"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Technical Analysis Chart configured with 2-Year timeframe */}
+            <div className="rounded-xl overflow-hidden">
+              <TechnicalAnalysisChart
+                defaultSymbol={chartModalStock.symbol}
+                defaultTimeframe="2Y"
+                height={440}
+              />
             </div>
           </div>
         </div>

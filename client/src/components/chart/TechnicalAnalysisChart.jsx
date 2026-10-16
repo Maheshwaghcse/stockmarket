@@ -85,10 +85,23 @@ const TIMEFRAMES = [
   { label: '2Y', range: '2y', interval: '1d' },
 ]
 
-export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', height = 480 }) {
+export default function TechnicalAnalysisChart({
+  defaultSymbol = 'NIFTY50',
+  height = 480,
+  defaultTimeframe = null,
+}) {
   // Chart selection state
   const [symbol, setSymbol] = useState(defaultSymbol)
-  const [selectedTf, setSelectedTf] = useState(TIMEFRAMES[1]) // 5D
+  
+  // Default to 2Y for stocks or if explicitly requested via defaultTimeframe
+  const initialTf = useMemo(() => {
+    if (defaultTimeframe) {
+      return TIMEFRAMES.find((t) => t.label === defaultTimeframe) || TIMEFRAMES[5]
+    }
+    return defaultSymbol === 'NIFTY50' ? TIMEFRAMES[1] : TIMEFRAMES[5] // 2Y (TIMEFRAMES[5])
+  }, [defaultTimeframe, defaultSymbol])
+
+  const [selectedTf, setSelectedTf] = useState(initialTf)
   const [chartType, setChartType] = useState('candlestick') // candlestick, line, area, bar, heikin-ashi
 
   useEffect(() => {
@@ -96,6 +109,13 @@ export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', heig
       setSymbol(defaultSymbol)
     }
   }, [defaultSymbol])
+
+  useEffect(() => {
+    if (defaultTimeframe) {
+      const found = TIMEFRAMES.find((t) => t.label === defaultTimeframe)
+      if (found) setSelectedTf(found)
+    }
+  }, [defaultTimeframe])
 
   const availableSymbols = useMemo(() => {
     if (symbol && !SYMBOLS.some((s) => s.symbol === symbol)) {

@@ -108,7 +108,7 @@ export default function StockDetailPage() {
                   <p className="text-xs muted">Live intraday candles up to 2-year multi-timeframe price history</p>
                 </div>
               </div>
-              <TechnicalAnalysisChart defaultSymbol={s.symbol} height={420} />
+              <TechnicalAnalysisChart defaultSymbol={s.symbol} defaultTimeframe="2Y" height={420} />
             </div>
           </div>
 
