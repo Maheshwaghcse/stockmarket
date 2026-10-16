@@ -35,13 +35,45 @@ import {
 import { detectCandlestickPatterns, PATTERN_DISCLAIMER } from '../../lib/patterns'
 
 const SYMBOLS = [
+  // Primary Benchmark Indices
   { symbol: 'NIFTY50', name: 'Nifty 50', type: 'Index' },
   { symbol: 'BANKNIFTY', name: 'Bank Nifty', type: 'Index' },
   { symbol: 'SENSEX', name: 'BSE Sensex', type: 'Index' },
+  { symbol: 'FINNIFTY', name: 'Nifty Financial Services', type: 'Index' },
+  { symbol: 'NIFTYIT', name: 'Nifty IT Index', type: 'Index' },
+
+  // NSE Equities across key sectors
   { symbol: 'RELIANCE', name: 'Reliance Industries', type: 'Stock' },
-  { symbol: 'HDFCBANK', name: 'HDFC Bank', type: 'Stock' },
-  { symbol: 'TCS', name: 'Tata Consultancy', type: 'Stock' },
-  { symbol: 'INFY', name: 'Infosys', type: 'Stock' },
+  { symbol: 'TCS', name: 'Tata Consultancy Services', type: 'Stock' },
+  { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', type: 'Stock' },
+  { symbol: 'INFY', name: 'Infosys Ltd', type: 'Stock' },
+  { symbol: 'ICICIBANK', name: 'ICICI Bank Ltd', type: 'Stock' },
+  { symbol: 'SBIN', name: 'State Bank of India', type: 'Stock' },
+  { symbol: 'BHARTIARTL', name: 'Bharti Airtel Ltd', type: 'Stock' },
+  { symbol: 'ITC', name: 'ITC Limited', type: 'Stock' },
+  { symbol: 'LT', name: 'Larsen & Toubro Ltd', type: 'Stock' },
+  { symbol: 'HINDUNILVR', name: 'Hindustan Unilever', type: 'Stock' },
+  { symbol: 'BAJFINANCE', name: 'Bajaj Finance Ltd', type: 'Stock' },
+  { symbol: 'MARUTI', name: 'Maruti Suzuki India', type: 'Stock' },
+  { symbol: 'SUNPHARMA', name: 'Sun Pharmaceutical', type: 'Stock' },
+  { symbol: 'TITAN', name: 'Titan Company Ltd', type: 'Stock' },
+  { symbol: 'KOTAKBANK', name: 'Kotak Mahindra Bank', type: 'Stock' },
+  { symbol: 'WIPRO', name: 'Wipro Ltd', type: 'Stock' },
+  { symbol: 'AXISBANK', name: 'Axis Bank Ltd', type: 'Stock' },
+  { symbol: 'TATASTEEL', name: 'Tata Steel Ltd', type: 'Stock' },
+  { symbol: 'JSWSTEEL', name: 'JSW Steel Ltd', type: 'Stock' },
+  { symbol: 'BEL', name: 'Bharat Electronics', type: 'Stock' },
+  { symbol: 'HAL', name: 'Hindustan Aeronautics', type: 'Stock' },
+  { symbol: 'TRENT', name: 'Trent Ltd', type: 'Stock' },
+  { symbol: 'TATAPOWER', name: 'Tata Power Ltd', type: 'Stock' },
+  { symbol: 'SUZLON', name: 'Suzlon Energy Ltd', type: 'Stock' },
+  { symbol: 'INDIGO', name: 'InterGlobe Aviation', type: 'Stock' },
+  { symbol: 'IRCTC', name: 'IRCTC Ltd', type: 'Stock' },
+  { symbol: 'DLF', name: 'DLF Ltd', type: 'Stock' },
+  { symbol: 'PERSISTENT', name: 'Persistent Systems', type: 'Stock' },
+  { symbol: 'COFORGE', name: 'Coforge Ltd', type: 'Stock' },
+  { symbol: 'DIXON', name: 'Dixon Tech', type: 'Stock' },
+  { symbol: 'PIDILITIND', name: 'Pidilite Industries', type: 'Stock' },
 ]
 
 const TIMEFRAMES = [
@@ -57,6 +89,19 @@ export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', heig
   const [symbol, setSymbol] = useState(defaultSymbol)
   const [selectedTf, setSelectedTf] = useState(TIMEFRAMES[1]) // 5D
   const [chartType, setChartType] = useState('candlestick') // candlestick, line, area, bar, heikin-ashi
+
+  useEffect(() => {
+    if (defaultSymbol && defaultSymbol !== symbol) {
+      setSymbol(defaultSymbol)
+    }
+  }, [defaultSymbol])
+
+  const availableSymbols = useMemo(() => {
+    if (symbol && !SYMBOLS.some((s) => s.symbol === symbol)) {
+      return [...SYMBOLS, { symbol, name: symbol, type: 'Stock' }]
+    }
+    return SYMBOLS
+  }, [symbol])
 
   // Data state
   const [rawData, setRawData] = useState([])
@@ -517,14 +562,14 @@ export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', heig
             style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
           >
             <optgroup label="Benchmark Indices">
-              {SYMBOLS.filter((s) => s.type === 'Index').map((s) => (
+              {availableSymbols.filter((s) => s.type === 'Index').map((s) => (
                 <option key={s.symbol} value={s.symbol}>
                   {s.name} ({s.symbol})
                 </option>
               ))}
             </optgroup>
             <optgroup label="NSE Equities">
-              {SYMBOLS.filter((s) => s.type === 'Stock').map((s) => (
+              {availableSymbols.filter((s) => s.type === 'Stock').map((s) => (
                 <option key={s.symbol} value={s.symbol}>
                   {s.name} ({s.symbol})
                 </option>

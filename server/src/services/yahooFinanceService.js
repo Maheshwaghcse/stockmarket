@@ -41,22 +41,133 @@ const INDEX_CONFIG = [
 ];
 
 const STOCK_CONFIG = [
-  { symbol: 'RELIANCE',   yahooSymbol: 'RELIANCE.NS',   name: 'Reliance Industries Ltd',      sector: 'Energy',    exchange: 'NSE' },
-  { symbol: 'TCS',        yahooSymbol: 'TCS.NS',        name: 'Tata Consultancy Services',    sector: 'IT',        exchange: 'NSE' },
-  { symbol: 'HDFCBANK',   yahooSymbol: 'HDFCBANK.NS',   name: 'HDFC Bank Ltd',                sector: 'Banking',   exchange: 'NSE' },
-  { symbol: 'INFY',       yahooSymbol: 'INFY.NS',       name: 'Infosys Ltd',                  sector: 'IT',        exchange: 'NSE' },
-  { symbol: 'ICICIBANK',  yahooSymbol: 'ICICIBANK.NS',  name: 'ICICI Bank Ltd',               sector: 'Banking',   exchange: 'NSE' },
-  { symbol: 'BAJFINANCE', yahooSymbol: 'BAJFINANCE.NS', name: 'Bajaj Finance Ltd',            sector: 'NBFC',      exchange: 'NSE' },
-  { symbol: 'HINDUNILVR', yahooSymbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever Ltd',       sector: 'FMCG',      exchange: 'NSE' },
-  { symbol: 'KOTAKBANK',  yahooSymbol: 'KOTAKBANK.NS',  name: 'Kotak Mahindra Bank',          sector: 'Banking',   exchange: 'NSE' },
-  { symbol: 'SBIN',       yahooSymbol: 'SBIN.NS',       name: 'State Bank of India',          sector: 'Banking',   exchange: 'NSE' },
-  { symbol: 'WIPRO',      yahooSymbol: 'WIPRO.NS',      name: 'Wipro Ltd',                    sector: 'IT',        exchange: 'NSE' },
-  { symbol: 'ITC',        yahooSymbol: 'ITC.NS',        name: 'ITC Limited',                  sector: 'FMCG',      exchange: 'NSE' },
-  { symbol: 'LT',         yahooSymbol: 'LT.NS',         name: 'Larsen & Toubro Ltd',          sector: 'Infra',     exchange: 'NSE' },
-  { symbol: 'BHARTIARTL', yahooSymbol: 'BHARTIARTL.NS', name: 'Bharti Airtel Ltd',            sector: 'Telecom',   exchange: 'NSE' },
-  { symbol: 'MARUTI',     yahooSymbol: 'MARUTI.NS',     name: 'Maruti Suzuki India Ltd',      sector: 'Auto',      exchange: 'NSE' },
-  { symbol: 'AXISBANK',   yahooSymbol: 'AXISBANK.NS',   name: 'Axis Bank Ltd',                sector: 'Banking',   exchange: 'NSE' },
-  { symbol: 'TATASTEEL',  yahooSymbol: 'TATASTEEL.NS',  name: 'Tata Steel Ltd',               sector: 'Metals',    exchange: 'NSE' },
+  // Banking
+  { symbol: 'HDFCBANK',   yahooSymbol: 'HDFCBANK.NS',   name: 'HDFC Bank Ltd',                sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'ICICIBANK',  yahooSymbol: 'ICICIBANK.NS',  name: 'ICICI Bank Ltd',               sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'SBIN',       yahooSymbol: 'SBIN.NS',       name: 'State Bank of India',          sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'KOTAKBANK',  yahooSymbol: 'KOTAKBANK.NS',  name: 'Kotak Mahindra Bank',          sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'AXISBANK',   yahooSymbol: 'AXISBANK.NS',   name: 'Axis Bank Ltd',                sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'INDUSINDBK', yahooSymbol: 'INDUSINDBK.NS', name: 'IndusInd Bank Ltd',            sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'BANKBARODA', yahooSymbol: 'BANKBARODA.NS', name: 'Bank of Baroda',              sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'PNB',        yahooSymbol: 'PNB.NS',        name: 'Punjab National Bank',         sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'CANBK',      yahooSymbol: 'CANBK.NS',      name: 'Canara Bank',                  sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'FEDERALBNK', yahooSymbol: 'FEDERALBNK.NS', name: 'Federal Bank Ltd',             sector: 'Banking',    exchange: 'NSE' },
+  { symbol: 'IDFCFIRSTB', yahooSymbol: 'IDFCFIRSTB.NS', name: 'IDFC First Bank Ltd',          sector: 'Banking',    exchange: 'NSE' },
+
+  // IT & Technology
+  { symbol: 'TCS',        yahooSymbol: 'TCS.NS',        name: 'Tata Consultancy Services',    sector: 'IT',         exchange: 'NSE' },
+  { symbol: 'INFY',       yahooSymbol: 'INFY.NS',       name: 'Infosys Ltd',                  sector: 'IT',         exchange: 'NSE' },
+  { symbol: 'HCLTECH',    yahooSymbol: 'HCLTECH.NS',    name: 'HCL Technologies Ltd',         sector: 'IT',         exchange: 'NSE' },
+  { symbol: 'WIPRO',      yahooSymbol: 'WIPRO.NS',      name: 'Wipro Ltd',                    sector: 'IT',         exchange: 'NSE' },
+  { symbol: 'TECHM',      yahooSymbol: 'TECHM.NS',      name: 'Tech Mahindra Ltd',            sector: 'IT',         exchange: 'NSE' },
+  { symbol: 'PERSISTENT', yahooSymbol: 'PERSISTENT.NS', name: 'Persistent Systems Ltd',      sector: 'IT',         exchange: 'NSE' },
+  { symbol: 'COFORGE',    yahooSymbol: 'COFORGE.NS',    name: 'Coforge Ltd',                  sector: 'IT',         exchange: 'NSE' },
+  { symbol: 'TATAELXSI',  yahooSymbol: 'TATAELXSI.NS',  name: 'Tata Elxsi Ltd',               sector: 'IT',         exchange: 'NSE' },
+
+  // Energy, Oil & Power
+  { symbol: 'RELIANCE',   yahooSymbol: 'RELIANCE.NS',   name: 'Reliance Industries Ltd',      sector: 'Energy',     exchange: 'NSE' },
+  { symbol: 'NTPC',       yahooSymbol: 'NTPC.NS',       name: 'NTPC Ltd',                     sector: 'Energy',     exchange: 'NSE' },
+  { symbol: 'POWERGRID',  yahooSymbol: 'POWERGRID.NS',  name: 'Power Grid Corporation',       sector: 'Energy',     exchange: 'NSE' },
+  { symbol: 'ONGC',       yahooSymbol: 'ONGC.NS',       name: 'Oil & Natural Gas Corp',       sector: 'Energy',     exchange: 'NSE' },
+  { symbol: 'COALINDIA',  yahooSymbol: 'COALINDIA.NS',  name: 'Coal India Ltd',               sector: 'Energy',     exchange: 'NSE' },
+  { symbol: 'BPCL',       yahooSymbol: 'BPCL.NS',       name: 'Bharat Petroleum Corp',        sector: 'Energy',     exchange: 'NSE' },
+  { symbol: 'IOC',        yahooSymbol: 'IOC.NS',        name: 'Indian Oil Corporation',       sector: 'Energy',     exchange: 'NSE' },
+  { symbol: 'GAIL',       yahooSymbol: 'GAIL.NS',       name: 'GAIL (India) Ltd',             sector: 'Energy',     exchange: 'NSE' },
+  { symbol: 'TATAPOWER',  yahooSymbol: 'TATAPOWER.NS',  name: 'Tata Power Company Ltd',       sector: 'Energy',     exchange: 'NSE' },
+  { symbol: 'SUZLON',     yahooSymbol: 'SUZLON.NS',     name: 'Suzlon Energy Ltd',            sector: 'Energy',     exchange: 'NSE' },
+
+  // Auto & Mobility
+  { symbol: 'MARUTI',     yahooSymbol: 'MARUTI.NS',     name: 'Maruti Suzuki India Ltd',       sector: 'Auto',       exchange: 'NSE' },
+  { symbol: 'M&M',        yahooSymbol: 'M&M.NS',        name: 'Mahindra & Mahindra Ltd',      sector: 'Auto',       exchange: 'NSE' },
+  { symbol: 'BAJAJ-AUTO', yahooSymbol: 'BAJAJ-AUTO.NS', name: 'Bajaj Auto Ltd',              sector: 'Auto',       exchange: 'NSE' },
+  { symbol: 'HEROMOTOCO', yahooSymbol: 'HEROMOTOCO.NS', name: 'Hero MotoCorp Ltd',           sector: 'Auto',       exchange: 'NSE' },
+  { symbol: 'EICHERMOT',  yahooSymbol: 'EICHERMOT.NS',  name: 'Eicher Motors Ltd',            sector: 'Auto',       exchange: 'NSE' },
+  { symbol: 'TVSMOTOR',   yahooSymbol: 'TVSMOTOR.NS',   name: 'TVS Motor Company Ltd',        sector: 'Auto',       exchange: 'NSE' },
+  { symbol: 'BHARATFORG', yahooSymbol: 'BHARATFORG.NS', name: 'Bharat Forge Ltd',            sector: 'Auto',       exchange: 'NSE' },
+  { symbol: 'ASHOKLEY',   yahooSymbol: 'ASHOKLEY.NS',   name: 'Ashok Leyland Ltd',            sector: 'Auto',       exchange: 'NSE' },
+  { symbol: 'MOTHERSON',  yahooSymbol: 'MOTHERSON.NS',  name: 'Samvardhana Motherson',        sector: 'Auto',       exchange: 'NSE' },
+  { symbol: 'TMPV',       yahooSymbol: 'TMPV.NS',       name: 'Tata Motors Passenger Veh',    sector: 'Auto',       exchange: 'NSE' },
+
+  // FMCG & Consumer Goods
+  { symbol: 'HINDUNILVR', yahooSymbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever Ltd',       sector: 'FMCG',       exchange: 'NSE' },
+  { symbol: 'ITC',        yahooSymbol: 'ITC.NS',        name: 'ITC Limited',                  sector: 'FMCG',       exchange: 'NSE' },
+  { symbol: 'NESTLEIND',  yahooSymbol: 'NESTLEIND.NS',  name: 'Nestle India Ltd',             sector: 'FMCG',       exchange: 'NSE' },
+  { symbol: 'BRITANNIA',  yahooSymbol: 'BRITANNIA.NS',  name: 'Britannia Industries Ltd',     sector: 'FMCG',       exchange: 'NSE' },
+  { symbol: 'TATACONSUM', yahooSymbol: 'TATACONSUM.NS', name: 'Tata Consumer Products',       sector: 'FMCG',       exchange: 'NSE' },
+  { symbol: 'VBL',        yahooSymbol: 'VBL.NS',        name: 'Varun Beverages Ltd',          sector: 'FMCG',       exchange: 'NSE' },
+  { symbol: 'GODREJCP',   yahooSymbol: 'GODREJCP.NS',   name: 'Godrej Consumer Products',     sector: 'FMCG',       exchange: 'NSE' },
+  { symbol: 'DABUR',      yahooSymbol: 'DABUR.NS',      name: 'Dabur India Ltd',              sector: 'FMCG',       exchange: 'NSE' },
+  { symbol: 'MARICO',     yahooSymbol: 'MARICO.NS',     name: 'Marico Limited',               sector: 'FMCG',       exchange: 'NSE' },
+  { symbol: 'COLPAL',     yahooSymbol: 'COLPAL.NS',     name: 'Colgate-Palmolive India',      sector: 'FMCG',       exchange: 'NSE' },
+
+  // Pharma & Healthcare
+  { symbol: 'SUNPHARMA',  yahooSymbol: 'SUNPHARMA.NS',  name: 'Sun Pharmaceutical Ltd',       sector: 'Pharma',     exchange: 'NSE' },
+  { symbol: 'CIPLA',      yahooSymbol: 'CIPLA.NS',      name: 'Cipla Limited',                sector: 'Pharma',     exchange: 'NSE' },
+  { symbol: 'DRREDDY',    yahooSymbol: 'DRREDDY.NS',    name: 'Dr. Reddy Laboratories',       sector: 'Pharma',     exchange: 'NSE' },
+  { symbol: 'APOLLOHOSP', yahooSymbol: 'APOLLOHOSP.NS', name: 'Apollo Hospitals Enterprise',  sector: 'Pharma',     exchange: 'NSE' },
+  { symbol: 'DIVISLAB',   yahooSymbol: 'DIVISLAB.NS',   name: 'Divis Laboratories Ltd',       sector: 'Pharma',     exchange: 'NSE' },
+  { symbol: 'LUPIN',      yahooSymbol: 'LUPIN.NS',      name: 'Lupin Limited',                sector: 'Pharma',     exchange: 'NSE' },
+  { symbol: 'TORNTPHARM', yahooSymbol: 'TORNTPHARM.NS', name: 'Torrent Pharmaceuticals',      sector: 'Pharma',     exchange: 'NSE' },
+  { symbol: 'ZYDUSLIFE',  yahooSymbol: 'ZYDUSLIFE.NS',  name: 'Zydus Lifesciences Ltd',       sector: 'Pharma',     exchange: 'NSE' },
+  { symbol: 'AUROPHARMA', yahooSymbol: 'AUROPHARMA.NS', name: 'Aurobindo Pharma Ltd',        sector: 'Pharma',     exchange: 'NSE' },
+  { symbol: 'MANKIND',    yahooSymbol: 'MANKIND.NS',    name: 'Mankind Pharma Ltd',           sector: 'Pharma',     exchange: 'NSE' },
+
+  // Metals & Mining
+  { symbol: 'TATASTEEL',  yahooSymbol: 'TATASTEEL.NS',  name: 'Tata Steel Ltd',               sector: 'Metals',     exchange: 'NSE' },
+  { symbol: 'JSWSTEEL',   yahooSymbol: 'JSWSTEEL.NS',   name: 'JSW Steel Ltd',                sector: 'Metals',     exchange: 'NSE' },
+  { symbol: 'HINDALCO',   yahooSymbol: 'HINDALCO.NS',   name: 'Hindalco Industries Ltd',      sector: 'Metals',     exchange: 'NSE' },
+  { symbol: 'VEDL',       yahooSymbol: 'VEDL.NS',       name: 'Vedanta Limited',              sector: 'Metals',     exchange: 'NSE' },
+  { symbol: 'JINDALSTEL', yahooSymbol: 'JINDALSTEL.NS', name: 'Jindal Steel & Power',         sector: 'Metals',     exchange: 'NSE' },
+  { symbol: 'NMDC',       yahooSymbol: 'NMDC.NS',       name: 'NMDC Limited',                 sector: 'Metals',     exchange: 'NSE' },
+  { symbol: 'NATIONALUM', yahooSymbol: 'NATIONALUM.NS', name: 'National Aluminium Co',        sector: 'Metals',     exchange: 'NSE' },
+
+  // Financial Services, NBFC & Insurance
+  { symbol: 'BAJFINANCE', yahooSymbol: 'BAJFINANCE.NS', name: 'Bajaj Finance Ltd',             sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'BAJAJFINSV', yahooSymbol: 'BAJAJFINSV.NS', name: 'Bajaj Finserv Ltd',            sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'JIOFIN',     yahooSymbol: 'JIOFIN.NS',     name: 'Jio Financial Services',       sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'SBILIFE',    yahooSymbol: 'SBILIFE.NS',    name: 'SBI Life Insurance Co',        sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'HDFCLIFE',   yahooSymbol: 'HDFCLIFE.NS',   name: 'HDFC Life Insurance Co',       sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'CHOLAFIN',   yahooSymbol: 'CHOLAFIN.NS',   name: 'Cholamandalam Investment',     sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'MUTHOOTFIN', yahooSymbol: 'MUTHOOTFIN.NS', name: 'Muthoot Finance Ltd',          sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'SHRIRAMFIN', yahooSymbol: 'SHRIRAMFIN.NS', name: 'Shriram Finance Ltd',          sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'RECLTD',     yahooSymbol: 'RECLTD.NS',     name: 'REC Limited',                  sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'PFC',        yahooSymbol: 'PFC.NS',        name: 'Power Finance Corporation',    sector: 'Financials', exchange: 'NSE' },
+  { symbol: 'HDFCAMC',    yahooSymbol: 'HDFCAMC.NS',    name: 'HDFC Asset Management Co',     sector: 'Financials', exchange: 'NSE' },
+
+  // Defence, Infrastructure & Railways
+  { symbol: 'LT',         yahooSymbol: 'LT.NS',         name: 'Larsen & Toubro Ltd',          sector: 'Infra',      exchange: 'NSE' },
+  { symbol: 'BEL',        yahooSymbol: 'BEL.NS',        name: 'Bharat Electronics Ltd',       sector: 'Defence',    exchange: 'NSE' },
+  { symbol: 'HAL',        yahooSymbol: 'HAL.NS',        name: 'Hindustan Aeronautics Ltd',    sector: 'Defence',    exchange: 'NSE' },
+  { symbol: 'BDL',        yahooSymbol: 'BDL.NS',        name: 'Bharat Dynamics Ltd',          sector: 'Defence',    exchange: 'NSE' },
+  { symbol: 'BHEL',       yahooSymbol: 'BHEL.NS',       name: 'Bharat Heavy Electricals',     sector: 'Infra',      exchange: 'NSE' },
+  { symbol: 'SIEMENS',    yahooSymbol: 'SIEMENS.NS',    name: 'Siemens India Ltd',            sector: 'Infra',      exchange: 'NSE' },
+  { symbol: 'ABB',        yahooSymbol: 'ABB.NS',        name: 'ABB India Ltd',                sector: 'Infra',      exchange: 'NSE' },
+  { symbol: 'POLYCAB',    yahooSymbol: 'POLYCAB.NS',    name: 'Polycab India Ltd',            sector: 'Infra',      exchange: 'NSE' },
+  { symbol: 'MAZDOCK',    yahooSymbol: 'MAZDOCK.NS',    name: 'Mazagon Dock Shipbuilders',    sector: 'Defence',    exchange: 'NSE' },
+  { symbol: 'RVNL',       yahooSymbol: 'RVNL.NS',       name: 'Rail Vikas Nigam Ltd',         sector: 'Infra',      exchange: 'NSE' },
+  { symbol: 'IRFC',       yahooSymbol: 'IRFC.NS',       name: 'Indian Railway Finance Corp',   sector: 'Infra',      exchange: 'NSE' },
+  { symbol: 'IRCTC',      yahooSymbol: 'IRCTC.NS',      name: 'IRCTC Ltd',                    sector: 'Travel',     exchange: 'NSE' },
+  { symbol: 'INDIGO',     yahooSymbol: 'INDIGO.NS',     name: 'InterGlobe Aviation (IndiGo)', sector: 'Travel',     exchange: 'NSE' },
+
+  // Telecom, Retail & Consumer Tech
+  { symbol: 'BHARTIARTL', yahooSymbol: 'BHARTIARTL.NS', name: 'Bharti Airtel Ltd',             sector: 'Telecom',    exchange: 'NSE' },
+  { symbol: 'TITAN',      yahooSymbol: 'TITAN.NS',      name: 'Titan Company Ltd',            sector: 'Retail',     exchange: 'NSE' },
+  { symbol: 'TRENT',      yahooSymbol: 'TRENT.NS',      name: 'Trent Limited',                sector: 'Retail',     exchange: 'NSE' },
+  { symbol: 'DMART',      yahooSymbol: 'DMART.NS',      name: 'Avenue Supermarts (DMart)',    sector: 'Retail',     exchange: 'NSE' },
+  { symbol: 'DLF',        yahooSymbol: 'DLF.NS',        name: 'DLF Limited',                  sector: 'Realty',     exchange: 'NSE' },
+  { symbol: 'NAUKRI',     yahooSymbol: 'NAUKRI.NS',     name: 'Info Edge (Naukri) Ltd',       sector: 'Tech',       exchange: 'NSE' },
+  { symbol: 'DIXON',      yahooSymbol: 'DIXON.NS',      name: 'Dixon Technologies Ltd',       sector: 'Tech',       exchange: 'NSE' },
+  { symbol: 'NYKAA',      yahooSymbol: 'NYKAA.NS',      name: 'FSN E-Commerce (Nykaa)',       sector: 'Retail',     exchange: 'NSE' },
+  { symbol: 'PAYTM',      yahooSymbol: 'PAYTM.NS',      name: 'One97 Communications (Paytm)', sector: 'Tech',       exchange: 'NSE' },
+
+  // Materials & Chemicals
+  { symbol: 'ULTRACEMCO', yahooSymbol: 'ULTRACEMCO.NS', name: 'UltraTech Cement Ltd',         sector: 'Cement',     exchange: 'NSE' },
+  { symbol: 'GRASIM',     yahooSymbol: 'GRASIM.NS',     name: 'Grasim Industries Ltd',        sector: 'Cement',     exchange: 'NSE' },
+  { symbol: 'SHREECEM',   yahooSymbol: 'SHREECEM.NS',   name: 'Shree Cement Ltd',             sector: 'Cement',     exchange: 'NSE' },
+  { symbol: 'AMBUJACEM',  yahooSymbol: 'AMBUJACEM.NS',  name: 'Ambuja Cements Ltd',           sector: 'Cement',     exchange: 'NSE' },
+  { symbol: 'PIDILITIND', yahooSymbol: 'PIDILITIND.NS', name: 'Pidilite Industries Ltd',     sector: 'Chemicals',  exchange: 'NSE' },
+  { symbol: 'SRF',        yahooSymbol: 'SRF.NS',        name: 'SRF Limited',                  sector: 'Chemicals',  exchange: 'NSE' },
+  { symbol: 'TATACHEM',   yahooSymbol: 'TATACHEM.NS',   name: 'Tata Chemicals Ltd',           sector: 'Chemicals',  exchange: 'NSE' },
 ];
 
 /**
@@ -357,19 +468,44 @@ async function fetchStockQuotes(forceRefresh = false) {
   }
 
   try {
-    const promises = STOCK_CONFIG.map(async (item) => {
-      try {
-        const raw = await yf.quote(item.yahooSymbol);
-        const processed = processQuote(raw, item);
-        if (processed) {
-          stockQuotesCache.set(item.symbol, processed);
-        }
-      } catch (err) {
-        console.warn(`[YahooFinance] Failed to fetch stock ${item.symbol}:`, err.message);
-      }
-    });
+    // Process in chunks of 35 symbols to leverage Yahoo Finance batch API without exceeding limits
+    const CHUNK_SIZE = 35;
+    for (let i = 0; i < STOCK_CONFIG.length; i += CHUNK_SIZE) {
+      const chunk = STOCK_CONFIG.slice(i, i + CHUNK_SIZE);
+      const symbols = chunk.map((c) => c.yahooSymbol);
 
-    await Promise.all(promises);
+      try {
+        const rawQuotes = await yf.quote(symbols);
+        const quoteMap = new Map();
+        (Array.isArray(rawQuotes) ? rawQuotes : [rawQuotes]).forEach((q) => {
+          if (q && q.symbol) quoteMap.set(q.symbol, q);
+        });
+
+        chunk.forEach((item) => {
+          const raw = quoteMap.get(item.yahooSymbol);
+          if (raw) {
+            const processed = processQuote(raw, item);
+            if (processed) {
+              stockQuotesCache.set(item.symbol, processed);
+            }
+          }
+        });
+      } catch (chunkErr) {
+        console.warn(`[YahooFinance] Chunk fetch fallback for batch ${i / CHUNK_SIZE}: ${chunkErr.message}`);
+        // Fallback to individual quote calls for this specific chunk
+        await Promise.all(
+          chunk.map(async (item) => {
+            try {
+              const raw = await yf.quote(item.yahooSymbol);
+              const processed = processQuote(raw, item);
+              if (processed) stockQuotesCache.set(item.symbol, processed);
+            } catch (err) {
+              // Retain existing cached quote if available
+            }
+          })
+        );
+      }
+    }
     lastStockFetchTime = now;
   } catch (err) {
     console.error('[YahooFinance] Batch fetch error for stocks:', err.message);
@@ -383,7 +519,7 @@ async function fetchStockQuotes(forceRefresh = false) {
  */
 async function fetchStockDetail(symbol, forceRefresh = false) {
   const upper = symbol.toUpperCase();
-  const config = STOCK_CONFIG.find((c) => c.symbol === upper);
+  const config = STOCK_CONFIG.find((c) => c.symbol === upper) || resolveSymbolConfig(upper);
   if (!config) return null;
 
   const now = Date.now();

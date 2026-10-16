@@ -1,4 +1,5 @@
 import { useState, Component } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   BookOpen,
   TrendingUp,
@@ -294,6 +295,8 @@ const CURRICULUM_MODULES = [
 ]
 
 export default function EducationPage() {
+  const [searchParams] = useSearchParams()
+  const symbolParam = searchParams.get('symbol')?.toUpperCase() || 'NIFTY50'
   const [activeTab, setActiveTab] = useState('basics')
   const activeModule = CURRICULUM_MODULES.find((m) => m.id === activeTab) || CURRICULUM_MODULES[0]
 
@@ -336,7 +339,7 @@ export default function EducationPage() {
         </div>
 
         <ChartErrorBoundary>
-          <TechnicalAnalysisChart defaultSymbol="NIFTY50" height={460} />
+          <TechnicalAnalysisChart defaultSymbol={symbolParam} height={460} />
         </ChartErrorBoundary>
       </div>
 

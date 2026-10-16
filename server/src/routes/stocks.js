@@ -7,8 +7,8 @@ const yahooFinanceService = require('../services/yahooFinanceService');
  */
 router.get('/', async (req, res, next) => {
   try {
-    const { q, sector } = req.query;
-    let stocks = await yahooFinanceService.fetchStockQuotes();
+    const { q, sector, refresh } = req.query;
+    let stocks = await yahooFinanceService.fetchStockQuotes(refresh === 'true');
 
     if (q) {
       const query = q.toUpperCase();

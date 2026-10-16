@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Calendar, TrendingUp, TrendingDown, HelpCircle, 
@@ -9,17 +9,22 @@ import {
 } from 'lucide-react'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import JournalAnalyticsCharts from '../components/journal/JournalAnalyticsCharts'
 import { formatINR } from '../lib/journalAnalytics'
 
 // Quick suggested symbols
-const SUGGESTED_SYMBOLS = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'NIFTY50', 'BANKNIFTY']
+const SUGGESTED_SYMBOLS = [
+  'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN', 
+  'BHARTIARTL', 'ITC', 'LT', 'MARUTI', 'TATASTEEL', 'BEL', 'HAL', 
+  'NIFTY50', 'BANKNIFTY'
+]
 
 export default function TradingJournalPage() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
 
   // Filters & State
   const [modalOpen, setModalOpen] = useState(false)
@@ -47,6 +52,15 @@ export default function TradingJournalPage() {
     exitReason: '',
     lessonLearned: '',
   })
+
+  // Auto-open modal if symbol param is provided in URL
+  useEffect(() => {
+    const symbolParam = searchParams.get('symbol')?.toUpperCase()
+    if (symbolParam) {
+      setForm((prev) => ({ ...prev, symbol: symbolParam }))
+      setModalOpen(true)
+    }
+  }, [searchParams])
 
   // Fetch Journal Trades & Stats
   const { data: journalData, isLoading } = useQuery({

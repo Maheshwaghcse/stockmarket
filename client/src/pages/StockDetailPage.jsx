@@ -29,9 +29,30 @@ export default function StockDetailPage() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h1 className="text-2xl font-bold">{s.symbol}</h1>
+                  {s.sector && (
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                      {s.sector}
+                    </span>
+                  )}
+                  <span className="text-xs px-2 py-0.5 rounded font-bold bg-slate-800 text-slate-300">
+                    {s.exchange || 'NSE'}
+                  </span>
                 </div>
                 <p className="muted text-sm">{s.name}</p>
-                <p className="text-xs muted mt-1">{s.sector} · {s.exchange}</p>
+                <div className="flex items-center gap-3 mt-3">
+                  <Link
+                    to={`/education?symbol=${s.symbol}`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-sm"
+                  >
+                    Open in Chart
+                  </Link>
+                  <Link
+                    to={`/journal?symbol=${s.symbol}`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-sm"
+                  >
+                    Log in Journal
+                  </Link>
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-3xl font-bold mono">₹{fmt(s.price)}</p>
@@ -59,6 +80,25 @@ export default function StockDetailPage() {
                 </div>
               ))}
             </div>
+
+            {/* 52-Week Range Bar */}
+            {s.fiftyTwoWeekLow && s.fiftyTwoWeekHigh && (
+              <div className="mt-6 pt-4 border-t border-slate-800 space-y-1.5">
+                <div className="flex justify-between text-xs muted mono">
+                  <span>52W Low: ₹{fmt(s.fiftyTwoWeekLow)}</span>
+                  <span className="text-slate-300 font-semibold">52-Week Price Spectrum</span>
+                  <span>52W High: ₹{fmt(s.fiftyTwoWeekHigh)}</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden relative">
+                  <div
+                    className="h-full bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, ((s.price - s.fiftyTwoWeekLow) / (s.fiftyTwoWeekHigh - s.fiftyTwoWeekLow)) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="card text-xs muted flex flex-col sm:flex-row items-center justify-between gap-2">
