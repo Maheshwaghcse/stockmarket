@@ -3,7 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Calendar, TrendingUp, TrendingDown, HelpCircle, 
   Trash2, X, ChevronLeft, ChevronRight, Info, CheckCircle2, 
-  Clock, ArrowUpRight, ArrowDownRight, Filter, AlertCircle
+  Clock, ArrowUpRight, ArrowDownRight, Filter, AlertCircle,
+  Target, LogOut, Lightbulb, Image, ChevronDown, ChevronUp,
+  Eye, FileText
 } from 'lucide-react'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
@@ -21,6 +23,8 @@ export default function TradingJournalPage() {
 
   // Filters & State
   const [modalOpen, setModalOpen] = useState(false)
+  const [dayModalOpen, setDayModalOpen] = useState(false)
+  const [expandedTradeId, setExpandedTradeId] = useState(null)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [selectedDayKey, setSelectedDayKey] = useState(null)
@@ -135,14 +139,42 @@ export default function TradingJournalPage() {
   const calendarMap = journalData?.calendarMap || {}
   const trades = journalData?.data || []
 
-  // Filter trades by selected calendar day if user clicks a day
-  const displayedTrades = useMemo(() => {
-    if (!selectedDayKey) return trades
+  // Helper to format date key to human readable title (e.g., 'Thursday, 15 October 2026')
+  const formatDayTitle = (dateKey) => {
+    if (!dateKey) return ''
+    try {
+      const [year, month, day] = dateKey.split('-')
+      const d = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10))
+      return d.toLocaleDateString('en-IN', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    } catch {
+      return dateKey
+    }
+  }
+
+  // Trades and summary data for the selected calendar day
+  const selectedDayData = useMemo(() => {
+    if (!selectedDayKey) return null
+    return calendarMap[selectedDayKey] || null
+  }, [calendarMap, selectedDayKey])
+
+  const selectedDayTrades = useMemo(() => {
+    if (!selectedDayKey) return []
     return trades.filter((t) => {
       const d = new Date(t.entryDate).toISOString().split('T')[0]
       return d === selectedDayKey
     })
   }, [trades, selectedDayKey])
+
+  // Filter trades by selected calendar day if user clicks a day
+  const displayedTrades = useMemo(() => {
+    if (!selectedDayKey) return trades
+    return selectedDayTrades
+  }, [trades, selectedDayKey, selectedDayTrades])
 
   // Month Calendar Calculations (Matches Screenshot 2)
   const currentMonthYear = useMemo(() => {
@@ -377,11 +409,14 @@ export default function TradingJournalPage() {
                         <div
                           key={dIdx}
                           onClick={() => {
-                            if (count > 0) setSelectedDayKey(isSelected ? null : day.dateKey)
+                            if (count > 0) {
+                              setSelectedDayKey(day.dateKey)
+                              setDayModalOpen(true)
+                            }
                           }}
-                          title={`${day.dateKey}: ${count} trades, P&L: ₹${pnl.toLocaleString('en-IN')}`}
+                          title={`${day.dateKey}: ${count} trades, P&L: ₹${pnl.toLocaleString('en-IN')} (Click to view ${count} trades & 3 reasons)`}
                           className={`w-3.5 h-3.5 rounded-sm transition-all cursor-pointer ${
-                            isSelected ? 'ring-2 ring-white scale-110' : 'hover:scale-125 hover:z-10'
+                            isSelected ? 'ring-2 ring-white scale-110 shadow-lg shadow-blue-500/50' : 'hover:scale-125 hover:z-10'
                           }`}
                           style={{ background: cellColor }}
                         />
@@ -473,11 +508,15 @@ export default function TradingJournalPage() {
                   <button
                     key={idx}
                     onClick={() => {
-                      if (hasTrade) setSelectedDayKey(isSelected ? null : item.dateKey)
+                      if (hasTrade) {
+                        setSelectedDayKey(item.dateKey)
+                        setDayModalOpen(true)
+                      }
                     }}
+                    title={hasTrade ? `${item.dateKey}: ${item.data.count} trades, P&L: ₹${pnl.toLocaleString('en-IN')} (Click to view ${item.data.count} trades & 3 reasons)` : ''}
                     className={`h-11 rounded-lg flex flex-col items-center justify-center transition-all relative ${
                       isSelected
-                        ? 'ring-2 ring-blue-400 bg-blue-500/20'
+                        ? 'ring-2 ring-blue-400 bg-blue-500/20 shadow-md'
                         : hasTrade
                         ? 'hover:bg-slate-800/80 cursor-pointer'
                         : 'text-slate-400 hover:bg-slate-800/30'
@@ -647,8 +686,60 @@ export default function TradingJournalPage() {
 
 
       {/* ─── Bottom Section: Trade Log & History ───────────────────────────── */}
-      <div className="card bg-[#0b1329]/90 border border-slate-800/80 rounded-2xl p-5 shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
+      <div className="card bg-[#0b1329]/90 border border-slate-800/80 rounded-2xl p-5 shadow-2xl space-y-4">
+        {/* Selected Day Banner */}
+        {selectedDayKey && (
+          <div className="p-4 rounded-xl bg-gradient-to-r from-blue-950/40 via-indigo-950/20 to-[#0b1329] border border-blue-500/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold text-sm">
+                {displayedTrades.length}
+              </div>
+              <div>
+                <span className="font-bold text-slate-100 block text-sm flex items-center gap-2">
+                  <span>{formatDayTitle(selectedDayKey)}</span>
+                  {selectedDayData && (
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      selectedDayData.pnl >= 0 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                    }`}>
+                      {selectedDayData.pnl >= 0 ? 'Profitable Day' : 'Loss Day'}
+                    </span>
+                  )}
+                </span>
+                <span className="text-slate-400">
+                  <strong className="text-slate-200">{displayedTrades.length} trades done</strong> on this day
+                  {selectedDayData && (
+                    <>
+                      {' — '}
+                      Net P&amp;L:{' '}
+                      <strong className={`font-mono ${selectedDayData.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {formatINR(selectedDayData.pnl, { compact: false, showSign: true })}
+                      </strong>
+                      {' '}({selectedDayData.wins || 0}W / {selectedDayData.losses || 0}L)
+                    </>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setDayModalOpen(true)}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-all flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+              >
+                <Eye size={13} />
+                <span>Inspect 3 Reasons Breakdown</span>
+              </button>
+              <button
+                onClick={() => setSelectedDayKey(null)}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors"
+              >
+                Show All Days
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-slate-200">Trade History</h3>
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400">
@@ -656,7 +747,9 @@ export default function TradingJournalPage() {
             </span>
           </div>
           {selectedDayKey && (
-            <span className="text-xs text-blue-400">Showing trades for {selectedDayKey}</span>
+            <span className="text-xs text-blue-400 font-mono">
+              Filtered: {selectedDayKey}
+            </span>
           )}
         </div>
 
@@ -677,6 +770,7 @@ export default function TradingJournalPage() {
                   <th className="py-3 px-3">Exit Price</th>
                   <th className="py-3 px-3">Qty</th>
                   <th className="py-3 px-3">Net P&amp;L</th>
+                  <th className="py-3 px-3">3 Setup Reasons</th>
                   <th className="py-3 px-3">Status</th>
                   <th className="py-3 px-3 text-right">Actions</th>
                 </tr>
@@ -686,72 +780,147 @@ export default function TradingJournalPage() {
                   const isClosed = trade.status === 'CLOSED'
                   const pnl = trade.pnl || 0
                   const isProfitable = pnl >= 0
+                  const isExpanded = expandedTradeId === trade._id
+                  const hasReasons = !!(trade.entryReason?.trim() || trade.exitReason?.trim() || trade.lessonLearned?.trim())
 
                   return (
-                    <tr key={trade._id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-3 font-bold text-slate-200 flex items-center gap-1.5">
-                        {trade.symbol}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                            trade.tradeType === 'Long'
-                              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                          }`}
-                        >
-                          {trade.tradeType}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-slate-400">
-                        {new Date(trade.entryDate).toLocaleDateString('en-IN', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </td>
-                      <td className="py-3 px-3 font-mono text-slate-200">
-                        ₹{trade.entryPrice?.toLocaleString('en-IN')}
-                      </td>
-                      <td className="py-3 px-3 font-mono text-slate-200">
-                        {trade.exitPrice ? `₹${trade.exitPrice.toLocaleString('en-IN')}` : '—'}
-                      </td>
-                      <td className="py-3 px-3 font-mono text-slate-300">
-                        {trade.quantity}
-                      </td>
-                      <td className="py-3 px-3 font-mono font-bold">
-                        {isClosed ? (
-                          <span className={isProfitable ? 'text-green-400' : 'text-red-400'}>
-                            {isProfitable ? '+' : ''}₹{pnl.toLocaleString('en-IN')}{' '}
-                            <span className="text-[10px] font-normal opacity-80">
-                              ({trade.pnlPercent > 0 ? '+' : ''}{trade.pnlPercent}%)
-                            </span>
+                    <tbody key={trade._id} className="divide-y divide-slate-800/40">
+                      <tr className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3 px-3 font-bold text-slate-200 flex items-center gap-1.5">
+                          {trade.symbol}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                              trade.tradeType === 'Long'
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            }`}
+                          >
+                            {trade.tradeType}
                           </span>
-                        ) : (
-                          <span className="text-slate-500">Open</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                          isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                        }`}>
-                          {trade.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`Delete trade for ${trade.symbol}?`)) {
-                              deleteTradeMutation.mutate(trade._id)
-                            }
-                          }}
-                          className="p-1 rounded text-slate-500 hover:text-red-400 transition-colors"
-                          title="Delete trade"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="py-3 px-3 text-slate-400">
+                          {new Date(trade.entryDate).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                        <td className="py-3 px-3 font-mono text-slate-200">
+                          ₹{trade.entryPrice?.toLocaleString('en-IN')}
+                        </td>
+                        <td className="py-3 px-3 font-mono text-slate-200">
+                          {trade.exitPrice ? `₹${trade.exitPrice.toLocaleString('en-IN')}` : '—'}
+                        </td>
+                        <td className="py-3 px-3 font-mono text-slate-300">
+                          {trade.quantity}
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold">
+                          {isClosed ? (
+                            <span className={isProfitable ? 'text-green-400' : 'text-red-400'}>
+                              {isProfitable ? '+' : ''}₹{pnl.toLocaleString('en-IN')}{' '}
+                              <span className="text-[10px] font-normal opacity-80">
+                                ({trade.pnlPercent > 0 ? '+' : ''}{trade.pnlPercent}%)
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">Open</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          <button
+                            onClick={() => setExpandedTradeId(isExpanded ? null : trade._id)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${
+                              isExpanded
+                                ? 'bg-blue-600 text-white'
+                                : hasReasons
+                                ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30'
+                                : 'bg-slate-800 text-slate-500 hover:text-slate-400'
+                            }`}
+                            title="Click to view Entry Reason, Exit Reason, and Lesson Learned"
+                          >
+                            <span>3 Reasons</span>
+                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          </button>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                            isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                          }`}>
+                            {trade.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Delete trade for ${trade.symbol}?`)) {
+                                deleteTradeMutation.mutate(trade._id)
+                              }
+                            }}
+                            className="p-1 rounded text-slate-500 hover:text-red-400 transition-colors"
+                            title="Delete trade"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* Expandable 3 Reasons Row */}
+                      {isExpanded && (
+                        <tr className="bg-slate-900/90 border-b border-slate-800">
+                          <td colSpan="10" className="p-4 space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              {/* 1. Entry Reason */}
+                              <div className="p-3 rounded-lg bg-slate-950/80 border border-blue-500/20 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                                  <Target size={12} /> 1. Entry Reason / Setup
+                                </span>
+                                <p className="text-xs text-slate-200 leading-relaxed">
+                                  {trade.entryReason?.trim() || <span className="text-slate-500 italic">No entry reason specified</span>}
+                                </p>
+                              </div>
+
+                              {/* 2. Exit Reason */}
+                              <div className="p-3 rounded-lg bg-slate-950/80 border border-amber-500/20 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                  <LogOut size={12} /> 2. Exit Reason / Trigger
+                                </span>
+                                <p className="text-xs text-slate-200 leading-relaxed">
+                                  {trade.exitReason?.trim() || <span className="text-slate-500 italic">No exit reason specified</span>}
+                                </p>
+                              </div>
+
+                              {/* 3. Lesson Learned */}
+                              <div className="p-3 rounded-lg bg-slate-950/80 border border-emerald-500/20 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                  <Lightbulb size={12} /> 3. Mistake / Lesson Learned
+                                </span>
+                                <p className="text-xs text-slate-200 leading-relaxed">
+                                  {trade.lessonLearned?.trim() || <span className="text-slate-500 italic">No lesson recorded</span>}
+                                </p>
+                              </div>
+                            </div>
+
+                            {trade.imageUrl && (
+                              <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2">
+                                <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
+                                  <Image size={12} className="text-indigo-400" /> Chart Screenshot:
+                                </span>
+                                <a
+                                  href={trade.imageUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                                >
+                                  View attached chart image ↗
+                                </a>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
                   )
                 })}
               </tbody>
@@ -1001,6 +1170,207 @@ export default function TradingJournalPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ─── Day Details & 3 Reasons Modal ───────────────────────────────── */}
+      {dayModalOpen && selectedDayKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-[#0f172a] border border-slate-700/80 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl space-y-4 p-5 sm:p-6">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                  <Calendar size={13} />
+                  Day Trade Inspection
+                </span>
+                <h3 className="text-xl font-extrabold text-slate-100 flex items-center gap-2">
+                  <span>{formatDayTitle(selectedDayKey)}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setDayModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Day Summary Stats Banner */}
+            {selectedDayData && (
+              <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-mono">
+                <div>
+                  <span className="text-[11px] text-slate-400 block font-sans">Trades Done</span>
+                  <span className="text-base font-bold text-slate-100">
+                    {selectedDayData.count} {selectedDayData.count === 1 ? 'Trade' : 'Trades'}
+                  </span>
+                </div>
+                <div className="border-l border-slate-800 pl-3">
+                  <span className="text-[11px] text-slate-400 block font-sans">Day Net P&amp;L</span>
+                  <span className={`text-base font-bold ${selectedDayData.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {formatINR(selectedDayData.pnl, { compact: false, showSign: true })}
+                  </span>
+                </div>
+                <div className="border-l border-slate-800 pl-3">
+                  <span className="text-[11px] text-slate-400 block font-sans">Win / Loss</span>
+                  <span className="text-base font-bold text-slate-200">
+                    <span className="text-emerald-400">{selectedDayData.wins || 0}W</span>
+                    {' / '}
+                    <span className="text-rose-400">{selectedDayData.losses || 0}L</span>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* List of Trades on this Day with 3 Reasons */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <FileText size={14} className="text-blue-400" />
+                <span>Executed Trades &amp; 3 Setup Reasons ({selectedDayTrades.length})</span>
+              </h4>
+
+              {selectedDayTrades.length === 0 ? (
+                <div className="text-center py-8 text-slate-500 text-xs">
+                  No trades found for this day.
+                </div>
+              ) : (
+                selectedDayTrades.map((trade, idx) => {
+                  const isClosed = trade.status === 'CLOSED'
+                  const pnl = trade.pnl || 0
+                  const isProfitable = pnl >= 0
+
+                  return (
+                    <div
+                      key={trade._id || idx}
+                      className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/90 space-y-3.5 hover:border-slate-700 transition-all"
+                    >
+                      {/* Trade Header */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/70 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-white">{trade.symbol}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            trade.tradeType === 'Long'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          }`}>
+                            {trade.tradeType}
+                          </span>
+                          <span className="text-xs text-slate-400 font-mono">
+                            Qty: {trade.quantity}
+                          </span>
+                        </div>
+
+                        <div className="text-right font-mono text-xs">
+                          {isClosed ? (
+                            <span className={`font-bold ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {formatINR(pnl, { compact: false, showSign: true })}
+                              {trade.pnlPercent ? ` (${trade.pnlPercent > 0 ? '+' : ''}${trade.pnlPercent}%)` : ''}
+                            </span>
+                          ) : (
+                            <span className="text-blue-400 font-semibold">OPEN POSITION</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Prices & Execution Timing */}
+                      <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 font-mono bg-slate-950/40 px-3 py-2 rounded-lg border border-slate-800/60">
+                        <span>Entry: ₹{trade.entryPrice?.toLocaleString('en-IN')}</span>
+                        <span>Exit: {trade.exitPrice ? `₹${trade.exitPrice.toLocaleString('en-IN')}` : '—'}</span>
+                        <span>
+                          Time: {new Date(trade.entryDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+
+                      {/* THE 3 REASONS DISPLAY */}
+                      <div className="space-y-2.5 pt-1">
+                        {/* 1. Entry Reason */}
+                        <div className="p-3 rounded-lg bg-slate-950/60 border border-blue-500/20 space-y-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                            <Target size={13} className="text-blue-400 shrink-0" />
+                            <span>1. Entry Reason / Setup Strategy</span>
+                          </span>
+                          <p className="text-xs text-slate-200 leading-relaxed pl-5">
+                            {trade.entryReason?.trim() || <span className="text-slate-500 italic">No entry reason specified for this trade.</span>}
+                          </p>
+                        </div>
+
+                        {/* 2. Exit Reason */}
+                        <div className="p-3 rounded-lg bg-slate-950/60 border border-amber-500/20 space-y-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                            <LogOut size={13} className="text-amber-400 shrink-0" />
+                            <span>2. Exit Reason / Trigger Condition</span>
+                          </span>
+                          <p className="text-xs text-slate-200 leading-relaxed pl-5">
+                            {trade.exitReason?.trim() || <span className="text-slate-500 italic">No exit reason specified (e.g. still open or not entered).</span>}
+                          </p>
+                        </div>
+
+                        {/* 3. Lesson Learned */}
+                        <div className="p-3 rounded-lg bg-slate-950/60 border border-emerald-500/20 space-y-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                            <Lightbulb size={13} className="text-emerald-400 shrink-0" />
+                            <span>3. Mistake Made / Lesson Learned</span>
+                          </span>
+                          <p className="text-xs text-slate-200 leading-relaxed pl-5">
+                            {trade.lessonLearned?.trim() || <span className="text-slate-500 italic">No post-trade reflection recorded.</span>}
+                          </p>
+                        </div>
+
+                        {/* Chart Screenshot if available */}
+                        {trade.imageUrl && (
+                          <div className="pt-1">
+                            <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1 mb-1.5">
+                              <Image size={12} className="text-indigo-400" />
+                              Attached Chart Screenshot:
+                            </span>
+                            <a
+                              href={trade.imageUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-block rounded-lg overflow-hidden border border-slate-700 hover:border-blue-400 transition-colors group relative"
+                            >
+                              <img
+                                src={trade.imageUrl}
+                                alt={`${trade.symbol} chart`}
+                                className="max-h-40 max-w-xs object-cover rounded-lg group-hover:opacity-90"
+                              />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setDayModalOpen(false)
+                  setForm({
+                    ...form,
+                    entryDate: `${selectedDayKey}T09:30`,
+                    exitDate: `${selectedDayKey}T15:15`,
+                  })
+                  setModalOpen(true)
+                }}
+                className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 font-medium"
+              >
+                <Plus size={14} /> Log Another Trade on This Date
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDayModalOpen(false)}
+                className="px-4 py-2 rounded-lg font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

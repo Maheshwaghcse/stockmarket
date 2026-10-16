@@ -36,16 +36,41 @@ router.get('/', protect, async (req, res, next) => {
       const dateKey = new Date(trade.entryDate).toISOString().split('T')[0];
 
       if (!calendarMap[dateKey]) {
-        calendarMap[dateKey] = { date: dateKey, pnl: 0, count: 0, trades: [] };
+        calendarMap[dateKey] = {
+          date: dateKey,
+          pnl: 0,
+          count: 0,
+          wins: 0,
+          losses: 0,
+          trades: [],
+        };
       }
+      const pnl = trade.pnl || 0;
       calendarMap[dateKey].count += 1;
-      calendarMap[dateKey].pnl += trade.pnl || 0;
+      calendarMap[dateKey].pnl = +(calendarMap[dateKey].pnl + pnl).toFixed(2);
+      if (trade.status === 'CLOSED') {
+        if (pnl > 0) calendarMap[dateKey].wins += 1;
+        else if (pnl < 0) calendarMap[dateKey].losses += 1;
+      }
+
       calendarMap[dateKey].trades.push({
         id: trade._id,
+        _id: trade._id,
         symbol: trade.symbol,
         tradeType: trade.tradeType,
-        pnl: trade.pnl,
-        pnlPercent: trade.pnlPercent,
+        entryPrice: trade.entryPrice,
+        exitPrice: trade.exitPrice,
+        quantity: trade.quantity,
+        entryDate: trade.entryDate,
+        exitDate: trade.exitDate,
+        pnl,
+        pnlPercent: trade.pnlPercent || 0,
+        status: trade.status,
+        imageUrl: trade.imageUrl || null,
+        entryReason: trade.entryReason || '',
+        exitReason: trade.exitReason || '',
+        lessonLearned: trade.lessonLearned || '',
+        tags: trade.tags || [],
       });
     });
 
