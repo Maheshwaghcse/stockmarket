@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Trade = require('../models/Trade');
 const { protect } = require('../middleware/auth');
+const { computeJournalAnalytics } = require('../utils/journalAnalytics');
 
 // ─── GET /api/journal — get all trades and computed statistics ────────────────
 router.get('/', protect, async (req, res, next) => {
@@ -25,14 +26,8 @@ router.get('/', protect, async (req, res, next) => {
 
     const trades = await Trade.find(filter).sort({ entryDate: -1 });
 
-    // Compute statistics across trades
-    let totalPnl = 0;
-    let winCount = 0;
-    let lossCount = 0;
-    let totalWinPnl = 0;
-    let totalLossPnl = 0;
-    let biggestWin = 0;
-    let biggestLoss = 0;
+    // Compute comprehensive analytics, streaks, extremes, and curves
+    const analytics = computeJournalAnalytics(trades);
 
     // Daily breakdown for Heatmap and Monthly Calendar
     const calendarMap = {};
@@ -52,29 +47,16 @@ router.get('/', protect, async (req, res, next) => {
         pnl: trade.pnl,
         pnlPercent: trade.pnlPercent,
       });
-
-      if (trade.status === 'CLOSED') {
-        const pnl = trade.pnl || 0;
-        totalPnl += pnl;
-
-        if (pnl > 0) {
-          winCount++;
-          totalWinPnl += pnl;
-          if (pnl > biggestWin) biggestWin = pnl;
-        } else if (pnl < 0) {
-          lossCount++;
-          totalLossPnl += pnl;
-          if (pnl < biggestLoss) biggestLoss = pnl;
-        }
-      }
     });
 
-    const closedTradesCount = winCount + lossCount;
-    const winRate = closedTradesCount > 0 ? +((winCount / closedTradesCount) * 100).toFixed(1) : 0;
-    const avgWinner = winCount > 0 ? +(totalWinPnl / winCount).toFixed(2) : 0;
-    const avgLoser = lossCount > 0 ? +(totalLossPnl / lossCount).toFixed(2) : 0;
-    const avgPnl = closedTradesCount > 0 ? +(totalPnl / closedTradesCount).toFixed(2) : 0;
-    const riskReward = Math.abs(avgLoser) > 0 ? +(avgWinner / Math.abs(avgLoser)).toFixed(2) : (avgWinner > 0 ? 1 : 0);
+    const closedTradesCount = analytics.closedTradesCount;
+    const avgPnl = closedTradesCount > 0 ? +(analytics.netPnl / closedTradesCount).toFixed(2) : 0;
+    const riskReward =
+      Math.abs(analytics.avgLoser) > 0
+        ? +(analytics.avgWinner / Math.abs(analytics.avgLoser)).toFixed(2)
+        : analytics.avgWinner > 0
+        ? 1
+        : 0;
 
     res.json({
       success: true,
@@ -83,17 +65,28 @@ router.get('/', protect, async (req, res, next) => {
         totalTrades: trades.length,
         closedTrades: closedTradesCount,
         openTrades: trades.length - closedTradesCount,
-        totalPnl: +totalPnl.toFixed(2),
-        winCount,
-        lossCount,
-        winRate,
-        biggestWin: +biggestWin.toFixed(2),
-        biggestLoss: +biggestLoss.toFixed(2),
-        avgWinner,
-        avgLoser,
+        totalPnl: analytics.netPnl,
+        winCount: analytics.winCount,
+        lossCount: analytics.lossCount,
+        winRate: analytics.winRate,
+        lossRate: analytics.lossRate,
+        biggestWin: analytics.highestProfitTrade ? analytics.highestProfitTrade.pnl : 0,
+        biggestLoss: analytics.lowestProfitTrade ? analytics.lowestProfitTrade.pnl : 0,
+        avgWinner: analytics.avgWinner,
+        avgLoser: analytics.avgLoser,
         avgPnl,
         riskReward,
+        profitFactor: analytics.profitFactor,
+        maxDrawdown: analytics.maxDrawdown,
+        highestProfitTrade: analytics.highestProfitTrade,
+        lowestProfitTrade: analytics.lowestProfitTrade,
+        longestWinStreak: analytics.longestWinStreak,
+        longestWinStreakPnl: analytics.longestWinStreakPnl,
+        longestLossStreak: analytics.longestLossStreak,
+        longestLossStreakPnl: analytics.longestLossStreakPnl,
+        currentStreak: analytics.currentStreak,
       },
+      analytics,
       calendarMap,
     });
   } catch (err) {

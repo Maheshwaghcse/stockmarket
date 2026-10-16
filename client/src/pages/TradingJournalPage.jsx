@@ -9,6 +9,8 @@ import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import JournalAnalyticsCharts from '../components/journal/JournalAnalyticsCharts'
+import { formatINR } from '../lib/journalAnalytics'
 
 // Quick suggested symbols
 const SUGGESTED_SYMBOLS = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'NIFTY50', 'BANKNIFTY']
@@ -524,8 +526,11 @@ export default function TradingJournalPage() {
                 <span>Total P&amp;L</span>
                 <Info size={12} className="text-slate-500" title="Sum of closed trade profits and losses" />
               </div>
-              <div className={`text-xl font-bold font-mono ${stats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {stats.totalPnl >= 0 ? `+₹${stats.totalPnl.toLocaleString('en-IN')}` : `-₹${Math.abs(stats.totalPnl).toLocaleString('en-IN')}`}
+              <div
+                className={`text-xl font-bold font-mono truncate ${stats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                title={`Exact Total: ₹${stats.totalPnl?.toLocaleString('en-IN')}`}
+              >
+                {formatINR(stats.totalPnl, { compact: Math.abs(stats.totalPnl || 0) >= 100000, showSign: true })}
               </div>
             </div>
 
@@ -546,8 +551,13 @@ export default function TradingJournalPage() {
                 <span>Biggest Win</span>
                 <Info size={12} className="text-slate-500" title="Largest single profit trade" />
               </div>
-              <div className="text-lg font-bold font-mono text-green-400">
-                {stats.biggestWin > 0 ? `+₹${stats.biggestWin.toLocaleString('en-IN')}` : '—'}
+              <div
+                className="text-lg font-bold font-mono text-green-400 truncate"
+                title={`Exact: ₹${stats.biggestWin?.toLocaleString('en-IN')}`}
+              >
+                {stats.biggestWin > 0
+                  ? formatINR(stats.biggestWin, { compact: Math.abs(stats.biggestWin) >= 100000, showSign: true })
+                  : '—'}
               </div>
             </div>
 
@@ -557,8 +567,13 @@ export default function TradingJournalPage() {
                 <span>Biggest Loss</span>
                 <Info size={12} className="text-slate-500" title="Largest single loss trade" />
               </div>
-              <div className="text-lg font-bold font-mono text-red-400">
-                {stats.biggestLoss < 0 ? `-₹${Math.abs(stats.biggestLoss).toLocaleString('en-IN')}` : '—'}
+              <div
+                className="text-lg font-bold font-mono text-red-400 truncate"
+                title={`Exact: ₹${stats.biggestLoss?.toLocaleString('en-IN')}`}
+              >
+                {stats.biggestLoss < 0
+                  ? formatINR(stats.biggestLoss, { compact: Math.abs(stats.biggestLoss) >= 100000, showSign: true })
+                  : '—'}
               </div>
             </div>
 
@@ -568,8 +583,13 @@ export default function TradingJournalPage() {
                 <span>Avg. Winner</span>
                 <Info size={12} className="text-slate-500" title="Average profit per winning trade" />
               </div>
-              <div className="text-lg font-bold font-mono text-green-400">
-                {stats.avgWinner > 0 ? `+₹${stats.avgWinner.toLocaleString('en-IN')}` : '—'}
+              <div
+                className="text-lg font-bold font-mono text-green-400 truncate"
+                title={`Exact: ₹${stats.avgWinner?.toLocaleString('en-IN')}`}
+              >
+                {stats.avgWinner > 0
+                  ? formatINR(stats.avgWinner, { compact: Math.abs(stats.avgWinner) >= 100000, showSign: true })
+                  : '—'}
               </div>
             </div>
 
@@ -579,8 +599,13 @@ export default function TradingJournalPage() {
                 <span>Avg. Loser</span>
                 <Info size={12} className="text-slate-500" title="Average loss per losing trade" />
               </div>
-              <div className="text-lg font-bold font-mono text-red-400">
-                {stats.avgLoser < 0 ? `-₹${Math.abs(stats.avgLoser).toLocaleString('en-IN')}` : '—'}
+              <div
+                className="text-lg font-bold font-mono text-red-400 truncate"
+                title={`Exact: ₹${stats.avgLoser?.toLocaleString('en-IN')}`}
+              >
+                {stats.avgLoser < 0
+                  ? formatINR(stats.avgLoser, { compact: Math.abs(stats.avgLoser) >= 100000, showSign: true })
+                  : '—'}
               </div>
             </div>
 
@@ -601,8 +626,11 @@ export default function TradingJournalPage() {
                 <span>Avg. P&amp;L</span>
                 <Info size={12} className="text-slate-500" title="Expected value per trade" />
               </div>
-              <div className={`text-lg font-bold font-mono ${stats.avgPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {stats.avgPnl >= 0 ? `+₹${stats.avgPnl.toLocaleString('en-IN')}` : `-₹${Math.abs(stats.avgPnl).toLocaleString('en-IN')}`}
+              <div
+                className={`text-lg font-bold font-mono truncate ${stats.avgPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                title={`Exact: ₹${stats.avgPnl?.toLocaleString('en-IN')}`}
+              >
+                {formatINR(stats.avgPnl, { compact: Math.abs(stats.avgPnl || 0) >= 100000, showSign: true })}
               </div>
             </div>
           </div>
@@ -613,6 +641,10 @@ export default function TradingJournalPage() {
           </div>
         </div>
       </div>
+
+      {/* ─── Data Visualization Graphs Section (Highest / Lowest Profit, Streaks, Equity Curve) ─── */}
+      <JournalAnalyticsCharts trades={trades} serverAnalytics={journalData?.analytics} />
+
 
       {/* ─── Bottom Section: Trade Log & History ───────────────────────────── */}
       <div className="card bg-[#0b1329]/90 border border-slate-800/80 rounded-2xl p-5 shadow-2xl">
