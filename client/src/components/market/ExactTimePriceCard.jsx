@@ -151,15 +151,6 @@ export default function ExactTimePriceCard({
     handleTimeChange(targetTime)
   }
 
-  // Handler for slider scrub
-  const handleSliderChange = (e) => {
-    const idx = parseInt(e.target.value, 10)
-    setSelectedIndex(idx)
-    if (sessionCandles[idx]) {
-      setCustomTimeInput(formatTime24IST(sessionCandles[idx].time))
-    }
-  }
-
   if (!activeCandle) {
     return (
       <div className="card p-4 bg-slate-900/60 border border-slate-800 rounded-xl text-center text-xs text-slate-400">
@@ -323,27 +314,6 @@ export default function ExactTimePriceCard({
           })}
         </div>
       </div>
-
-      {/* ── Interactive Time Scrubber Slider ──────────────────── */}
-      {sessionCandles.length > 1 && (
-        <div className="space-y-1 bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/60">
-          <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-            <span>09:15 AM (Open)</span>
-            <span className="text-cyan-400 font-bold">
-              Current Scrubber: {timeIST} ({sessionCandles[selectedIndex] ? formatTime24IST(sessionCandles[selectedIndex].time) : '--'})
-            </span>
-            <span>15:25 PM (Close)</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={sessionCandles.length - 1}
-            value={selectedIndex}
-            onChange={handleSliderChange}
-            className="w-full accent-cyan-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
-          />
-        </div>
-      )}
 
       {/* ── Precision Hero Display & OHLC Matrix ──────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
