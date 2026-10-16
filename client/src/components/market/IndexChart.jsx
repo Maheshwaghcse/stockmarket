@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { createChart, ColorType, CrosshairMode, CandlestickSeries } from 'lightweight-charts'
 import api from '../../lib/api'
 
-export default function IndexChart({ symbol = 'NIFTY50', height = 280, timeRange = '1D' }) {
+export default function IndexChart({
+  symbol = 'NIFTY50',
+  height = 280,
+  timeRange = '1D',
+  onDataLoaded = null,
+  onCrosshairMove = null,
+}) {
   const containerRef = useRef(null)
   const chartRef = useRef(null)
   const seriesRef = useRef(null)
@@ -60,6 +66,27 @@ export default function IndexChart({ symbol = 'NIFTY50', height = 280, timeRange
       chartRef.current = chart
       seriesRef.current = series
 
+      // Subscribe to crosshair moves for live candle inspection
+      chart.subscribeCrosshairMove((param) => {
+        if (!onCrosshairMove) return
+        if (!param || !param.time || !param.seriesData) {
+          onCrosshairMove(null)
+          return
+        }
+        const candleData = param.seriesData.get(series)
+        if (candleData) {
+          onCrosshairMove({
+            time: param.time,
+            open: candleData.open,
+            high: candleData.high,
+            low: candleData.low,
+            close: candleData.close,
+          })
+        } else {
+          onCrosshairMove(null)
+        }
+      })
+
       resizeHandler = () => {
         if (containerRef.current && chart) {
           chart.applyOptions({ width: containerRef.current.clientWidth })
@@ -70,23 +97,36 @@ export default function IndexChart({ symbol = 'NIFTY50', height = 280, timeRange
       setLoading(true)
       setError(null)
 
-      // Fetch data based on timeRange
-      const fetchUrl = timeRange === '1D'
-        ? `/market/indices/${symbol}/intraday?interval=5`
-        : `/market/chart/${symbol}?range=${timeRange === '5D' ? '5d' : timeRange === '1M' ? '1mo' : '1y'}&interval=${timeRange === '5D' ? '15m' : timeRange === '1M' ? '60m' : '1d'}`
+      // Check if symbol is an index or an individual stock
+      const INDEX_SYMBOLS = ['NIFTY50', 'BANKNIFTY', 'SENSEX', 'FINNIFTY', 'NIFTYNEXT50', 'NIFTYIT', 'NIFTYPHARMA', 'NIFTYAUTO', 'NIFTYMIDCAP']
+      const isIndex = INDEX_SYMBOLS.includes(symbol.toUpperCase())
+
+      // Fetch data based on symbol type and timeRange
+      const fetchUrl = isIndex
+        ? (timeRange === '1D'
+            ? `/market/indices/${symbol}/intraday?interval=5`
+            : `/market/chart/${symbol}?range=${timeRange === '5D' ? '5d' : timeRange === '1M' ? '1mo' : '1y'}&interval=${timeRange === '5D' ? '15m' : timeRange === '1M' ? '60m' : '1d'}`)
+        : (timeRange === '1D'
+            ? `/stocks/${symbol}/chart?range=1d&interval=5m`
+            : `/stocks/${symbol}/chart?range=${timeRange === '5D' ? '5d' : timeRange === '1M' ? '1mo' : '2y'}&interval=${timeRange === '5D' ? '15m' : timeRange === '1M' ? '60m' : '1d'}`)
 
       api.get(fetchUrl)
         .then(({ data }) => {
           if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
             series.setData(data.data)
             chart.timeScale().fitContent()
+            if (onDataLoaded) {
+              onDataLoaded(data.data)
+            }
           } else {
             setError(`No candle data available for ${symbol}`)
+            if (onDataLoaded) onDataLoaded([])
           }
           setLoading(false)
         })
         .catch(() => {
           setError('Failed to load chart data')
+          if (onDataLoaded) onDataLoaded([])
           setLoading(false)
         })
     } catch (err) {

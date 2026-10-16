@@ -16,11 +16,13 @@ import {
   CheckCircle2,
   XCircle,
   HelpCircle,
+  Clock,
 } from 'lucide-react'
 import { formatINR, computeJournalAnalytics } from '../../lib/journalAnalytics'
+import JournalTimingAnalysis from './JournalTimingAnalysis'
 
 export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = null }) {
-  const [activeTab, setActiveTab] = useState('equity') // 'equity', 'waterfall', 'streaks', 'ratios', 'symbols'
+  const [activeTab, setActiveTab] = useState('equity') // 'equity', 'waterfall', 'streaks', 'ratios', 'symbols', 'timing'
   const [waterfallSort, setWaterfallSort] = useState('chrono') // 'chrono' or 'ranked'
   const [equityVisualMode, setEquityVisualMode] = useState('bar') // 'bar', 'line', 'mountain', 'stepped', 'drawdown'
   const [tradeOffVisualMode, setTradeOffVisualMode] = useState('waterfall') // 'waterfall', 'ranked', 'tradeoff', 'scatter'
@@ -487,6 +489,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
               { id: 'streaks', label: 'Streak Visualizer', icon: Flame },
               { id: 'ratios', label: 'Win/Loss & Risk', icon: PieChart },
               { id: 'symbols', label: 'Symbol Breakdown', icon: Layers },
+              { id: 'timing', label: 'Timing & Stock Entry', icon: Clock },
             ].map((tab) => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
@@ -1503,6 +1506,11 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── TAB 6: Trade Timing & Stock Entry Analysis ── */}
+        {activeTab === 'timing' && (
+          <JournalTimingAnalysis trades={trades} />
         )}
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useMarketStore } from '../store/marketStore'
 import IndexCard from '../components/market/IndexCard'
 import IndexChart from '../components/market/IndexChart'
+import ExactTimePriceCard from '../components/market/ExactTimePriceCard'
 import { Link } from 'react-router-dom'
 import {
   TrendingUp,
@@ -52,6 +53,10 @@ export default function HomePage() {
   const [activeChartSymbol, setActiveChartSymbol] = useState('NIFTY50')
   const [timeSlicer, setTimeSlicer] = useState('1D') // '1D', '5D', '1M', '1Y'
   const [outcomeSlicer, setOutcomeSlicer] = useState('all') // 'all', 'profit', 'loss'
+
+  // Exact time price inspection state synced with chart candles & crosshair
+  const [chartCandles, setChartCandles] = useState([])
+  const [hoveredCandle, setHoveredCandle] = useState(null)
 
   const { data: newsData } = useQuery({
     queryKey: ['featured-news'],
@@ -267,10 +272,21 @@ export default function HomePage() {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-mono font-bold border border-blue-500/20">
                   {timeSlicer === '1D' ? 'Intraday (5m)' : timeSlicer === '5D' ? '5 Days (15m)' : timeSlicer === '1M' ? '1 Month (1h)' : '1 Year (1d)'}
                 </span>
-                {indices[activeChartSymbol] && (
+                {indices[activeChartSymbol] ? (
                   <span className={`text-xs font-mono font-bold ${indices[activeChartSymbol].changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     ₹{indices[activeChartSymbol].value?.toLocaleString('en-IN', { maximumFractionDigits: 1 })} ({indices[activeChartSymbol].changePct >= 0 ? '+' : ''}{indices[activeChartSymbol].changePct?.toFixed(2)}%)
                   </span>
+                ) : (
+                  (() => {
+                    const st = allStocks.find((s) => s.symbol === activeChartSymbol)
+                    if (!st) return null
+                    const isUp = (st.changePct || 0) >= 0
+                    return (
+                      <span className={`text-xs font-mono font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        ₹{st.price?.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ({isUp ? '+' : ''}{st.changePct?.toFixed(2)}%)
+                      </span>
+                    )
+                  })()
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -313,7 +329,7 @@ export default function HomePage() {
               </div>
 
               <Link
-                to={`/indices/${activeChartSymbol}`}
+                to={indices[activeChartSymbol] ? `/indices/${activeChartSymbol}` : `/stocks/${activeChartSymbol}`}
                 className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
               >
                 <span>Full</span>
@@ -349,8 +365,23 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Interactive Index Chart */}
-          <IndexChart symbol={activeChartSymbol} timeRange={timeSlicer} height={290} />
+          {/* Interactive Index Chart with Crosshair & Candle Data sync */}
+          <IndexChart
+            symbol={activeChartSymbol}
+            timeRange={timeSlicer}
+            height={290}
+            onDataLoaded={setChartCandles}
+            onCrosshairMove={setHoveredCandle}
+          />
+
+          {/* ── Lower Area: Special Exact Time & Price Explorer Card ── */}
+          <ExactTimePriceCard
+            symbol={activeChartSymbol}
+            candles={chartCandles}
+            hoveredCandle={hoveredCandle}
+            onSelectSymbol={(sym) => setActiveChartSymbol(sym)}
+            watchlistStocks={displayWatchlistStocks}
+          />
 
           {/* ── Down Area: My Watchlist Stocks ───────────────────── */}
           <div className="pt-3 border-t border-slate-800">
