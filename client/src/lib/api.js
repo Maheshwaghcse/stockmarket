@@ -43,6 +43,16 @@ api.interceptors.response.use(
         const { data } = await api.post('/auth/refresh')
         const newToken = data.accessToken
         api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+        try {
+          const raw = localStorage.getItem('stocksense-auth')
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (parsed && parsed.state) {
+              parsed.state.accessToken = newToken
+              localStorage.setItem('stocksense-auth', JSON.stringify(parsed))
+            }
+          }
+        } catch {}
         processQueue(null, newToken)
         original.headers['Authorization'] = `Bearer ${newToken}`
         return api(original)
