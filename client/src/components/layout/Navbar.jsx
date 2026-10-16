@@ -15,6 +15,13 @@ import {
   User,
   Shield,
   ArrowRight,
+  BarChart2,
+  Newspaper,
+  GraduationCap,
+  Sparkles,
+  ChevronRight,
+  Activity,
+  Layers,
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useMarketStore } from '../../store/marketStore'
@@ -22,14 +29,14 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
 const NAV_LINKS = [
-  { to: '/',           label: 'Dashboard'  },
-  { to: '/indices',    label: 'Indices'    },
-  { to: '/stocks',     label: 'Stocks'     },
-  { to: '/journal',    label: 'Journal'    },
-  { to: '/calculator', label: 'Calculator' },
-  { to: '/news',       label: 'News'       },
-  { to: '/education',  label: 'Learn'      },
-  { to: '/pricing',    label: 'Pricing'    },
+  { to: '/',           label: 'Dashboard',   icon: LayoutDashboard, badge: null },
+  { to: '/indices',    label: 'Indices',     icon: Activity,        badge: null },
+  { to: '/stocks',     label: 'Stocks',      icon: TrendingUp,      badge: '106' },
+  { to: '/journal',    label: 'Journal',     icon: BookOpen,        badge: 'Desk' },
+  { to: '/calculator', label: 'Calculator',  icon: Calculator,      badge: '5 Tools' },
+  { to: '/news',       label: 'News',        icon: Newspaper,       badge: 'Live' },
+  { to: '/education',  label: 'Learn',       icon: GraduationCap,   badge: null },
+  { to: '/pricing',    label: 'Pricing',     icon: Sparkles,        badge: null },
 ]
 
 export default function Navbar() {
@@ -105,7 +112,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 glass border-b select-none" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+    <header className="sticky top-0 z-40 glass border-b select-none" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
 
@@ -284,139 +291,207 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* ── Mobile Navigation Drawer ──────────────────────────────── */}
-      {open && (
-        <div
-          className="fixed inset-x-0 top-14 bottom-0 z-40 bg-slate-950/80 backdrop-blur-md md:hidden overflow-y-auto animate-in fade-in duration-200"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setOpen(false)
-          }}
-        >
-          <div
-            className="border-b shadow-2xl p-4 space-y-4 max-h-full overflow-y-auto"
-            style={{ background: 'var(--color-surface)', borderColor: 'rgba(255,255,255,0.08)' }}
+      {/* ── Mobile Slide-In Navigation (Backdrop + Off-Canvas Drawer) ────── */}
+      {/* 1. Backdrop Overlay */}
+      <div
+        className={`fixed inset-0 z-50 bg-black/75 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
+          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* 2. Slide-In Off-Canvas Drawer */}
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-50 w-[310px] max-w-[85vw] bg-[#0b1329] border-l border-slate-800 shadow-2xl flex flex-col transition-transform duration-300 ease-out md:hidden ${
+          open ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mobile Navigation"
+      >
+        {/* Drawer Header with Logo & Close Button */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-800/80 bg-[#080e1e] shrink-0">
+          <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2 group">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-md shadow-blue-500/20"
+              style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
+            >
+              <TrendingUp size={18} className="text-white" />
+            </div>
+            <span className="font-bold text-base tracking-tight text-white">
+              Stock<span className="text-indigo-400">Sense</span>
+            </span>
+          </Link>
+          <button
+            onClick={() => setOpen(false)}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            aria-label="Close mobile menu"
           >
-            {/* Market Status in Drawer */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
-              <span className="text-slate-400">Market Hours Status:</span>
-              <span className="flex items-center gap-1.5 font-bold">
-                <span className={`pulse-dot ${marketStatus === 'OPEN' ? '' : 'closed'}`} />
-                <span style={{ color: marketStatus === 'OPEN' ? 'var(--color-gain)' : 'var(--color-loss)' }}>
-                  NSE {marketStatus}
-                </span>
-              </span>
-            </div>
+            <X size={20} />
+          </button>
+        </div>
 
-            {/* Main Navigation Links */}
-            <div className="space-y-1">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 py-1">
-                Navigation
-              </p>
-              {NAV_LINKS.map(({ to, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={to === '/'}
-                  onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
-                      isActive
-                        ? 'text-white bg-blue-600 shadow-md shadow-blue-500/20'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-                    }`
-                  }
-                >
-                  <span>{label}</span>
-                  <ArrowRight size={14} className="opacity-60" />
-                </NavLink>
-              ))}
-            </div>
+        {/* Live Market Status Bar inside Drawer */}
+        <div className="px-4 py-2.5 bg-slate-900/60 border-b border-slate-800/60 flex items-center justify-between text-xs shrink-0">
+          <span className="text-slate-400 flex items-center gap-1.5 font-medium">
+            <Activity size={13} className="text-blue-400" /> Market Hours:
+          </span>
+          <span className="flex items-center gap-1.5 font-bold">
+            <span className={`pulse-dot ${marketStatus === 'OPEN' ? '' : 'closed'}`} />
+            <span style={{ color: marketStatus === 'OPEN' ? 'var(--color-gain)' : 'var(--color-loss)' }}>
+              NSE {marketStatus}
+            </span>
+          </span>
+        </div>
 
-            {/* User Profile or Auth in Drawer */}
-            <div className="pt-3 border-t border-slate-800/80">
-              {user ? (
-                <div className="space-y-2">
-                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm"
-                        style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
-                      >
-                        {user.name?.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-100">{user.name}</p>
-                        <p className="text-xs text-slate-400 truncate max-w-44">{user.email}</p>
-                      </div>
-                    </div>
-                    <span
-                      className="text-[10px] font-bold capitalize px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.25)' }}
-                    >
-                      {subscription?.plan || 'Free'}
-                    </span>
-                  </div>
+        {/* Scrollable Navigation Links */}
+        <div className="flex-1 overflow-y-auto touch-scroll px-3 py-3 space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-1 pb-1.5">
+            Trading Workspace
+          </p>
+          {NAV_LINKS.map(({ to, label, icon: Icon, badge }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
+                  isActive
+                    ? 'text-white bg-gradient-to-r from-blue-600 to-indigo-600 shadow-md shadow-blue-500/20'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+                }`
+              }
+            >
+              <div className="flex items-center gap-3">
+                <Icon size={17} className="opacity-80" />
+                <span>{label}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {badge && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    {badge}
+                  </span>
+                )}
+                <ChevronRight size={15} className="opacity-40" />
+              </div>
+            </NavLink>
+          ))}
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Link
-                      to="/watchlist"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 min-h-[44px]"
-                    >
-                      <Star size={14} className="text-amber-400" />
-                      <span>Watchlists</span>
-                    </Link>
-                    <Link
-                      to="/profile"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 min-h-[44px]"
-                    >
-                      <Settings size={14} className="text-indigo-400" />
-                      <span>Settings</span>
-                    </Link>
-                  </div>
-
-                  {isAdmin() && (
-                    <Link
-                      to="/admin"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 text-xs font-semibold min-h-[44px]"
-                    >
-                      <LayoutDashboard size={14} />
-                      <span>Admin Management Portal</span>
-                    </Link>
-                  )}
-
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 font-semibold text-xs hover:bg-rose-500/20 transition-all min-h-[44px]"
-                  >
-                    <LogOut size={14} />
-                    <span>Sign Out of Account</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2.5 pt-2">
-                  <Link
-                    to="/register"
-                    onClick={() => setOpen(false)}
-                    className="btn-primary w-full text-center py-3 text-sm min-h-[44px] flex items-center justify-center"
-                  >
-                    Get Started Free
-                  </Link>
-                  <Link
-                    to="/login"
-                    onClick={() => setOpen(false)}
-                    className="btn-ghost w-full text-center py-2.5 text-sm min-h-[44px] flex items-center justify-center text-slate-300"
-                  >
-                    Sign In
-                  </Link>
-                </div>
-              )}
+          {/* Quick Shortcuts Section */}
+          <div className="pt-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pb-1.5">
+              Quick Shortcuts
+            </p>
+            <div className="grid grid-cols-2 gap-2 px-1">
+              <Link
+                to="/watchlist"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 min-h-[44px] text-xs font-semibold"
+              >
+                <Star size={14} className="text-amber-400 shrink-0" />
+                <span>Watchlists</span>
+              </Link>
+              <button
+                onClick={() => {
+                  handleRefreshMarket()
+                  setOpen(false)
+                }}
+                disabled={syncing}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 min-h-[44px] text-xs font-semibold"
+              >
+                <RefreshCw size={14} className={`text-blue-400 shrink-0 ${syncing ? 'animate-spin' : ''}`} />
+                <span>Sync Quotes</span>
+              </button>
             </div>
           </div>
         </div>
-      )}
+
+        {/* Drawer Footer with User Account / Auth CTAs */}
+        <div className="p-4 border-t border-slate-800/90 bg-[#070d1d] shrink-0">
+          {user ? (
+            <div className="space-y-2.5">
+              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm shrink-0"
+                    style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
+                  >
+                    {user.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-100 truncate">{user.name}</p>
+                    <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                  </div>
+                </div>
+                <span
+                  className="text-[10px] font-bold capitalize px-2 py-0.5 rounded-full shrink-0"
+                  style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.25)' }}
+                >
+                  {subscription?.plan || 'Free'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <Link
+                  to="/profile"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 min-h-[40px] font-medium"
+                >
+                  <Settings size={13} className="text-indigo-400" />
+                  <span>Profile</span>
+                </Link>
+
+                {isAdmin() ? (
+                  <Link
+                    to="/admin"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 min-h-[40px] font-medium"
+                  >
+                    <LayoutDashboard size={13} />
+                    <span>Admin</span>
+                  </Link>
+                ) : (
+                  <Link
+                    to="/pricing"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 min-h-[40px] font-medium"
+                  >
+                    <Sparkles size={13} />
+                    <span>Upgrade</span>
+                  </Link>
+                )}
+              </div>
+
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 font-semibold text-xs hover:bg-rose-500/20 transition-all min-h-[44px]"
+              >
+                <LogOut size={14} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Link
+                to="/register"
+                onClick={() => setOpen(false)}
+                className="btn-primary w-full text-center py-2.5 text-xs font-bold min-h-[44px] flex items-center justify-center rounded-xl"
+              >
+                Get Started Free
+              </Link>
+              <Link
+                to="/login"
+                onClick={() => setOpen(false)}
+                className="btn-ghost w-full text-center py-2 text-xs font-semibold min-h-[40px] flex items-center justify-center text-slate-300 rounded-xl"
+              >
+                Sign In to Account
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
     </header>
   )
 }
