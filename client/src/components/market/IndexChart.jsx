@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createChart, ColorType, CrosshairMode, CandlestickSeries } from 'lightweight-charts'
 import api from '../../lib/api'
 
-export default function IndexChart({ symbol, height = 260 }) {
+export default function IndexChart({ symbol = 'NIFTY50', height = 280, timeRange = '1D' }) {
   const containerRef = useRef(null)
   const chartRef = useRef(null)
   const seriesRef = useRef(null)
@@ -67,12 +67,21 @@ export default function IndexChart({ symbol, height = 260 }) {
       }
       window.addEventListener('resize', resizeHandler)
 
-      // Fetch intraday data
-      api.get(`/market/indices/${symbol}/intraday?interval=5`)
+      setLoading(true)
+      setError(null)
+
+      // Fetch data based on timeRange
+      const fetchUrl = timeRange === '1D'
+        ? `/market/indices/${symbol}/intraday?interval=5`
+        : `/market/chart/${symbol}?range=${timeRange === '5D' ? '5d' : timeRange === '1M' ? '1mo' : '1y'}&interval=${timeRange === '5D' ? '15m' : timeRange === '1M' ? '60m' : '1d'}`
+
+      api.get(fetchUrl)
         .then(({ data }) => {
-          if (data?.data && Array.isArray(data.data)) {
+          if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
             series.setData(data.data)
             chart.timeScale().fitContent()
+          } else {
+            setError(`No candle data available for ${symbol}`)
           }
           setLoading(false)
         })
@@ -94,7 +103,7 @@ export default function IndexChart({ symbol, height = 260 }) {
         chart.remove()
       }
     }
-  }, [symbol, height])
+  }, [symbol, height, timeRange])
 
   return (
     <div className="relative w-full" style={{ minHeight: height }}>

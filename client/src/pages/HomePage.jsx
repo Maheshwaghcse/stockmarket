@@ -1,9 +1,21 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useMarketStore } from '../store/marketStore'
 import IndexCard from '../components/market/IndexCard'
 import IndexChart from '../components/market/IndexChart'
 import { Link } from 'react-router-dom'
-import { TrendingUp, TrendingDown, Zap, BookOpen, BarChart2, ArrowRight, Star } from 'lucide-react'
+import {
+  TrendingUp,
+  TrendingDown,
+  Zap,
+  BookOpen,
+  BarChart2,
+  ArrowRight,
+  Star,
+  SlidersHorizontal,
+  Activity,
+  Layers,
+  Clock,
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
 import { formatDistanceToNow } from 'date-fns'
@@ -36,6 +48,11 @@ export default function HomePage() {
   const gainers = [...allIndices].sort((a, b) => b.changePct - a.changePct).slice(0, 5)
   const losers  = [...allIndices].sort((a, b) => a.changePct - b.changePct).slice(0, 5)
 
+  // Interactive Dashboard Slicers
+  const [activeChartSymbol, setActiveChartSymbol] = useState('NIFTY50')
+  const [timeSlicer, setTimeSlicer] = useState('1D') // '1D', '5D', '1M', '1Y'
+  const [outcomeSlicer, setOutcomeSlicer] = useState('all') // 'all', 'profit', 'loss'
+
   const { data: newsData } = useQuery({
     queryKey: ['featured-news'],
     queryFn: () => api.get('/news/featured').then(r => r.data),
@@ -58,6 +75,30 @@ export default function HomePage() {
   const activeWatchlist = userLists[0]
   const watchlistItems = activeWatchlist?.items || []
 
+  // Market Breadth calculation
+  const marketBreadth = useMemo(() => {
+    let advances = 0
+    let declines = 0
+    let unchanged = 0
+    allStocks.forEach((s) => {
+      const chg = s.changePct || 0
+      if (chg > 0.05) advances++
+      else if (chg < -0.05) declines++
+      else unchanged++
+    })
+    const total = advances + declines + unchanged || 1
+    const advancePct = Math.round((advances / total) * 100)
+    const declinePct = Math.round((declines / total) * 100)
+    return { advances, declines, unchanged, advancePct, declinePct, total }
+  }, [allStocks])
+
+  // Filtered indices based on outcomeSlicer
+  const displayedIndices = useMemo(() => {
+    if (outcomeSlicer === 'profit') return allIndices.filter((idx) => (idx.changePct || 0) >= 0)
+    if (outcomeSlicer === 'loss') return allIndices.filter((idx) => (idx.changePct || 0) < 0)
+    return allIndices
+  }, [allIndices, outcomeSlicer])
+
   const defaultWishlistSymbols = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN']
   const displayWatchlistStocks = useMemo(() => {
     if (watchlistItems.length > 0) {
@@ -78,8 +119,15 @@ export default function HomePage() {
     })
   }, [watchlistItems, allStocks])
 
+  // Filtered watchlist stocks based on outcomeSlicer
+  const filteredWatchlistStocks = useMemo(() => {
+    if (outcomeSlicer === 'profit') return displayWatchlistStocks.filter((s) => (s.changePct || 0) >= 0)
+    if (outcomeSlicer === 'loss') return displayWatchlistStocks.filter((s) => (s.changePct || 0) < 0)
+    return displayWatchlistStocks
+  }, [displayWatchlistStocks, outcomeSlicer])
+
   return (
-    <div className="space-y-8 fade-in">
+    <div className="space-y-6 sm:space-y-7 fade-in">
       {/* ── Hero Header ────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -107,38 +155,213 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ── Interactive Market Slicers Bar (Days, Time, Profit, Loss) ── */}
+      <div className="card p-3 sm:p-4 bg-[#0b1329]/95 border border-slate-800/90 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold uppercase tracking-wider pr-2 border-r border-slate-800">
+            <SlidersHorizontal size={13} className="text-blue-400" />
+            <span>Dashboard Slicers</span>
+          </span>
+
+          {/* Time / Days Slicer */}
+          <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
+            {[
+              { id: '1D', label: 'Intraday (1D)' },
+              { id: '5D', label: '5 Days' },
+              { id: '1M', label: '1 Month' },
+              { id: '1Y', label: '1 Year' },
+            ].map((tf) => (
+              <button
+                key={tf.id}
+                onClick={() => setTimeSlicer(tf.id)}
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                  timeSlicer === tf.id
+                    ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Profit / Loss Outcome Slicer */}
+          <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
+            {[
+              { id: 'all', label: 'All Direction' },
+              { id: 'profit', label: 'Profit (▲)', color: 'text-emerald-400' },
+              { id: 'loss', label: 'Loss (▼)', color: 'text-rose-400' },
+            ].map((out) => (
+              <button
+                key={out.id}
+                onClick={() => setOutcomeSlicer(out.id)}
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                  outcomeSlicer === out.id
+                    ? 'bg-indigo-600 text-white shadow-sm font-semibold'
+                    : out.color || 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {out.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Benchmark Symbol Quick Slicer */}
+          <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs hidden lg:inline-flex">
+            {['NIFTY50', 'BANKNIFTY', 'SENSEX', 'FINNIFTY'].map((sym) => (
+              <button
+                key={sym}
+                onClick={() => setActiveChartSymbol(sym)}
+                className={`px-2 py-1 rounded-lg font-medium transition-all ${
+                  activeChartSymbol === sym
+                    ? 'bg-slate-700 text-white font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {sym === 'NIFTY50' ? 'Nifty 50' : sym === 'BANKNIFTY' ? 'Bank Nifty' : sym === 'SENSEX' ? 'Sensex' : 'Fin Nifty'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Live Breadth Quick Metric */}
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-slate-400 hidden sm:inline">Market Breadth:</span>
+          <span className="text-emerald-400 font-bold font-mono">
+            ▲ {marketBreadth.advances} Adv
+          </span>
+          <span className="text-rose-400 font-bold font-mono">
+            ▼ {marketBreadth.declines} Dec
+          </span>
+        </div>
+      </div>
+
       {/* ── Index Cards ────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {FEATURED_INDICES.map((sym) => (
-          <IndexCard key={sym} index={indices[sym]} />
-        ))}
+        {FEATURED_INDICES.map((sym) => {
+          const isSelected = activeChartSymbol === sym
+          return (
+            <div
+              key={sym}
+              onClick={() => setActiveChartSymbol(sym)}
+              className={`cursor-pointer transition-all rounded-2xl ${
+                isSelected ? 'ring-2 ring-blue-500/80 shadow-lg shadow-blue-500/20' : ''
+              }`}
+            >
+              <IndexCard index={indices[sym]} />
+            </div>
+          )
+        })}
       </div>
 
       {/* ── Main Chart + Sidebar ───────────────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 xl:items-start">
-        {/* Chart */}
-        <div className="xl:col-span-2 card">
-          <div className="flex items-center justify-between mb-2">
+        {/* Main Chart Card (Dynamic Symbol, Time Slicers & Market Breadth Gauge) */}
+        <div className="xl:col-span-2 card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
-              <h2 className="font-semibold text-base">Nifty 50 — Intraday</h2>
-              <p className="text-xs muted">5-minute candles · Market Reference</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-bold text-base sm:text-lg text-white">
+                  {activeChartSymbol === 'NIFTY50' ? 'Nifty 50' : activeChartSymbol === 'BANKNIFTY' ? 'Bank Nifty' : activeChartSymbol === 'SENSEX' ? 'BSE Sensex' : activeChartSymbol === 'FINNIFTY' ? 'Nifty Fin Service' : activeChartSymbol}
+                </h2>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-mono font-bold border border-blue-500/20">
+                  {timeSlicer === '1D' ? 'Intraday (5m)' : timeSlicer === '5D' ? '5 Days (15m)' : timeSlicer === '1M' ? '1 Month (1h)' : '1 Year (1d)'}
+                </span>
+                {indices[activeChartSymbol] && (
+                  <span className={`text-xs font-mono font-bold ${indices[activeChartSymbol].changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    ₹{indices[activeChartSymbol].value?.toLocaleString('en-IN', { maximumFractionDigits: 1 })} ({indices[activeChartSymbol].changePct >= 0 ? '+' : ''}{indices[activeChartSymbol].changePct?.toFixed(2)}%)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {timeSlicer === '1D' ? 'Live intraday candles · Market Reference' : 'Extended historical candlestick view'}
+              </p>
             </div>
-            <Link to="/indices/NIFTY50" className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium">
-              Full view <ArrowRight size={12} />
-            </Link>
+
+            {/* In-Card Fast Slicers */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
+                {['NIFTY50', 'BANKNIFTY', 'SENSEX', 'FINNIFTY'].map((sym) => (
+                  <button
+                    key={sym}
+                    onClick={() => setActiveChartSymbol(sym)}
+                    className={`px-2 py-1 rounded-lg font-medium transition-all ${
+                      activeChartSymbol === sym
+                        ? 'bg-blue-600 text-white font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {sym === 'NIFTY50' ? 'Nifty' : sym === 'BANKNIFTY' ? 'Bank' : sym === 'SENSEX' ? 'Sensex' : 'Fin'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
+                {['1D', '5D', '1M', '1Y'].map((tf) => (
+                  <button
+                    key={tf}
+                    onClick={() => setTimeSlicer(tf)}
+                    className={`px-2 py-1 rounded-lg font-medium transition-all ${
+                      timeSlicer === tf
+                        ? 'bg-indigo-600 text-white font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {tf}
+                  </button>
+                ))}
+              </div>
+
+              <Link
+                to={`/indices/${activeChartSymbol}`}
+                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                <span>Full</span>
+                <ArrowRight size={12} />
+              </Link>
+            </div>
           </div>
-          <IndexChart symbol="NIFTY50" height={280} />
+
+          {/* Live Market Sentiment & Advance-Decline Meter (Eliminates empty space) */}
+          <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-2.5 space-y-1.5">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                Advances: {marketBreadth.advances} ({marketBreadth.advancePct}%)
+              </span>
+              <span className="text-slate-400 hidden sm:inline">
+                Market Breadth Ratio
+              </span>
+              <span className="text-rose-400 font-semibold flex items-center gap-1">
+                Declines: {marketBreadth.declines} ({marketBreadth.declinePct}%)
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
+              </span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+                style={{ width: `${marketBreadth.advancePct}%` }}
+              />
+              <div
+                className="h-full bg-gradient-to-r from-rose-500 to-red-600 transition-all duration-500"
+                style={{ width: `${marketBreadth.declinePct}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Interactive Index Chart */}
+          <IndexChart symbol={activeChartSymbol} timeRange={timeSlicer} height={290} />
 
           {/* ── Down Area: My Watchlist Stocks ───────────────────── */}
-          <div className="mt-4 pt-3.5 border-t border-slate-800">
-            <div className="flex items-center justify-between mb-2.5">
+          <div className="pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Star size={14} className="text-amber-400 fill-amber-400/20" />
                 <h3 className="text-xs font-semibold text-slate-100 uppercase tracking-wider">
                   {watchlistItems.length > 0 ? (activeWatchlist.name || 'My Watchlist Stocks') : 'My Wishlist Stocks'}
                 </h3>
                 <span className="text-[10px] px-2 py-0.2 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                  {displayWatchlistStocks.length} tracked
+                  {filteredWatchlistStocks.length} {outcomeSlicer !== 'all' ? outcomeSlicer : 'tracked'}
                 </span>
               </div>
               <Link
@@ -151,67 +374,99 @@ export default function HomePage() {
             </div>
 
             {/* Grid of Watchlist Stocks */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              {displayWatchlistStocks.slice(0, 6).map((stk) => {
-                const isGain = (stk.changePct || 0) >= 0
-                return (
-                  <Link
-                    key={stk.symbol}
-                    to={`/stocks/${stk.symbol}`}
-                    className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all flex flex-col justify-between group"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-slate-100 group-hover:text-blue-400 transition-colors">
-                          {stk.symbol}
-                        </span>
-                        {stk.sector && (
-                          <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
-                            {stk.sector.slice(0, 3)}
+            {filteredWatchlistStocks.length === 0 ? (
+              <div className="p-4 rounded-xl bg-slate-900/40 text-center text-xs text-slate-400">
+                No stocks match the current {outcomeSlicer} slicer in your watchlist.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {filteredWatchlistStocks.slice(0, 6).map((stk) => {
+                  const isGain = (stk.changePct || 0) >= 0
+                  return (
+                    <Link
+                      key={stk.symbol}
+                      to={`/stocks/${stk.symbol}`}
+                      className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all flex flex-col justify-between group"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-slate-100 group-hover:text-blue-400 transition-colors">
+                            {stk.symbol}
                           </span>
-                        )}
+                          {stk.sector && (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                              {stk.sector.slice(0, 3)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] muted truncate mt-0.5" title={stk.name}>
+                          {stk.name}
+                        </p>
                       </div>
-                      <p className="text-[10px] muted truncate mt-0.5" title={stk.name}>
-                        {stk.name}
-                      </p>
-                    </div>
 
-                    <div className="mt-1.5 pt-1 border-t border-slate-800/60 flex items-baseline justify-between">
-                      <span className="font-mono text-xs font-bold text-slate-200">
-                        {stk.price > 0 ? `₹${stk.price?.toLocaleString('en-IN', { maximumFractionDigits: 1 })}` : '—'}
-                      </span>
-                      <span className={`text-[10px] font-mono font-bold ${isGain ? 'gain' : 'loss'}`}>
-                        {isGain ? '+' : ''}{stk.changePct?.toFixed(1)}%
-                      </span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
+                      <div className="mt-1.5 pt-1 border-t border-slate-800/60 flex items-baseline justify-between">
+                        <span className="font-mono text-xs font-bold text-slate-200">
+                          {stk.price > 0 ? `₹${stk.price?.toLocaleString('en-IN', { maximumFractionDigits: 1 })}` : '—'}
+                        </span>
+                        <span className={`text-[10px] font-mono font-bold ${isGain ? 'gain' : 'loss'}`}>
+                          {isGain ? '+' : ''}{stk.changePct?.toFixed(1)}%
+                        </span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Gainers / Losers */}
+        {/* Right Sidebar: Gainers / Losers Cards (Aligned dynamically with Slicer) */}
         <div className="space-y-4">
-          <div className="card">
-            <h2 className="font-semibold mb-3 flex items-center gap-2">
-              <TrendingUp size={16} className="gain" /> Top Gainers
-            </h2>
-            {gainers.map((g) => <GainerLoserRow key={g.symbol} item={g} type="gain" />)}
-          </div>
-          <div className="card">
-            <h2 className="font-semibold mb-3 flex items-center gap-2">
-              <TrendingDown size={16} className="loss" /> Top Losers
-            </h2>
-            {losers.map((l) => <GainerLoserRow key={l.symbol} item={l} type="loss" />)}
-          </div>
+          {(outcomeSlicer === 'all' || outcomeSlicer === 'profit') && (
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <TrendingUp size={16} className="gain" /> Top Gainers
+                </h2>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold">
+                  {gainers.length} profit leaders
+                </span>
+              </div>
+              {gainers.slice(0, outcomeSlicer === 'profit' ? 8 : 5).map((g) => (
+                <GainerLoserRow key={g.symbol} item={g} type="gain" />
+              ))}
+            </div>
+          )}
+
+          {(outcomeSlicer === 'all' || outcomeSlicer === 'loss') && (
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <TrendingDown size={16} className="loss" /> Top Losers
+                </h2>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-bold">
+                  {losers.length} loss declines
+                </span>
+              </div>
+              {losers.slice(0, outcomeSlicer === 'loss' ? 8 : 5).map((l) => (
+                <GainerLoserRow key={l.symbol} item={l} type="loss" />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── All Indices Table ──────────────────────────────── */}
+      {/* ── All Indices Table (Sliced by Outcome) ────────────── */}
       <div className="card overflow-x-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold flex items-center gap-2"><BarChart2 size={16} /> All Indices</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold flex items-center gap-2"><BarChart2 size={16} /> All Indices</h2>
+            {outcomeSlicer !== 'all' && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 capitalize font-medium">
+                Showing {outcomeSlicer} only
+              </span>
+            )}
+          </div>
           <Link to="/indices" className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
             View all <ArrowRight size={12} />
           </Link>
@@ -228,7 +483,7 @@ export default function HomePage() {
             </tr>
           </thead>
           <tbody>
-            {allIndices.map((idx) => {
+            {displayedIndices.map((idx) => {
               const isGain = idx.changePct >= 0
               return (
                 <tr key={idx.symbol} className="border-b hover:bg-white/2 transition-colors"

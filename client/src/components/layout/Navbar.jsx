@@ -112,7 +112,8 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 glass border-b select-none" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+    <>
+      <header className="sticky top-0 z-40 glass border-b select-none" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
 
@@ -290,6 +291,7 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+    </header>
 
       {/* ── Mobile Slide-In Navigation (Backdrop + Off-Canvas Drawer) ────── */}
       {/* 1. Backdrop Overlay */}
@@ -492,6 +494,46 @@ export default function Navbar() {
           )}
         </div>
       </div>
-    </header>
+
+      {/* ── Mobile Bottom Navigation Bar (Always visible on mobile) ────── */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#080e1e]/95 backdrop-blur-xl border-t border-slate-800/90 py-1.5 px-3 flex items-center justify-around shadow-2xl"
+        aria-label="Mobile Quick Navigation"
+      >
+        {[
+          { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+          { to: '/indices', label: 'Indices', icon: Activity },
+          { to: '/stocks', label: 'Stocks', icon: TrendingUp },
+          { to: '/journal', label: 'Journal', icon: BookOpen },
+        ].map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all min-w-[56px] min-h-[48px] ${
+                isActive
+                  ? 'text-blue-400 font-bold bg-blue-500/10'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`
+            }
+          >
+            <Icon size={18} />
+            <span className="text-[10px] mt-0.5">{label}</span>
+          </NavLink>
+        ))}
+        {/* Menu toggle button */}
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all min-w-[56px] min-h-[48px] ${
+            open ? 'text-indigo-400 font-bold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'
+          }`}
+          aria-label="Toggle Navigation Menu"
+        >
+          <Menu size={18} />
+          <span className="text-[10px] mt-0.5">Menu</span>
+        </button>
+      </nav>
+    </>
   )
 }
