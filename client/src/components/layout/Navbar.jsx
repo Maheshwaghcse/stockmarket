@@ -36,7 +36,7 @@ const NAV_LINKS = [
   { to: '/calculator', label: 'Calculator',  icon: Calculator,      badge: '5 Tools' },
   { to: '/news',       label: 'News',        icon: Newspaper,       badge: 'Live' },
   { to: '/education',  label: 'Learn',       icon: GraduationCap,   badge: null },
-  { to: '/pricing',    label: 'Pricing',     icon: Sparkles,        badge: null },
+  { to: '/pricing',    label: 'Pricing',     icon: Sparkles,        badge: 'Soon' },
 ]
 
 export default function Navbar() {
@@ -459,7 +459,7 @@ export default function Navbar() {
                     className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 min-h-[40px] font-medium"
                   >
                     <Sparkles size={13} />
-                    <span>Upgrade</span>
+                    <span>Pricing (Soon)</span>
                   </Link>
                 )}
               </div>

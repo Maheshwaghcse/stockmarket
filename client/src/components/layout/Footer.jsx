@@ -164,7 +164,7 @@ export default function Footer() {
                 ['Technical Analysis Sandbox', '/education'],
                 ['Candlestick Patterns Guide', '/education'],
                 ['Financial News & RBI', '/news'],
-                ['Plans & Pricing', '/pricing'],
+                ['Plans & Pricing (Coming Soon)', '/pricing'],
                 ['Trader Profile & Settings', '/profile'],
               ].map(([l, to]) => (
                 <li key={l}>

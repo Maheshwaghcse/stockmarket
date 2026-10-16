@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useQuery } from '@tanstack/react-query'
-import { Settings, CreditCard, User } from 'lucide-react'
+import { Settings, CreditCard, User, Sparkles } from 'lucide-react'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 
@@ -77,7 +78,10 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        <a href="/pricing" className="btn-ghost w-full text-center mt-4 block text-sm">Upgrade Plan →</a>
+        <Link to="/pricing" className="btn-ghost w-full text-center mt-4 flex items-center justify-center gap-2 text-sm text-blue-400 hover:text-blue-300">
+          <Sparkles size={14} />
+          <span>Pro Plans & Razorpay Gateway (Coming Soon) →</span>
+        </Link>
       </div>
 
       {/* Payment history */}
