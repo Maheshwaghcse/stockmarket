@@ -353,7 +353,7 @@ export default function EducationPage() {
         </div>
 
         {/* Tab Navigation Pill Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-slate-800 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto touch-scroll pb-2 border-b border-slate-800 scrollbar-none">
           {CURRICULUM_MODULES.map((m) => {
             const Icon = m.icon
             const isActive = m.id === activeTab
@@ -376,7 +376,7 @@ export default function EducationPage() {
         </div>
 
         {/* Active Module Content Card */}
-        <div className="card space-y-6 p-6" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+        <div className="card space-y-6 p-4 sm:p-6" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
             <div>
               <div className="flex items-center gap-2 mb-1">

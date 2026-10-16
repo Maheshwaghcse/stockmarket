@@ -35,9 +35,9 @@ export default function IndexDetailPage() {
           <h1 className="text-2xl font-bold">{idx.name}</h1>
           <p className="text-sm muted mt-1">{idx.symbol} · {idx.exchange}</p>
         </div>
-        <div className="text-right">
-          <p className="text-3xl font-bold mono">{fmt(idx.value)}</p>
-          <p className={`text-sm font-semibold flex items-center justify-end gap-1 ${isGain ? 'gain' : 'loss'}`}>
+        <div className="text-left sm:text-right">
+          <p className="text-2xl sm:text-3xl font-bold mono">{fmt(idx.value)}</p>
+          <p className={`text-sm font-semibold flex items-center sm:justify-end gap-1 ${isGain ? 'gain' : 'loss'}`}>
             {isGain ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
             {isGain ? '+' : ''}{fmt(idx.change)} ({isGain ? '+' : ''}{idx.changePct?.toFixed(2)}%)
           </p>

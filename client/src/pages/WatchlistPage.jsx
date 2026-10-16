@@ -99,13 +99,13 @@ export default function WatchlistPage() {
         <div className="md:col-span-2">
           {activeList ? (
             <div className="card space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <h2 className="font-semibold">{activeList.name}</h2>
                 <form onSubmit={(e) => { e.preventDefault(); if (addSymbol) addItem.mutate({ listId: activeList._id, symbol: addSymbol }) }}
-                      className="flex gap-2">
+                      className="flex gap-2 w-full sm:w-auto">
                   <input value={addSymbol} onChange={(e) => setAddSymbol(e.target.value.toUpperCase())}
                          placeholder="Add symbol…" maxLength={20}
-                         className="px-3 py-1.5 rounded-lg text-xs outline-none w-32"
+                         className="px-3 py-1.5 rounded-lg text-xs outline-none flex-1 sm:w-36"
                          style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
                   <button type="submit" className="btn-primary text-xs px-3 py-1.5">Add</button>
                 </form>

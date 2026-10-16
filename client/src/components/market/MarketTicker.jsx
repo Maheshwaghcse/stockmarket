@@ -11,14 +11,14 @@ export default function MarketTicker() {
   const doubled = [...items, ...items]
 
   return (
-    <div className="overflow-hidden border-b relative"
+    <div className="w-full overflow-hidden border-b relative select-none"
          style={{ background: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.05)', height: 32 }}>
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5">
+      <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-10 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5 shadow-sm">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        <span>LIVE MARKETS</span>
+        <span>LIVE <span className="hidden sm:inline">MARKETS</span></span>
       </div>
-      <div className="flex items-center h-full" style={{ paddingLeft: 125 }}>
-        <div className="flex animate-[ticker_40s_linear_infinite] whitespace-nowrap gap-8">
+      <div className="flex items-center h-full pl-20 sm:pl-32 overflow-hidden">
+        <div className="flex animate-[ticker_40s_linear_infinite] whitespace-nowrap gap-6 sm:gap-8">
           {doubled.map((idx, i) => {
             const isGain = idx.changePct >= 0
             return (

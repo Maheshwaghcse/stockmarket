@@ -66,7 +66,7 @@ export default function ProfilePage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 text-sm">
           {Object.entries(subscription?.features || {}).map(([key, val]) => (
             <div key={key} className="flex items-center justify-between card-sm">
               <span className="text-xs muted capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>

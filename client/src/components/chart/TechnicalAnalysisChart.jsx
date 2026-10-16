@@ -213,7 +213,7 @@ export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', heig
       const mainHeight = subIndicator !== 'none' ? height * 0.72 : height
 
       chart = createChart(container, {
-        width: container.clientWidth || 800,
+        width: container.clientWidth || 320,
         height: mainHeight,
         layout: {
           background: { type: ColorType.Solid, color: 'transparent' },
@@ -438,7 +438,7 @@ export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', heig
 
       const container = subChartContainerRef.current
       subChart = createChart(container, {
-        width: container.clientWidth || 800,
+        width: container.clientWidth || 320,
         height: 140,
         layout: {
           background: { type: ColorType.Solid, color: 'transparent' },
@@ -611,7 +611,7 @@ export default function TechnicalAnalysisChart({ defaultSymbol = 'NIFTY50', heig
         </div>
 
         {/* Indicator & Pattern Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setShowSettings((v) => !v)}

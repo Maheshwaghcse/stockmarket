@@ -217,7 +217,7 @@ export default function StocksPage() {
       </div>
 
       {/* ── Market Breadth Summary Cards ────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total & A/D Ratio */}
         <div className="card p-3.5 space-y-2">
           <p className="text-xs muted flex items-center justify-between">
@@ -299,7 +299,7 @@ export default function StocksPage() {
       </div>
 
       {/* ── Sector Filter Pills ─────────────────────────────────── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+      <div className="flex items-center gap-2 overflow-x-auto touch-scroll pb-1 scrollbar-thin">
         <span className="text-xs font-semibold muted uppercase tracking-wider flex items-center gap-1 flex-shrink-0">
           <Layers size={12} /> Sectors:
         </span>
@@ -460,7 +460,7 @@ export default function StocksPage() {
         </div>
       ) : viewMode === 'table' ? (
         /* ── TABLE VIEW ────────────────────────────────────────── */
-        <div className="card overflow-x-auto p-0">
+        <div className="card overflow-x-auto touch-scroll p-0">
           <table className="w-full text-sm">
             <thead>
               <tr

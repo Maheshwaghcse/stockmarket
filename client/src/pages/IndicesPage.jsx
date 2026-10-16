@@ -14,7 +14,7 @@ export default function IndicesPage() {
           <p className="text-sm muted mt-1">NSE and BSE major market indices and sector benchmarks</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {all.length === 0
           ? Array.from({ length: 10 }).map((_, i) => <div key={i} className="skeleton h-36 rounded-lg" />)
           : all.map((idx) => <IndexCard key={idx.symbol} index={idx} />)

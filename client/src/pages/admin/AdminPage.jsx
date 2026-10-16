@@ -15,7 +15,7 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold">Admin Dashboard</h2>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Users',       value: stats.totalUsers,            icon: Users },
           { label: 'Active Subs',       value: stats.activeSubscriptions,   icon: Activity },
@@ -48,7 +48,7 @@ function UsersList() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Users</h2>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto touch-scroll">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-xs muted border-b" style={{ borderColor: 'var(--color-border)' }}>
@@ -92,14 +92,14 @@ const ADMIN_NAV = [
 
 export default function AdminPage() {
   return (
-    <div className="flex gap-6 fade-in">
+    <div className="flex flex-col md:flex-row gap-6 fade-in">
       {/* Sidebar */}
-      <aside className="w-48 shrink-0">
-        <div className="card space-y-1">
+      <aside className="w-full md:w-48 shrink-0">
+        <div className="card flex md:flex-col overflow-x-auto touch-scroll gap-1 p-2 md:p-3">
           {ADMIN_NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end}
               className={({ isActive }) =>
-                `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                   isActive ? 'bg-blue-500/10 text-blue-400' : 'muted hover:text-slate-200 hover:bg-white/5'
                 }`
               }>

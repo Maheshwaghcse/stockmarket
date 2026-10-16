@@ -54,9 +54,9 @@ export default function StockDetailPage() {
                   </Link>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <p className="text-3xl font-bold mono">₹{fmt(s.price)}</p>
-                <p className={`text-sm font-semibold flex items-center justify-end gap-1 ${s.changePct >= 0 ? 'gain' : 'loss'}`}>
+                <p className={`text-sm font-semibold flex items-center justify-start sm:justify-end gap-1 ${s.changePct >= 0 ? 'gain' : 'loss'}`}>
                   {s.changePct >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
                   {s.changePct >= 0 ? '+' : ''}{fmt(s.change)} ({s.changePct >= 0 ? '+' : ''}{s.changePct?.toFixed(2)}%)
                 </p>

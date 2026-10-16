@@ -71,7 +71,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Index Cards ────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {FEATURED_INDICES.map((sym) => (
           <IndexCard key={sym} index={indices[sym]} />
         ))}
@@ -174,7 +174,7 @@ export default function HomePage() {
               All articles <ArrowRight size={12} />
             </Link>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {newsData.data.slice(0, 3).map((article) => (
               <Link key={article._id} to={`/news/${article.slug}`}
                     className="card hover:border-blue-500/30 transition-all hover:-translate-y-0.5 block">

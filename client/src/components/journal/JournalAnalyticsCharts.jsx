@@ -325,7 +325,7 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
           </div>
 
           {/* Subtabs */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-1 overflow-x-auto touch-scroll pb-1 scrollbar-none">
             {[
               { id: 'equity', label: 'Equity Curve', icon: TrendingUp },
               { id: 'waterfall', label: 'Trade-by-Trade P&L', icon: BarChart3 },
@@ -392,10 +392,10 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
             </div>
 
             {/* SVG Interactive Area Chart */}
-            <div className="relative overflow-x-auto bg-[#080d1a] rounded-xl border border-slate-800/80 p-2">
+            <div className="relative overflow-x-auto touch-scroll bg-[#080d1a] rounded-xl border border-slate-800/80 p-2">
               <svg
                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                className="w-full h-auto min-w-[640px] select-none"
+                className="w-full h-auto min-w-[500px] sm:min-w-[640px] select-none"
                 style={{ overflow: 'visible' }}
               >
                 <defs>

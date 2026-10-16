@@ -19,9 +19,9 @@ function DonutChart({ segments, size = 200, strokeWidth = 24, centerLabel = '', 
   let accumulated = 0
 
   return (
-    <div className="flex flex-col items-center justify-center p-2">
-      <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+    <div className="flex flex-col items-center justify-center p-2 w-full max-w-full">
+      <div className="relative flex items-center justify-center max-w-full" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 max-w-full h-auto">
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -294,18 +294,18 @@ export default function CalculatorPage() {
         </div>
 
         {/* Top 5 Tab Navigation Bar with Icons matching Reference Screenshots */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mb-6">
+        <div className="grid grid-cols-2 min-[540px]:grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 mb-6">
           <button
             id="tab-risk"
             onClick={() => setActiveTab('risk')}
-            className={`flex items-center justify-center sm:justify-start gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-2.5 sm:px-4 py-2 sm:py-3 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'risk'
                 ? 'bg-blue-600/15 border-blue-500 text-blue-400 shadow-lg shadow-blue-500/10'
                 : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800/60 hover:text-white'
             }`}
           >
             <div className={`p-1.5 rounded-lg ${activeTab === 'risk' ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-800 text-slate-400'}`}>
-              <Target size={18} />
+              <Target size={16} />
             </div>
             <span>Risk</span>
           </button>
@@ -313,14 +313,14 @@ export default function CalculatorPage() {
           <button
             id="tab-cagr"
             onClick={() => setActiveTab('cagr')}
-            className={`flex items-center justify-center sm:justify-start gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-2.5 sm:px-4 py-2 sm:py-3 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'cagr'
                 ? 'bg-blue-600/15 border-blue-500 text-blue-400 shadow-lg shadow-blue-500/10'
                 : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800/60 hover:text-white'
             }`}
           >
             <div className={`p-1.5 rounded-lg ${activeTab === 'cagr' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
-              <TrendingUp size={18} />
+              <TrendingUp size={16} />
             </div>
             <span>CAGR</span>
           </button>
@@ -328,14 +328,14 @@ export default function CalculatorPage() {
           <button
             id="tab-sip"
             onClick={() => setActiveTab('sip')}
-            className={`flex items-center justify-center sm:justify-start gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-2.5 sm:px-4 py-2 sm:py-3 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'sip'
                 ? 'bg-blue-600/15 border-blue-500 text-blue-400 shadow-lg shadow-blue-500/10'
                 : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800/60 hover:text-white'
             }`}
           >
             <div className={`p-1.5 rounded-lg ${activeTab === 'sip' ? 'bg-red-500/20 text-red-400' : 'bg-slate-800 text-slate-400'}`}>
-              <Gift size={18} />
+              <Gift size={16} />
             </div>
             <span>SIP</span>
           </button>
@@ -343,14 +343,14 @@ export default function CalculatorPage() {
           <button
             id="tab-emi"
             onClick={() => setActiveTab('emi')}
-            className={`flex items-center justify-center sm:justify-start gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-2.5 sm:px-4 py-2 sm:py-3 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'emi'
                 ? 'bg-blue-600/15 border-blue-500 text-blue-400 shadow-lg shadow-blue-500/10'
                 : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800/60 hover:text-white'
             }`}
           >
             <div className={`p-1.5 rounded-lg ${activeTab === 'emi' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-800 text-slate-400'}`}>
-              <Landmark size={18} />
+              <Landmark size={16} />
             </div>
             <span>EMI</span>
           </button>
@@ -358,14 +358,14 @@ export default function CalculatorPage() {
           <button
             id="tab-option"
             onClick={() => setActiveTab('option')}
-            className={`col-span-2 sm:col-span-1 flex items-center justify-center sm:justify-start gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+            className={`col-span-2 min-[540px]:col-span-1 flex items-center justify-center sm:justify-start gap-2 px-2.5 sm:px-4 py-2 sm:py-3 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'option'
                 ? 'bg-blue-600/15 border-blue-500 text-blue-400 shadow-lg shadow-blue-500/10'
                 : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800/60 hover:text-white'
             }`}
           >
             <div className={`p-1.5 rounded-lg ${activeTab === 'option' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400'}`}>
-              <Sliders size={18} />
+              <Sliders size={16} />
             </div>
             <span>Option</span>
           </button>

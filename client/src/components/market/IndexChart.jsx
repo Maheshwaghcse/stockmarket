@@ -17,6 +17,7 @@ export default function IndexChart({ symbol, height = 260 }) {
 
     try {
       chart = createChart(containerRef.current, {
+        width: containerRef.current.clientWidth || 300,
         height,
         layout: {
           background: { type: ColorType.Solid, color: 'transparent' },

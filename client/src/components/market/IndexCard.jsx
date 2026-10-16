@@ -17,7 +17,7 @@ export default function IndexCard({ index }) {
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide muted">{symbol}</p>
-          <p className="text-sm font-medium mt-0.5 truncate max-w-36">{name}</p>
+          <p className="text-sm font-medium mt-0.5 truncate max-w-full sm:max-w-40">{name}</p>
         </div>
         <span className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
           isGain ? 'gain' : 'loss'
