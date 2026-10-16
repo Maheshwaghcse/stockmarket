@@ -78,21 +78,6 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
     return list
   }, [closedTrades, waterfallSort])
 
-  if (closedTradesCount === 0) {
-    return (
-      <div className="card bg-[#0b1329]/90 border border-slate-800/80 rounded-2xl p-8 shadow-2xl text-center space-y-3">
-        <div className="w-12 h-12 mx-auto rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-          <BarChart3 size={24} />
-        </div>
-        <h3 className="text-base font-bold text-slate-200">No Closed Trades For Analytics</h3>
-        <p className="text-xs text-slate-400 max-w-md mx-auto">
-          Log trades with entry and exit prices in your journal to unlock data visualizations including highest
-          profits, lowest losses, win/loss streaks, and equity growth curves.
-        </p>
-      </div>
-    )
-  }
-
   // Calculate SVG Dimensions & Path for Equity Curve
   const svgWidth = 800
   const svgHeight = 260
@@ -150,6 +135,21 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
     const maxVal = Math.max(...waterfallBars.map((b) => Math.abs(b.pnlNum)))
     return maxVal || 1
   }, [waterfallBars])
+
+  if (closedTradesCount === 0) {
+    return (
+      <div className="card bg-[#0b1329]/90 border border-slate-800/80 rounded-2xl p-8 shadow-2xl text-center space-y-3">
+        <div className="w-12 h-12 mx-auto rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+          <BarChart3 size={24} />
+        </div>
+        <h3 className="text-base font-bold text-slate-200">No Closed Trades For Analytics</h3>
+        <p className="text-xs text-slate-400 max-w-md mx-auto">
+          Log trades with entry and exit prices in your journal to unlock data visualizations including highest
+          profits, lowest losses, win/loss streaks, and equity growth curves.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
