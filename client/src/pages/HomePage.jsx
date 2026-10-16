@@ -16,6 +16,9 @@ import {
   Activity,
   Layers,
   Clock,
+  PieChart,
+  Sparkles,
+  Filter,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -131,6 +134,43 @@ export default function HomePage() {
     return displayWatchlistStocks
   }, [displayWatchlistStocks, outcomeSlicer])
 
+  // Movers tab state for sidebar
+  const [moversTab, setMoversTab] = useState('all') // 'all', 'gainers', 'losers'
+
+  // Top stock movers
+  const stockGainers = useMemo(() => {
+    return [...allStocks].sort((a, b) => (b.changePct || 0) - (a.changePct || 0)).slice(0, 6)
+  }, [allStocks])
+
+  const stockLosers = useMemo(() => {
+    return [...allStocks].sort((a, b) => (a.changePct || 0) - (b.changePct || 0)).slice(0, 6)
+  }, [allStocks])
+
+  // Sector Performance from allStocks
+  const sectorPerformance = useMemo(() => {
+    const map = {}
+    allStocks.forEach((s) => {
+      const sec = s.sector || 'General'
+      if (!map[sec]) {
+        map[sec] = { name: sec, totalChange: 0, count: 0, gainers: 0, losers: 0 }
+      }
+      const chg = s.changePct || 0
+      map[sec].totalChange += chg
+      map[sec].count++
+      if (chg >= 0) map[sec].gainers++
+      else map[sec].losers++
+    })
+
+    return Object.values(map)
+      .filter((sec) => sec.count >= 2)
+      .map((sec) => ({
+        ...sec,
+        avgChange: sec.count > 0 ? sec.totalChange / sec.count : 0,
+      }))
+      .sort((a, b) => b.avgChange - a.avgChange)
+      .slice(0, 4)
+  }, [allStocks])
+
   return (
     <div className="space-y-6 sm:space-y-7 fade-in">
       {/* ── Hero Header ────────────────────────────────────── */}
@@ -160,84 +200,132 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── Interactive Market Slicers Bar (Days, Time, Profit, Loss) ── */}
-      <div className="card p-3 sm:p-4 bg-[#0b1329]/95 border border-slate-800/90 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold uppercase tracking-wider pr-2 border-r border-slate-800">
-            <SlidersHorizontal size={13} className="text-blue-400" />
-            <span>Dashboard Slicers</span>
-          </span>
-
-          {/* Time / Days Slicer */}
-          <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
-            {[
-              { id: '1D', label: 'Intraday (1D)' },
-              { id: '5D', label: '5 Days' },
-              { id: '1M', label: '1 Month' },
-              { id: '1Y', label: '1 Year' },
-            ].map((tf) => (
-              <button
-                key={tf.id}
-                onClick={() => setTimeSlicer(tf.id)}
-                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
-                  timeSlicer === tf.id
-                    ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {tf.label}
-              </button>
-            ))}
+      {/* ── Simple, Crystal-Clear Slicers Bar (One-Visit Intuitive) ── */}
+      <div className="card p-3.5 sm:p-4 bg-gradient-to-r from-[#0b1329] via-[#091124] to-[#070d1c] border border-slate-800 rounded-2xl shadow-xl space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Slicer Group 1: Timeframe */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <Clock size={13} className="text-blue-400" />
+              <span>Timeframe:</span>
+            </span>
+            <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
+              {[
+                { id: '1D', label: 'Today (1D)' },
+                { id: '5D', label: '5 Days' },
+                { id: '1M', label: '1 Month' },
+                { id: '1Y', label: '1 Year' },
+              ].map((tf) => (
+                <button
+                  key={tf.id}
+                  onClick={() => setTimeSlicer(tf.id)}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                    timeSlicer === tf.id
+                      ? 'bg-blue-600 text-white font-bold shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Profit / Loss Outcome Slicer */}
-          <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
-            {[
-              { id: 'all', label: 'All Direction' },
-              { id: 'profit', label: 'Profit (▲)', color: 'text-emerald-400' },
-              { id: 'loss', label: 'Loss (▼)', color: 'text-rose-400' },
-            ].map((out) => (
-              <button
-                key={out.id}
-                onClick={() => setOutcomeSlicer(out.id)}
-                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
-                  outcomeSlicer === out.id
-                    ? 'bg-indigo-600 text-white shadow-sm font-semibold'
-                    : out.color || 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {out.label}
-              </button>
-            ))}
+          {/* Slicer Group 2: Direction / Outcome */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <Filter size={13} className="text-indigo-400" />
+              <span>Filter:</span>
+            </span>
+            <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
+              {[
+                { id: 'all', label: 'All Stocks' },
+                { id: 'profit', label: '▲ Profit Only' },
+                { id: 'loss', label: '▼ Loss Only' },
+              ].map((out) => {
+                const isActive = outcomeSlicer === out.id
+                return (
+                  <button
+                    key={out.id}
+                    onClick={() => {
+                      setOutcomeSlicer(out.id)
+                      if (out.id === 'profit') setMoversTab('gainers')
+                      else if (out.id === 'loss') setMoversTab('losers')
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                      isActive
+                        ? out.id === 'profit'
+                          ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                          : out.id === 'loss'
+                          ? 'bg-rose-600 text-white font-bold shadow-sm'
+                          : 'bg-indigo-600 text-white font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {out.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
-          {/* Benchmark Symbol Quick Slicer */}
-          <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs hidden lg:inline-flex">
-            {['NIFTY50', 'BANKNIFTY', 'SENSEX', 'FINNIFTY'].map((sym) => (
-              <button
-                key={sym}
-                onClick={() => setActiveChartSymbol(sym)}
-                className={`px-2 py-1 rounded-lg font-medium transition-all ${
-                  activeChartSymbol === sym
-                    ? 'bg-slate-700 text-white font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {sym === 'NIFTY50' ? 'Nifty 50' : sym === 'BANKNIFTY' ? 'Bank Nifty' : sym === 'SENSEX' ? 'Sensex' : 'Fin Nifty'}
-              </button>
-            ))}
+          {/* Slicer Group 3: Benchmark Index */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <Activity size={13} className="text-cyan-400" />
+              <span>Benchmark:</span>
+            </span>
+            <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
+              {[
+                { id: 'NIFTY50', label: 'Nifty 50' },
+                { id: 'BANKNIFTY', label: 'Bank Nifty' },
+                { id: 'SENSEX', label: 'Sensex' },
+                { id: 'FINNIFTY', label: 'Fin Nifty' },
+              ].map((sym) => (
+                <button
+                  key={sym.id}
+                  onClick={() => setActiveChartSymbol(sym.id)}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                    activeChartSymbol === sym.id
+                      ? 'bg-slate-700 text-white font-bold shadow-sm ring-1 ring-slate-600'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {sym.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Live Breadth Quick Metric */}
-        <div className="flex items-center gap-3 text-xs">
-          <span className="text-slate-400 hidden sm:inline">Market Breadth:</span>
-          <span className="text-emerald-400 font-bold font-mono">
-            ▲ {marketBreadth.advances} Adv
-          </span>
-          <span className="text-rose-400 font-bold font-mono">
-            ▼ {marketBreadth.declines} Dec
-          </span>
+        {/* Live Active Slicer Summary Banner */}
+        <div className="pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-slate-400">
+            <span>Active View:</span>
+            <span className="font-bold text-white px-2 py-0.5 rounded bg-slate-800 font-mono">
+              {activeChartSymbol}
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="font-bold text-blue-400 px-2 py-0.5 rounded bg-blue-500/10 font-mono">
+              {timeSlicer === '1D' ? 'Intraday (5m)' : timeSlicer === '5D' ? '5 Days (15m)' : timeSlicer === '1M' ? '1 Month (1h)' : '1 Year (1d)'}
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className={`font-bold px-2 py-0.5 rounded font-mono ${
+              outcomeSlicer === 'profit' ? 'text-emerald-400 bg-emerald-500/10' : outcomeSlicer === 'loss' ? 'text-rose-400 bg-rose-500/10' : 'text-indigo-400 bg-indigo-500/10'
+            }`}>
+              {outcomeSlicer === 'profit' ? '▲ Profit Leaders Only' : outcomeSlicer === 'loss' ? '▼ Declining Stocks Only' : 'All Market Direction'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs font-mono">
+            <span className="text-emerald-400 font-bold">
+              ▲ {marketBreadth.advances} Adv ({marketBreadth.advancePct}%)
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="text-rose-400 font-bold">
+              ▼ {marketBreadth.declines} Dec ({marketBreadth.declinePct}%)
+            </span>
+          </div>
         </div>
       </div>
 
@@ -259,122 +347,90 @@ export default function HomePage() {
         })}
       </div>
 
-      {/* ── Main Chart + Sidebar ───────────────────────────── */}
+      {/* ── Main Workspace Grid (Chart & Inspector Left + Balanced Right Column) ── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 xl:items-start">
-        {/* Main Chart Card (Dynamic Symbol, Time Slicers & Market Breadth Gauge) */}
-        <div className="xl:col-span-2 card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-bold text-base sm:text-lg text-white">
-                  {activeChartSymbol === 'NIFTY50' ? 'Nifty 50' : activeChartSymbol === 'BANKNIFTY' ? 'Bank Nifty' : activeChartSymbol === 'SENSEX' ? 'BSE Sensex' : activeChartSymbol === 'FINNIFTY' ? 'Nifty Fin Service' : activeChartSymbol}
-                </h2>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-mono font-bold border border-blue-500/20">
-                  {timeSlicer === '1D' ? 'Intraday (5m)' : timeSlicer === '5D' ? '5 Days (15m)' : timeSlicer === '1M' ? '1 Month (1h)' : '1 Year (1d)'}
-                </span>
-                {indices[activeChartSymbol] ? (
-                  <span className={`text-xs font-mono font-bold ${indices[activeChartSymbol].changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    ₹{indices[activeChartSymbol].value?.toLocaleString('en-IN', { maximumFractionDigits: 1 })} ({indices[activeChartSymbol].changePct >= 0 ? '+' : ''}{indices[activeChartSymbol].changePct?.toFixed(2)}%)
+        {/* Left Column (xl:col-span-2): Main Benchmark Chart + Exact Time Explorer */}
+        <div className="xl:col-span-2 space-y-5">
+          {/* Main Chart Card */}
+          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-bold text-base sm:text-lg text-white">
+                    {activeChartSymbol === 'NIFTY50' ? 'Nifty 50' : activeChartSymbol === 'BANKNIFTY' ? 'Bank Nifty' : activeChartSymbol === 'SENSEX' ? 'BSE Sensex' : activeChartSymbol === 'FINNIFTY' ? 'Nifty Fin Service' : activeChartSymbol}
+                  </h2>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-mono font-bold border border-blue-500/20">
+                    {timeSlicer === '1D' ? 'Intraday (5m)' : timeSlicer === '5D' ? '5 Days (15m)' : timeSlicer === '1M' ? '1 Month (1h)' : '1 Year (1d)'}
                   </span>
-                ) : (
-                  (() => {
-                    const st = allStocks.find((s) => s.symbol === activeChartSymbol)
-                    if (!st) return null
-                    const isUp = (st.changePct || 0) >= 0
-                    return (
-                      <span className={`text-xs font-mono font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        ₹{st.price?.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ({isUp ? '+' : ''}{st.changePct?.toFixed(2)}%)
-                      </span>
-                    )
-                  })()
-                )}
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {timeSlicer === '1D' ? 'Live intraday candles · Market Reference' : 'Extended historical candlestick view'}
-              </p>
-            </div>
-
-            {/* In-Card Fast Slicers */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
-                {['NIFTY50', 'BANKNIFTY', 'SENSEX', 'FINNIFTY'].map((sym) => (
-                  <button
-                    key={sym}
-                    onClick={() => setActiveChartSymbol(sym)}
-                    className={`px-2 py-1 rounded-lg font-medium transition-all ${
-                      activeChartSymbol === sym
-                        ? 'bg-blue-600 text-white font-bold shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {sym === 'NIFTY50' ? 'Nifty' : sym === 'BANKNIFTY' ? 'Bank' : sym === 'SENSEX' ? 'Sensex' : 'Fin'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs">
-                {['1D', '5D', '1M', '1Y'].map((tf) => (
-                  <button
-                    key={tf}
-                    onClick={() => setTimeSlicer(tf)}
-                    className={`px-2 py-1 rounded-lg font-medium transition-all ${
-                      timeSlicer === tf
-                        ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {tf}
-                  </button>
-                ))}
+                  {indices[activeChartSymbol] ? (
+                    <span className={`text-xs font-mono font-bold ${indices[activeChartSymbol].changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      ₹{indices[activeChartSymbol].value?.toLocaleString('en-IN', { maximumFractionDigits: 1 })} ({indices[activeChartSymbol].changePct >= 0 ? '+' : ''}{indices[activeChartSymbol].changePct?.toFixed(2)}%)
+                    </span>
+                  ) : (
+                    (() => {
+                      const st = allStocks.find((s) => s.symbol === activeChartSymbol)
+                      if (!st) return null
+                      const isUp = (st.changePct || 0) >= 0
+                      return (
+                        <span className={`text-xs font-mono font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          ₹{st.price?.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ({isUp ? '+' : ''}{st.changePct?.toFixed(2)}%)
+                        </span>
+                      )
+                    })()
+                  )}
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {timeSlicer === '1D' ? 'Live intraday candles · Market Reference' : 'Extended historical candlestick view'}
+                </p>
               </div>
 
               <Link
                 to={indices[activeChartSymbol] ? `/indices/${activeChartSymbol}` : `/stocks/${activeChartSymbol}`}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
               >
-                <span>Full</span>
+                <span>Full Chart</span>
                 <ArrowRight size={12} />
               </Link>
             </div>
+
+            {/* Live Market Sentiment & Advance-Decline Meter */}
+            <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-2.5 space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  Advances: {marketBreadth.advances} ({marketBreadth.advancePct}%)
+                </span>
+                <span className="text-slate-400 hidden sm:inline">
+                  Market Breadth Ratio
+                </span>
+                <span className="text-rose-400 font-semibold flex items-center gap-1">
+                  Declines: {marketBreadth.declines} ({marketBreadth.declinePct}%)
+                  <span className="w-2 h-2 rounded-full bg-rose-400" />
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+                  style={{ width: `${marketBreadth.advancePct}%` }}
+                />
+                <div
+                  className="h-full bg-gradient-to-r from-rose-500 to-red-600 transition-all duration-500"
+                  style={{ width: `${marketBreadth.declinePct}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Interactive Candlestick Chart */}
+            <IndexChart
+              symbol={activeChartSymbol}
+              timeRange={timeSlicer}
+              height={280}
+              onDataLoaded={setChartCandles}
+              onCrosshairMove={setHoveredCandle}
+            />
           </div>
 
-          {/* Live Market Sentiment & Advance-Decline Meter (Eliminates empty space) */}
-          <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-2.5 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                Advances: {marketBreadth.advances} ({marketBreadth.advancePct}%)
-              </span>
-              <span className="text-slate-400 hidden sm:inline">
-                Market Breadth Ratio
-              </span>
-              <span className="text-rose-400 font-semibold flex items-center gap-1">
-                Declines: {marketBreadth.declines} ({marketBreadth.declinePct}%)
-                <span className="w-2 h-2 rounded-full bg-rose-400" />
-              </span>
-            </div>
-            <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
-                style={{ width: `${marketBreadth.advancePct}%` }}
-              />
-              <div
-                className="h-full bg-gradient-to-r from-rose-500 to-red-600 transition-all duration-500"
-                style={{ width: `${marketBreadth.declinePct}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Interactive Index Chart with Crosshair & Candle Data sync */}
-          <IndexChart
-            symbol={activeChartSymbol}
-            timeRange={timeSlicer}
-            height={290}
-            onDataLoaded={setChartCandles}
-            onCrosshairMove={setHoveredCandle}
-          />
-
-          {/* ── Lower Area: Special Exact Time & Price Explorer Card ── */}
+          {/* Exact Time & Price Explorer Card */}
           <ExactTimePriceCard
             symbol={activeChartSymbol}
             candles={chartCandles}
@@ -382,109 +438,216 @@ export default function HomePage() {
             onSelectSymbol={(sym) => setActiveChartSymbol(sym)}
             watchlistStocks={displayWatchlistStocks}
           />
+        </div>
 
-          {/* ── Down Area: My Watchlist Stocks ───────────────────── */}
-          <div className="pt-3 border-t border-slate-800">
-            <div className="flex items-center justify-between mb-2">
+        {/* Right Column: Balanced Height & Zero Empty Space */}
+        <div className="space-y-5">
+          {/* Card 1: Top Movers (Gainers & Losers with Tabs) */}
+          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
               <div className="flex items-center gap-2">
-                <Star size={14} className="text-amber-400 fill-amber-400/20" />
-                <h3 className="text-xs font-semibold text-slate-100 uppercase tracking-wider">
-                  {watchlistItems.length > 0 ? (activeWatchlist.name || 'My Watchlist Stocks') : 'My Wishlist Stocks'}
-                </h3>
-                <span className="text-[10px] px-2 py-0.2 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                  {filteredWatchlistStocks.length} {outcomeSlicer !== 'all' ? outcomeSlicer : 'tracked'}
-                </span>
+                <TrendingUp size={16} className="text-blue-400" />
+                <h3 className="font-bold text-sm text-white">Market Movers</h3>
               </div>
-              <Link
-                to="/watchlist"
-                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium transition-colors"
-              >
-                <span>Edit Watchlist</span>
-                <ArrowRight size={11} />
-              </Link>
+              
+              {/* Movers Tabs */}
+              <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'gainers', label: '▲ Gain' },
+                  { id: 'losers', label: '▼ Loss' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setMoversTab(tab.id)}
+                    className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                      moversTab === tab.id
+                        ? 'bg-blue-600 text-white font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Grid of Watchlist Stocks */}
-            {filteredWatchlistStocks.length === 0 ? (
-              <div className="p-4 rounded-xl bg-slate-900/40 text-center text-xs text-slate-400">
-                No stocks match the current {outcomeSlicer} slicer in your watchlist.
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                {filteredWatchlistStocks.slice(0, 6).map((stk) => {
-                  const isGain = (stk.changePct || 0) >= 0
-                  return (
-                    <Link
-                      key={stk.symbol}
-                      to={`/stocks/${stk.symbol}`}
-                      className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all flex flex-col justify-between group"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs text-slate-100 group-hover:text-blue-400 transition-colors">
-                            {stk.symbol}
+            {/* Stock Rows */}
+            <div className="space-y-1">
+              {(moversTab === 'gainers' ? stockGainers : moversTab === 'losers' ? stockLosers : [...stockGainers.slice(0, 3), ...stockLosers.slice(0, 3)]).map((item) => {
+                const isGain = (item.changePct || 0) >= 0
+                return (
+                  <Link
+                    key={item.symbol}
+                    to={`/stocks/${item.symbol}`}
+                    className="flex items-center justify-between py-2 px-2.5 rounded-xl hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-800 group"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-white group-hover:text-blue-400 font-mono">
+                          {item.symbol}
+                        </span>
+                        {item.sector && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                            {item.sector.slice(0, 4)}
                           </span>
-                          {stk.sector && (
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
-                              {stk.sector.slice(0, 3)}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] muted truncate mt-0.5" title={stk.name}>
-                          {stk.name}
-                        </p>
+                        )}
                       </div>
+                      <p className="text-[11px] text-slate-400 truncate max-w-[130px]" title={item.name}>
+                        {item.name}
+                      </p>
+                    </div>
 
-                      <div className="mt-1.5 pt-1 border-t border-slate-800/60 flex items-baseline justify-between">
-                        <span className="font-mono text-xs font-bold text-slate-200">
-                          {stk.price > 0 ? `₹${stk.price?.toLocaleString('en-IN', { maximumFractionDigits: 1 })}` : '—'}
-                        </span>
-                        <span className={`text-[10px] font-mono font-bold ${isGain ? 'gain' : 'loss'}`}>
-                          {isGain ? '+' : ''}{stk.changePct?.toFixed(1)}%
-                        </span>
+                    <div className="text-right font-mono">
+                      <div className="text-xs font-semibold text-white">
+                        ₹{item.price?.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
                       </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
+                      <div className={`text-[11px] font-bold ${isGain ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {isGain ? '+' : ''}{item.changePct?.toFixed(2)}%
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
           </div>
-        </div>
 
-        {/* Right Sidebar: Gainers / Losers Cards (Aligned dynamically with Slicer) */}
-        <div className="space-y-4">
-          {(outcomeSlicer === 'all' || outcomeSlicer === 'profit') && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold flex items-center gap-2">
-                  <TrendingUp size={16} className="gain" /> Top Gainers
-                </h2>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold">
-                  {gainers.length} profit leaders
-                </span>
+          {/* Card 2: NSE Sector Performance */}
+          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <PieChart size={15} className="text-indigo-400" />
+                <h3 className="font-bold text-sm text-white">Sector Performance</h3>
               </div>
-              {gainers.slice(0, outcomeSlicer === 'profit' ? 8 : 5).map((g) => (
-                <GainerLoserRow key={g.symbol} item={g} type="gain" />
-              ))}
+              <span className="text-[10px] text-slate-400 uppercase font-mono">Avg Move</span>
+            </div>
+
+            <div className="space-y-2.5">
+              {sectorPerformance.map((sec) => {
+                const isUp = sec.avgChange >= 0
+                return (
+                  <div key={sec.name} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="text-slate-300 font-semibold">{sec.name}</span>
+                      <span className={`font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {isUp ? '+' : ''}{sec.avgChange.toFixed(2)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${isUp ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-rose-500 to-red-500'}`}
+                        style={{ width: `${Math.min(100, Math.max(15, Math.abs(sec.avgChange) * 30))}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Card 3: Market News Pulse */}
+          {newsData?.data?.length > 0 && (
+            <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <BookOpen size={15} className="text-amber-400" />
+                  <h3 className="font-bold text-sm text-white">Market Pulse News</h3>
+                </div>
+                <Link to="/news" className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
+                  <span>More</span>
+                  <ArrowRight size={10} />
+                </Link>
+              </div>
+
+              <div className="space-y-2.5">
+                {newsData.data.slice(0, 2).map((article) => (
+                  <Link
+                    key={article._id}
+                    to={`/news/${article.slug}`}
+                    className="block p-2 rounded-xl hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-800"
+                  >
+                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">
+                      {article.category || 'MARKET'}
+                    </span>
+                    <h4 className="text-xs font-semibold text-slate-200 line-clamp-1 mt-0.5">
+                      {article.title}
+                    </h4>
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      {article.publishedAt ? formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true }) : 'Just now'}
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
-
-          {(outcomeSlicer === 'all' || outcomeSlicer === 'loss') && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold flex items-center gap-2">
-                  <TrendingDown size={16} className="loss" /> Top Losers
-                </h2>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-bold">
-                  {losers.length} loss declines
-                </span>
-              </div>
-              {losers.slice(0, outcomeSlicer === 'loss' ? 8 : 5).map((l) => (
-                <GainerLoserRow key={l.symbol} item={l} type="loss" />
-              ))}
-            </div>
-          )}
         </div>
+      </div>
+
+      {/* ── Full-Width Section: My Watchlist & Wishlist Stocks ────────── */}
+      <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Star size={16} className="text-amber-400 fill-amber-400/20" />
+            <h3 className="font-bold text-sm sm:text-base text-white">
+              {watchlistItems.length > 0 ? (activeWatchlist.name || 'My Watchlist Stocks') : 'My Tracked Stocks'}
+            </h3>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
+              {filteredWatchlistStocks.length} {outcomeSlicer !== 'all' ? outcomeSlicer : 'tracked'}
+            </span>
+          </div>
+          <Link
+            to="/watchlist"
+            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium transition-colors"
+          >
+            <span>Manage Watchlist</span>
+            <ArrowRight size={12} />
+          </Link>
+        </div>
+
+        {/* 6-Column Grid of Watchlist Stocks */}
+        {filteredWatchlistStocks.length === 0 ? (
+          <div className="p-4 rounded-xl bg-slate-900/40 text-center text-xs text-slate-400">
+            No stocks match the current {outcomeSlicer} filter in your watchlist.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {filteredWatchlistStocks.slice(0, 6).map((stk) => {
+              const isGain = (stk.changePct || 0) >= 0
+              return (
+                <Link
+                  key={stk.symbol}
+                  to={`/stocks/${stk.symbol}`}
+                  className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all flex flex-col justify-between group shadow-sm"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-100 group-hover:text-blue-400 transition-colors font-mono">
+                        {stk.symbol}
+                      </span>
+                      {stk.sector && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+                          {stk.sector.slice(0, 4)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate mt-1" title={stk.name}>
+                      {stk.name}
+                    </p>
+                  </div>
+
+                  <div className="mt-2 pt-2 border-t border-slate-800/60 flex items-baseline justify-between">
+                    <span className="font-mono text-xs font-bold text-slate-200">
+                      {stk.price > 0 ? `₹${stk.price?.toLocaleString('en-IN', { maximumFractionDigits: 1 })}` : '—'}
+                    </span>
+                    <span className={`text-[11px] font-mono font-bold ${isGain ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {isGain ? '+' : ''}{stk.changePct?.toFixed(1)}%
+                    </span>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── All Indices Table (Sliced by Outcome) ────────────── */}
