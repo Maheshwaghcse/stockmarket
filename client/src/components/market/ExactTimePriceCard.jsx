@@ -243,10 +243,48 @@ export default function ExactTimePriceCard({
     handleTimeChange(targetTime)
   }
 
+  // Tab state for matrix: 'milestones' or 'all'
+  const [matrixTab, setMatrixTab] = useState('milestones')
+
+  // Compute milestone details with prices and % change vs open
+  const milestoneDetails = useMemo(() => {
+    return MILESTONE_TIMES.map((m) => {
+      let matchedCandle = null
+      let minDiff = Infinity
+      const parts = m.timeStr.split(':')
+      const targetMins = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10)
+
+      sessionCandles.forEach((c) => {
+        const cTime = formatTime24IST(c.time)
+        const cp = cTime.split(':')
+        const cMins = parseInt(cp[0], 10) * 60 + parseInt(cp[1], 10)
+        if (!isNaN(cMins)) {
+          const diff = Math.abs(cMins - targetMins)
+          if (diff < minDiff) {
+            minDiff = diff
+            matchedCandle = c
+          }
+        }
+      })
+
+      const baseOpenVal = openCandle ? openCandle.open : (matchedCandle?.open || 0)
+      const cPrice = matchedCandle?.close || 0
+      const changeVsOpen = baseOpenVal > 0 && cPrice > 0 ? ((cPrice - baseOpenVal) / baseOpenVal) * 100 : 0
+
+      return {
+        ...m,
+        candle: matchedCandle,
+        price: cPrice,
+        changeVsOpen,
+        matchedTime: matchedCandle ? formatTime24IST(matchedCandle.time) : m.timeStr,
+      }
+    })
+  }, [sessionCandles, openCandle])
+
   if (!activeCandle) {
     return (
-      <div className="card p-4 bg-slate-900/60 border border-slate-800 rounded-xl text-center text-xs text-slate-400">
-        <Clock size={16} className="inline mr-1.5 animate-spin text-blue-400" />
+      <div className="card p-6 bg-slate-900/60 border border-slate-800 rounded-2xl text-center text-xs text-slate-400">
+        <Clock size={16} className="inline mr-1.5 animate-spin text-cyan-400" />
         Loading intraday timestamp prices...
       </div>
     )
@@ -587,12 +625,168 @@ export default function ExactTimePriceCard({
               </span>
 
               <span className="text-slate-400 text-[11px] hidden sm:inline">
-                💡 Tip: Hover over the chart above to inspect any timestamp!
+                💡 Tip: Click any milestone below or hover chart to inspect
               </span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ── Downside: Intraday Session Milestones & Price Matrix Table (Zero Blank Space) ── */}
+      <div className="pt-3 border-t border-slate-800/80 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
+              <Sliders size={13} className="text-cyan-400" />
+              <span>Session Milestones &amp; Price Matrix</span>
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-cyan-300 font-mono border border-slate-800">
+              {symbol} · {sessionCandles.length} Intraday Candles
+            </span>
+          </div>
+
+          {/* Table Tab Selector */}
+          <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setMatrixTab('milestones')}
+              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                matrixTab === 'milestones'
+                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Key Session Milestones
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatrixTab('all')}
+              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                matrixTab === 'all'
+                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              All 5m Candles ({sessionCandles.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Milestone Cards / Table */}
+        {matrixTab === 'milestones' ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {milestoneDetails.map((m) => {
+              const isSelected = time24IST === m.timeStr || (m.candle && formatTime24IST(m.candle.time) === time24IST)
+              const isUp = m.changeVsOpen >= 0
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => handleTimeChange(m.timeStr)}
+                  className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-cyan-500/15 border-cyan-500/60 shadow-lg shadow-cyan-500/10 ring-1 ring-cyan-500/40'
+                      : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className={`font-mono font-bold text-[11px] ${isSelected ? 'text-cyan-300' : 'text-slate-300'}`}>
+                      {m.label}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">IST</span>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-mono font-bold text-sm text-white">
+                      ₹{m.price > 0 ? m.price.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '--'}
+                    </span>
+                    {m.price > 0 && (
+                      <span className={`text-[11px] font-mono font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {isUp ? '+' : ''}{m.changeVsOpen.toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate mt-0.5">
+                    {m.note}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-800/80 bg-slate-900/40 no-scrollbar">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="sticky top-0 bg-[#091124] text-[10px] uppercase text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th className="py-2 px-3">Time (IST)</th>
+                  <th className="py-2 px-3">Session Phase</th>
+                  <th className="py-2 px-3 text-right">Open</th>
+                  <th className="py-2 px-3 text-right">High</th>
+                  <th className="py-2 px-3 text-right">Low</th>
+                  <th className="py-2 px-3 text-right">Close</th>
+                  <th className="py-2 px-3 text-right">5m Move</th>
+                  <th className="py-2 px-3 text-right">vs Open</th>
+                  <th className="py-2 px-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50">
+                {sessionCandles.map((c) => {
+                  const tStr = formatTime24IST(c.time)
+                  const isSelected = tStr === time24IST
+                  const cChg = (c.close || 0) - (c.open || 0)
+                  const cChgPct = c.open > 0 ? (cChg / c.open) * 100 : 0
+                  const baseO = openCandle ? openCandle.open : (c.open || 1)
+                  const vsO = baseO > 0 ? (((c.close || 0) - baseO) / baseO) * 100 : 0
+                  const isBull = cChg >= 0
+                  return (
+                    <tr
+                      key={c.time}
+                      onClick={() => handleTimeChange(tStr)}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected ? 'bg-cyan-500/15 text-cyan-200' : 'hover:bg-slate-800/40 text-slate-300'
+                      }`}
+                    >
+                      <td className="py-1.5 px-3 font-bold text-white whitespace-nowrap">
+                        {tStr}
+                      </td>
+                      <td className="py-1.5 px-3 text-slate-400 text-[11px] truncate max-w-[140px]">
+                        {getSessionPhase(tStr)}
+                      </td>
+                      <td className="py-1.5 px-3 text-right text-slate-300">
+                        ₹{c.open?.toFixed(1)}
+                      </td>
+                      <td className="py-1.5 px-3 text-right text-emerald-400">
+                        ₹{c.high?.toFixed(1)}
+                      </td>
+                      <td className="py-1.5 px-3 text-right text-rose-400">
+                        ₹{c.low?.toFixed(1)}
+                      </td>
+                      <td className="py-1.5 px-3 text-right font-bold text-white">
+                        ₹{c.close?.toFixed(1)}
+                      </td>
+                      <td className={`py-1.5 px-3 text-right font-bold ${isBull ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {isBull ? '+' : ''}{cChgPct.toFixed(2)}%
+                      </td>
+                      <td className={`py-1.5 px-3 text-right ${vsO >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {vsO >= 0 ? '+' : ''}{vsO.toFixed(2)}%
+                      </td>
+                      <td className="py-1.5 px-3 text-center">
+                        <button
+                          type="button"
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            isSelected ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {isSelected ? 'Active' : 'Inspect'}
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
+

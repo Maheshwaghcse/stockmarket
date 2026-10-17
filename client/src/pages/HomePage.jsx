@@ -434,7 +434,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Main Workspace Grid (Chart & Inspector Left + Balanced Right Column) ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 xl:items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left Column (xl:col-span-2): Main Benchmark Chart + Exact Time Explorer */}
         <div className="xl:col-span-2 space-y-5">
           {/* Main Chart Card */}
@@ -510,7 +510,7 @@ export default function HomePage() {
             <IndexChart
               symbol={activeChartSymbol}
               timeRange={timeSlicer}
-              height={280}
+              height={290}
               onDataLoaded={setChartCandles}
               onCrosshairMove={setHoveredCandle}
             />
