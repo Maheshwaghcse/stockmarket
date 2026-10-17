@@ -5,13 +5,14 @@ import {
   Trash2, X, ChevronLeft, ChevronRight, Info, CheckCircle2, 
   Clock, ArrowUpRight, ArrowDownRight, Filter, AlertCircle,
   Target, LogOut, Lightbulb, Image, ChevronDown, ChevronUp,
-  Eye, FileText
+  Eye, FileText, Download
 } from 'lucide-react'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import JournalAnalyticsCharts from '../components/journal/JournalAnalyticsCharts'
+import JournalExportModal from '../components/journal/JournalExportModal'
 import { formatINR } from '../lib/journalAnalytics'
 
 // Quick suggested symbols
@@ -28,6 +29,7 @@ export default function TradingJournalPage() {
 
   // Filters & State
   const [modalOpen, setModalOpen] = useState(false)
+  const [exportModalOpen, setExportModalOpen] = useState(false)
   const [dayModalOpen, setDayModalOpen] = useState(false)
   const [expandedTradeId, setExpandedTradeId] = useState(null)
   const [fromDate, setFromDate] = useState('')
@@ -351,6 +353,16 @@ export default function TradingJournalPage() {
             style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}
           >
             <Plus size={16} /> New trade
+          </button>
+
+          {/* Download PDF button */}
+          <button
+            onClick={() => setExportModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700/80 shadow transition-all cursor-pointer"
+            title="Download Trading Journal PDF with date range, profit/loss filters, and professional summary"
+          >
+            <Download size={15} className="text-blue-400" />
+            <span>Download PDF</span>
           </button>
 
           {/* How to use link */}
@@ -871,27 +883,39 @@ export default function TradingJournalPage() {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-slate-200">Trade History</h3>
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400">
               {displayedTrades.length} trades
             </span>
           </div>
-          {selectedDayKey && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-blue-400 font-mono">
-                Filtered: {selectedDayKey}
-              </span>
-              <button
-                onClick={() => setSelectedDayKey(null)}
-                className="text-xs text-rose-300 hover:text-white px-2 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/30 font-semibold transition-all"
-                title="1-Click: Remove day filter"
-              >
-                Remove Filter ✕
-              </button>
-            </div>
-          )}
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setExportModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-300 bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 transition-all cursor-pointer shadow-sm"
+              title="Download filtered trades and audit summary as PDF"
+            >
+              <Download size={13} />
+              <span>Export PDF Report</span>
+            </button>
+
+            {selectedDayKey && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-blue-400 font-mono">
+                  Filtered: {selectedDayKey}
+                </span>
+                <button
+                  onClick={() => setSelectedDayKey(null)}
+                  className="text-xs text-rose-300 hover:text-white px-2 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/30 font-semibold transition-all"
+                  title="1-Click: Remove day filter"
+                >
+                  Remove Filter ✕
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {displayedTrades.length === 0 ? (
@@ -1639,6 +1663,17 @@ export default function TradingJournalPage() {
           </div>
         </div>
       )}
+
+      {/* PDF Export Modal */}
+      <JournalExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        trades={trades}
+        user={user}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
+      />
     </div>
   )
 }
+
