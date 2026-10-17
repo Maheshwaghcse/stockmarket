@@ -20,6 +20,8 @@ export default function IndexChart({
 
     let chart = null
     let resizeHandler = null
+    let containerEl = null
+    let mouseLeaveHandler = null
 
     try {
       chart = createChart(containerRef.current, {
@@ -94,10 +96,10 @@ export default function IndexChart({
       }
       window.addEventListener('resize', resizeHandler)
 
-      const mouseLeaveHandler = () => {
+      mouseLeaveHandler = () => {
         if (onCrosshairMove) onCrosshairMove(null)
       }
-      const containerEl = containerRef.current
+      containerEl = containerRef.current
       if (containerEl) {
         containerEl.addEventListener('mouseleave', mouseLeaveHandler)
       }
@@ -147,7 +149,7 @@ export default function IndexChart({
       if (resizeHandler) {
         window.removeEventListener('resize', resizeHandler)
       }
-      if (containerEl) {
+      if (containerEl && mouseLeaveHandler) {
         containerEl.removeEventListener('mouseleave', mouseLeaveHandler)
       }
       if (chart) {
