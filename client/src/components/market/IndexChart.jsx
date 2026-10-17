@@ -94,6 +94,14 @@ export default function IndexChart({
       }
       window.addEventListener('resize', resizeHandler)
 
+      const mouseLeaveHandler = () => {
+        if (onCrosshairMove) onCrosshairMove(null)
+      }
+      const containerEl = containerRef.current
+      if (containerEl) {
+        containerEl.addEventListener('mouseleave', mouseLeaveHandler)
+      }
+
       setLoading(true)
       setError(null)
 
@@ -138,6 +146,9 @@ export default function IndexChart({
     return () => {
       if (resizeHandler) {
         window.removeEventListener('resize', resizeHandler)
+      }
+      if (containerEl) {
+        containerEl.removeEventListener('mouseleave', mouseLeaveHandler)
       }
       if (chart) {
         chart.remove()

@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react'
-import { Clock, Sliders, TrendingUp, TrendingDown, Calendar, Search, Crosshair, Sparkles } from 'lucide-react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { Clock, Sliders, TrendingUp, TrendingDown, Calendar, Search, Crosshair, Sparkles, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
+import api from '../../lib/api'
 
 // Common Indian trading session milestones
 const MILESTONE_TIMES = [
@@ -74,17 +75,72 @@ export default function ExactTimePriceCard({
   onSelectSymbol = null,
   watchlistStocks = [],
 }) {
+  // Dedicated state for 5-minute intraday candles
+  const [fetchedCandles, setFetchedCandles] = useState([])
+  const [fetchLoading, setFetchLoading] = useState(false)
+
+  // Fetch true 5m intraday candles if the incoming candles are not intraday (e.g. daily when user selects 1Y chart)
+  useEffect(() => {
+    // Check if incoming candles already provide intraday 5m data
+    const isIntraday =
+      candles &&
+      candles.length >= 10 &&
+      candles.length > 1 &&
+      candles[1].time - candles[0].time <= 1800 // <= 30 min spacing
+
+    if (isIntraday) {
+      setFetchedCandles([])
+      return
+    }
+
+    let isCancelled = false
+    setFetchLoading(true)
+
+    const INDEX_SYMBOLS = ['NIFTY50', 'BANKNIFTY', 'SENSEX', 'FINNIFTY', 'NIFTYNEXT50', 'NIFTYIT', 'NIFTYPHARMA', 'NIFTYAUTO', 'NIFTYMIDCAP']
+    const isIndex = INDEX_SYMBOLS.includes(symbol.toUpperCase())
+
+    const url = isIndex
+      ? `/market/indices/${symbol}/intraday?interval=5`
+      : `/stocks/${symbol}/chart?range=1d&interval=5m`
+
+    api
+      .get(url)
+      .then(({ data }) => {
+        if (!isCancelled && data?.data && Array.isArray(data.data) && data.data.length > 0) {
+          setFetchedCandles(data.data)
+        }
+      })
+      .catch((err) => {
+        console.error('ExactTimePriceCard intraday fetch error:', err)
+      })
+      .finally(() => {
+        if (!isCancelled) setFetchLoading(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [symbol, candles])
+
+  // Resolve the active set of candles (prefer dedicated 5m intraday candles)
+  const effectiveCandles = useMemo(() => {
+    if (fetchedCandles && fetchedCandles.length > 0) {
+      return fetchedCandles
+    }
+    return candles || []
+  }, [fetchedCandles, candles])
+
   // Extract candles of the latest trading session for clean intraday 09:15 to 15:30 navigation
   const sessionCandles = useMemo(() => {
-    if (!candles || candles.length === 0) return []
+    if (!effectiveCandles || effectiveCandles.length === 0) return []
     // Find the latest candle's date in IST
-    const lastCandle = candles[candles.length - 1]
+    const lastCandle = effectiveCandles[effectiveCandles.length - 1]
     const lastDateStr = formatDateIST(lastCandle.time)
     
     // Filter candles that belong to this latest date
-    const todayCandles = candles.filter((c) => formatDateIST(c.time) === lastDateStr)
-    return todayCandles.length > 0 ? todayCandles : candles.slice(-75)
-  }, [candles])
+    const todayCandles = effectiveCandles.filter((c) => formatDateIST(c.time) === lastDateStr)
+    return todayCandles.length > 0 ? todayCandles : effectiveCandles.slice(-75)
+  }, [effectiveCandles])
 
   // Baseline 09:15 AM candle (day open)
   const openCandle = useMemo(() => {
@@ -97,8 +153,9 @@ export default function ExactTimePriceCard({
   // State: selected candle index in sessionCandles
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [customTimeInput, setCustomTimeInput] = useState('09:15')
+  const [isManualOverride, setIsManualOverride] = useState(false)
 
-  // When sessionCandles change, default to the 09:15 candle
+  // When sessionCandles change, default to the 09:15 candle if not manual
   useEffect(() => {
     if (sessionCandles.length > 0) {
       const idx915 = sessionCandles.findIndex((c) => formatTime24IST(c.time) === '09:15')
@@ -108,43 +165,78 @@ export default function ExactTimePriceCard({
     }
   }, [sessionCandles])
 
-  // The active candle to display: If hoveredCandle is active from chart, show hovered; else show selected
-  const activeCandle = useMemo(() => {
+  // Synchronize when chart hover fires
+  useEffect(() => {
     if (hoveredCandle && hoveredCandle.time) {
+      setIsManualOverride(false)
+      setCustomTimeInput(formatTime24IST(hoveredCandle.time))
+    }
+  }, [hoveredCandle])
+
+  // The active candle to display:
+  // - If user interacted manually with Direct Time / Milestones: use selectedIndex
+  // - Else if actively hovering over chart: use hoveredCandle
+  // - Fallback to selectedIndex or openCandle
+  const activeCandle = useMemo(() => {
+    if (!isManualOverride && hoveredCandle && hoveredCandle.time) {
       return hoveredCandle
     }
     if (sessionCandles.length > 0 && selectedIndex >= 0 && selectedIndex < sessionCandles.length) {
       return sessionCandles[selectedIndex]
     }
     return openCandle
-  }, [hoveredCandle, sessionCandles, selectedIndex, openCandle])
+  }, [isManualOverride, hoveredCandle, sessionCandles, selectedIndex, openCandle])
 
   // Handler for custom time input change
-  const handleTimeChange = (timeStr) => {
+  const handleTimeChange = useCallback((timeStr) => {
+    if (!timeStr) return
     setCustomTimeInput(timeStr)
+    setIsManualOverride(true)
+
     if (!sessionCandles.length) return
 
-    // Find the candle with matching or closest time <= timeStr
+    // Parse hour and minute safely
+    const parts = timeStr.split(':')
+    const h = parseInt(parts[0], 10)
+    const m = parseInt(parts[1], 10)
+    if (isNaN(h) || isNaN(m)) return
+
+    const targetMins = h * 60 + m
     let bestIdx = 0
     let minDiff = Infinity
 
-    // Convert timeStr to minutes
-    const [h, m] = timeStr.split(':').map(Number)
-    const targetMins = (h || 0) * 60 + (m || 0)
-
     sessionCandles.forEach((c, idx) => {
       const cTime24 = formatTime24IST(c.time)
-      const [ch, cm] = cTime24.split(':').map(Number)
-      const cMins = (ch || 0) * 60 + (cm || 0)
-      const diff = Math.abs(cMins - targetMins)
-      if (diff < minDiff) {
-        minDiff = diff
-        bestIdx = idx
+      const cParts = cTime24.split(':')
+      const ch = parseInt(cParts[0], 10)
+      const cm = parseInt(cParts[1], 10)
+      if (!isNaN(ch) && !isNaN(cm)) {
+        const cMins = ch * 60 + cm
+        const diff = Math.abs(cMins - targetMins)
+        if (diff < minDiff) {
+          minDiff = diff
+          bestIdx = idx
+        }
       }
     })
 
     setSelectedIndex(bestIdx)
-  }
+    // Synchronize the input field with the exact candle time matched
+    if (sessionCandles[bestIdx]) {
+      setCustomTimeInput(formatTime24IST(sessionCandles[bestIdx].time))
+    }
+  }, [sessionCandles])
+
+  // Step 5 minutes forward or backward
+  const handleStep = useCallback((stepDelta) => {
+    if (!sessionCandles.length) return
+    setIsManualOverride(true)
+    const nextIdx = Math.max(0, Math.min(sessionCandles.length - 1, selectedIndex + stepDelta))
+    setSelectedIndex(nextIdx)
+    if (sessionCandles[nextIdx]) {
+      setCustomTimeInput(formatTime24IST(sessionCandles[nextIdx].time))
+    }
+  }, [sessionCandles, selectedIndex])
 
   // Handler for milestone click
   const handleMilestoneClick = (targetTime) => {
@@ -210,7 +302,7 @@ export default function ExactTimePriceCard({
 
         {/* Status Pill & Reset */}
         <div className="flex items-center gap-2">
-          {isLiveHover ? (
+          {isLiveHover && !isManualOverride ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 animate-pulse">
               <Crosshair size={12} />
               <span>Chart Cursor Hover</span>
@@ -276,21 +368,80 @@ export default function ExactTimePriceCard({
         </div>
       )}
 
-      {/* ── Quick Time Milestones (1-Tap Buttons) ──────────────── */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs">
+      {/* ── Quick Time Milestones & Direct Time Controls ──────────────── */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="text-slate-400 font-medium flex items-center gap-1">
             <Sliders size={12} className="text-cyan-400" />
             <span>Key Market Milestones</span>
           </span>
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400 text-[11px]">Direct Time:</span>
-            <input
-              type="time"
-              value={customTimeInput}
-              onChange={(e) => handleTimeChange(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-0.5 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500"
-            />
+
+          {/* Interactive Direct Time Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-slate-400 text-[11px] font-semibold flex items-center gap-1">
+              <Clock size={11} className="text-cyan-400" />
+              <span>Direct Time:</span>
+            </span>
+
+            {/* Stepper + Time Input Combo */}
+            <div className="inline-flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5 shadow-inner">
+              <button
+                type="button"
+                onClick={() => handleStep(-1)}
+                className="px-1.5 py-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-mono font-bold transition-colors"
+                title="Step backward 5 minutes"
+              >
+                <ChevronLeft size={13} />
+              </button>
+              <input
+                type="time"
+                step="300"
+                min="09:15"
+                max="15:30"
+                value={customTimeInput}
+                onChange={(e) => handleTimeChange(e.target.value)}
+                onInput={(e) => handleTimeChange(e.target.value)}
+                className="bg-transparent px-1.5 py-0.5 text-xs font-mono font-bold text-cyan-300 focus:outline-none text-center cursor-pointer"
+                title="Type or select exact trading hour (09:15 - 15:30 IST)"
+              />
+              <button
+                type="button"
+                onClick={() => handleStep(1)}
+                className="px-1.5 py-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-mono font-bold transition-colors"
+                title="Step forward 5 minutes"
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            {/* Candle Selector Dropdown */}
+            {sessionCandles.length > 0 && (
+              <select
+                value={time24IST}
+                onChange={(e) => handleTimeChange(e.target.value)}
+                className="px-2 py-1 rounded-xl bg-slate-900 border border-slate-800 text-cyan-300 text-xs font-mono font-semibold focus:outline-none focus:border-cyan-500 cursor-pointer shadow-sm"
+                title="Pick exact 5m candle from today's session"
+              >
+                {sessionCandles.map((c) => {
+                  const tStr = formatTime24IST(c.time)
+                  return (
+                    <option key={tStr} value={tStr}>
+                      {tStr} · ₹{c.close?.toFixed(1)}
+                    </option>
+                  )
+                })}
+              </select>
+            )}
+
+            {/* Reset to 09:15 Open Button */}
+            <button
+              type="button"
+              onClick={() => handleTimeChange('09:15')}
+              className="px-2 py-1 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white text-[11px] font-medium transition-colors"
+              title="Reset to 09:15 AM Market Open"
+            >
+              Reset 09:15
+            </button>
           </div>
         </div>
 
