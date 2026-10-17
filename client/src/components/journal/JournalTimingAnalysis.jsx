@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Info,
+  RotateCcw,
 } from 'lucide-react'
 import { formatINR } from '../../lib/journalAnalytics'
 
@@ -541,6 +542,18 @@ export default function JournalTimingAnalysis({ trades = [] }) {
               ))}
             </div>
 
+            {/* Quick 1-Click Remove Filter Button */}
+            {filterType !== 'ALL' && (
+              <button
+                onClick={() => setFilterType('ALL')}
+                className="px-2.5 py-1 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-1 hover:bg-rose-500/30 transition-all shadow-sm"
+                title="1-Click: Remove outcome filter and show all trades"
+              >
+                <RotateCcw size={11} className="text-rose-400" />
+                <span>Remove Filter</span>
+              </button>
+            )}
+
             {/* Quick Timing Switcher Dropdown */}
             <select
               value={selectedBucketId}
@@ -589,9 +602,20 @@ export default function JournalTimingAnalysis({ trades = [] }) {
 
         {/* ── List / Cards of Stocks Picked with 3 Reasons ──── */}
         {filteredBucketTrades.length === 0 ? (
-          <div className="card p-6 bg-slate-900/40 border border-slate-800 rounded-xl text-center text-xs text-slate-400 space-y-1">
+          <div className="card p-6 bg-slate-900/40 border border-slate-800 rounded-xl text-center text-xs text-slate-400 space-y-2">
             <Info size={16} className="inline text-slate-500 mb-1" />
-            <p>No trades found for {selectedBucket.label} with filter: {filterType}</p>
+            <p>No trades found for {selectedBucket.label} with filter: <strong className="text-white">{filterType}</strong></p>
+            {filterType !== 'ALL' && (
+              <div>
+                <button
+                  onClick={() => setFilterType('ALL')}
+                  className="px-3 py-1 rounded-lg bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 text-xs font-semibold hover:bg-cyan-600/30 transition-all inline-flex items-center gap-1"
+                >
+                  <RotateCcw size={11} />
+                  <span>Remove Filter (Show All)</span>
+                </button>
+              </div>
+            )}
             <p className="text-[11px] text-slate-500">Pick another timing slot from the chart above</p>
           </div>
         ) : (

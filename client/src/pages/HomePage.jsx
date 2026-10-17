@@ -19,6 +19,7 @@ import {
   PieChart,
   Sparkles,
   Filter,
+  RotateCcw,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -296,6 +297,37 @@ export default function HomePage() {
               ))}
             </div>
           </div>
+
+          {/* Quick 1-Click Remove Filter Action Button */}
+          <div className="flex items-center gap-2 ml-auto">
+            {outcomeSlicer !== 'all' ? (
+              <button
+                onClick={() => {
+                  setOutcomeSlicer('all')
+                  setMoversTab('all')
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition-all shadow-sm"
+                title="1-Click: Remove filter and show all stocks"
+              >
+                <RotateCcw size={12} className="text-rose-400" />
+                <span>Remove Filter</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setOutcomeSlicer('all')
+                  setTimeSlicer('1D')
+                  setActiveChartSymbol('NIFTY50')
+                  setMoversTab('all')
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all"
+                title="Reset all chart and slicer filters to default view"
+              >
+                <RotateCcw size={11} className="text-slate-400" />
+                <span>Reset View</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Live Active Slicer Summary Banner */}
@@ -310,10 +342,22 @@ export default function HomePage() {
               {timeSlicer === '1D' ? 'Intraday (5m)' : timeSlicer === '5D' ? '5 Days (15m)' : timeSlicer === '1M' ? '1 Month (1h)' : '1 Year (1d)'}
             </span>
             <span className="text-slate-600">·</span>
-            <span className={`font-bold px-2 py-0.5 rounded font-mono ${
+            <span className={`inline-flex items-center gap-1.5 font-bold px-2 py-0.5 rounded font-mono ${
               outcomeSlicer === 'profit' ? 'text-emerald-400 bg-emerald-500/10' : outcomeSlicer === 'loss' ? 'text-rose-400 bg-rose-500/10' : 'text-indigo-400 bg-indigo-500/10'
             }`}>
-              {outcomeSlicer === 'profit' ? '▲ Profit Leaders Only' : outcomeSlicer === 'loss' ? '▼ Declining Stocks Only' : 'All Market Direction'}
+              <span>{outcomeSlicer === 'profit' ? '▲ Profit Leaders Only' : outcomeSlicer === 'loss' ? '▼ Declining Stocks Only' : 'All Market Direction'}</span>
+              {outcomeSlicer !== 'all' && (
+                <button
+                  onClick={() => {
+                    setOutcomeSlicer('all')
+                    setMoversTab('all')
+                  }}
+                  className="ml-1 text-[10px] text-rose-300 hover:text-white bg-rose-500/25 hover:bg-rose-500/40 px-1 rounded transition-colors"
+                  title="Click to remove filter"
+                >
+                  ✕ Clear
+                </button>
+              )}
             </span>
           </div>
 
@@ -606,8 +650,18 @@ export default function HomePage() {
 
         {/* 6-Column Grid of Watchlist Stocks */}
         {filteredWatchlistStocks.length === 0 ? (
-          <div className="p-4 rounded-xl bg-slate-900/40 text-center text-xs text-slate-400">
-            No stocks match the current {outcomeSlicer} filter in your watchlist.
+          <div className="p-4 rounded-xl bg-slate-900/40 text-center text-xs text-slate-400 space-y-2">
+            <p>No stocks match the current {outcomeSlicer} filter in your watchlist.</p>
+            <button
+              onClick={() => {
+                setOutcomeSlicer('all')
+                setMoversTab('all')
+              }}
+              className="px-2.5 py-1 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition-all inline-flex items-center gap-1"
+            >
+              <RotateCcw size={11} />
+              <span>Remove Filter (Show All)</span>
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

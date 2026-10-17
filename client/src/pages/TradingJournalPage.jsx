@@ -423,9 +423,10 @@ export default function TradingJournalPage() {
               <span className="text-slate-400">Filtering day: <strong className="text-blue-400">{selectedDayKey}</strong></span>
               <button
                 onClick={() => setSelectedDayKey(null)}
-                className="text-xs text-slate-400 hover:text-white underline"
+                className="text-xs text-rose-300 hover:text-white px-2.5 py-1 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center gap-1 font-semibold transition-all shadow-sm"
+                title="1-Click: Remove day filter"
               >
-                Clear filter
+                <span>Remove Filter ✕</span>
               </button>
             </div>
           )}
@@ -878,9 +879,18 @@ export default function TradingJournalPage() {
             </span>
           </div>
           {selectedDayKey && (
-            <span className="text-xs text-blue-400 font-mono">
-              Filtered: {selectedDayKey}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-blue-400 font-mono">
+                Filtered: {selectedDayKey}
+              </span>
+              <button
+                onClick={() => setSelectedDayKey(null)}
+                className="text-xs text-rose-300 hover:text-white px-2 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/30 font-semibold transition-all"
+                title="1-Click: Remove day filter"
+              >
+                Remove Filter ✕
+              </button>
+            </div>
           )}
         </div>
 
