@@ -25,14 +25,21 @@ export function useSocket() {
 
     if (!socket) {
       const rawSocketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL
+      if (!rawSocketUrl && import.meta.env.PROD) {
+        console.warn('VITE_SOCKET_URL or VITE_API_URL not set in production. WebSocket skipped.')
+        return () => {
+          mountedRef.current = false
+        }
+      }
       const socketUrl = rawSocketUrl ? rawSocketUrl.replace(/\/+$/, '') : '/'
 
       socket = io(socketUrl, {
         path: '/socket.io',
         transports: ['websocket', 'polling'],
-        reconnectionAttempts: 15,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 10000,
+        reconnectionAttempts: 8,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 15000,
+        timeout: 10000,
       })
     }
 

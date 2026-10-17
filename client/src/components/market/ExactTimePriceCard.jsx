@@ -120,7 +120,7 @@ export default function ExactTimePriceCard({
     return () => {
       isCancelled = true
     }
-  }, [symbol, candles])
+  }, [symbol, candles?.length, candles?.[0]?.time])
 
   // Resolve the active set of candles (prefer dedicated 5m intraday candles)
   const effectiveCandles = useMemo(() => {
