@@ -49,9 +49,9 @@ async function seed() {
   });
 
   const premiumUser = await User.create({
-    name: 'Rohan Sharma (Pro)',
-    email: 'premium@stocksense.in',
-    password: 'Premium@123456',
+    name: 'Tushar Wagh',
+    email: 'tushar@gmail.com.in',
+    password: 'Tushar@01',
     role: 'user',
     isEmailVerified: true,
     preferences: {
@@ -64,7 +64,7 @@ async function seed() {
   console.log('✅ Created users:');
   console.log('   - Admin: admin@stocksense.in / Admin@123456');
   console.log('   - Demo:  demo@stocksense.in / Demo@123456');
-  console.log('   - Pro:   premium@stocksense.in / Premium@123456');
+  console.log('   - Pro:   tushar@gmail.com.in / Tushar@01');
 
   // 2. Create Subscriptions
   const freeSub = new Subscription({
