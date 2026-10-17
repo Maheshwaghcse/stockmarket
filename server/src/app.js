@@ -31,21 +31,40 @@ app.use(helmet({
 }));
 
 // ─── CORS ──────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:5173',
-  'http://localhost:3000',
-];
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // allow mobile apps, curl, postman, server-to-server
 
-app.use(cors({
+  // Configured client URL
+  if (process.env.CLIENT_URL && origin.startsWith(process.env.CLIENT_URL)) return true;
+
+  // Any localhost or 127.0.0.1 on any port (HTTP or HTTPS)
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+
+  // Local private network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+  if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin)) return true;
+
+  // In non-production environments, allow all origins
+  if (process.env.NODE_ENV !== 'production') return true;
+
+  return false;
+};
+
+const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
+    if (isAllowedOrigin(origin)) {
+      callback(null, origin || true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false);
     }
   },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Set-Cookie'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // ─── Webhook route BEFORE body parsers (needs raw body) ────────────────────
 app.use('/api/webhook', webhookRoutes);
@@ -73,7 +92,7 @@ app.use('/api/', globalLimiter);
 // ─── Auth Rate Limiting ────────────────────────────────────────────────────
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: process.env.NODE_ENV === 'production' ? 20 : 1000,
   message: { success: false, message: 'Too many auth attempts, please try again in 15 minutes.' },
 });
 

@@ -5,7 +5,14 @@ let io;
 const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: (origin, callback) => {
+        // Allow connections from any localhost/127.0.0.1 or non-prod origins
+        if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || process.env.NODE_ENV !== 'production') {
+          callback(null, origin || true);
+        } else {
+          callback(null, process.env.CLIENT_URL || false);
+        }
+      },
       credentials: true,
     },
     pingTimeout: 60000,
