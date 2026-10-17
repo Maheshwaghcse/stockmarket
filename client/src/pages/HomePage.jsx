@@ -20,6 +20,9 @@ import {
   Sparkles,
   Filter,
   RotateCcw,
+  Compass,
+  Calculator,
+  Target,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -62,6 +65,12 @@ export default function HomePage() {
   const [chartCandles, setChartCandles] = useState([])
   const [hoveredCandle, setHoveredCandle] = useState(null)
 
+  // Market Radar & Quick Risk Sizer state
+  const [radarTab, setRadarTab] = useState('mood') // 'mood' or 'calculator'
+  const [miniCapital, setMiniCapital] = useState(100000)
+  const [miniRiskPct, setMiniRiskPct] = useState(1)
+  const [miniSlPct, setMiniSlPct] = useState(1.5)
+
   const { data: newsData } = useQuery({
     queryKey: ['featured-news'],
     queryFn: () => api.get('/news/featured').then(r => r.data),
@@ -100,6 +109,39 @@ export default function HomePage() {
     const declinePct = Math.round((declines / total) * 100)
     return { advances, declines, unchanged, advancePct, declinePct, total }
   }, [allStocks])
+
+  // Dynamic Market Mood Score calculated from market breadth and index movement
+  const marketMoodScore = useMemo(() => {
+    const adv = marketBreadth.advancePct || 50
+    const nifty = indices['NIFTY50']
+    const niftyChange = nifty?.changePct || 0
+    const score = Math.round(adv * 0.8 + 10 + niftyChange * 4)
+    return Math.min(95, Math.max(12, score))
+  }, [marketBreadth, indices])
+
+  const moodData = useMemo(() => {
+    if (marketMoodScore >= 75) {
+      return { label: 'Extreme Greed', color: 'text-emerald-400', bg: 'bg-emerald-500/20' }
+    }
+    if (marketMoodScore >= 55) {
+      return { label: 'Greed / Bullish', color: 'text-teal-400', bg: 'bg-teal-500/20' }
+    }
+    if (marketMoodScore >= 45) {
+      return { label: 'Neutral', color: 'text-amber-400', bg: 'bg-amber-500/20' }
+    }
+    if (marketMoodScore >= 30) {
+      return { label: 'Fear / Cautious', color: 'text-orange-400', bg: 'bg-orange-500/20' }
+    }
+    return { label: 'Extreme Fear', color: 'text-rose-400', bg: 'bg-rose-500/20' }
+  }, [marketMoodScore])
+
+  const miniRiskAmount = useMemo(() => {
+    return Math.round((miniCapital * miniRiskPct) / 100)
+  }, [miniCapital, miniRiskPct])
+
+  const miniPositionSize = useMemo(() => {
+    return miniSlPct > 0 ? Math.round(miniRiskAmount / (miniSlPct / 100)) : 0
+  }, [miniRiskAmount, miniSlPct])
 
   // Filtered indices based on outcomeSlicer
   const displayedIndices = useMemo(() => {
@@ -589,41 +631,168 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Card 3: Market News Pulse */}
-          {newsData?.data?.length > 0 && (
-            <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <BookOpen size={15} className="text-amber-400" />
-                  <h3 className="font-bold text-sm text-white">Market Pulse News</h3>
-                </div>
-                <Link to="/news" className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
-                  <span>More</span>
-                  <ArrowRight size={10} />
-                </Link>
+          {/* Card 3: Market Sentiment Radar & Quick Risk Sizer */}
+          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Compass size={16} className="text-cyan-400" />
+                <h3 className="font-bold text-sm text-white">Market Radar</h3>
               </div>
 
-              <div className="space-y-2.5">
-                {newsData.data.slice(0, 2).map((article) => (
-                  <Link
-                    key={article._id}
-                    to={`/news/${article.slug}`}
-                    className="block p-2 rounded-xl hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-800"
-                  >
-                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">
-                      {article.category || 'MARKET'}
-                    </span>
-                    <h4 className="text-xs font-semibold text-slate-200 line-clamp-1 mt-0.5">
-                      {article.title}
-                    </h4>
-                    <span className="text-[10px] text-slate-500 mt-1 block">
-                      {article.publishedAt ? formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true }) : 'Just now'}
-                    </span>
-                  </Link>
-                ))}
+              {/* Tab Selector */}
+              <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setRadarTab('mood')}
+                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                    radarTab === 'mood' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Sentiment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRadarTab('calculator')}
+                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                    radarTab === 'calculator' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Risk Sizer
+                </button>
               </div>
             </div>
-          )}
+
+            {radarTab === 'mood' ? (
+              <div className="space-y-3">
+                {/* Sentiment Gauge Bar */}
+                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-slate-400">Market Mood Index:</span>
+                    <span className={`font-bold px-2 py-0.5 rounded-full text-[11px] ${moodData.bg} ${moodData.color} border border-current/20`}>
+                      {marketMoodScore}/100 · {moodData.label}
+                    </span>
+                  </div>
+
+                  {/* Gradient Progress Gauge Bar */}
+                  <div className="relative w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 transition-all duration-700"
+                      style={{ width: `${marketMoodScore}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] text-slate-500 font-mono">
+                    <span>0 (Extreme Fear)</span>
+                    <span>50 (Neutral)</span>
+                    <span>100 (Extreme Greed)</span>
+                  </div>
+                </div>
+
+                {/* 2x2 Indicator Grid */}
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+                    <span className="text-[10px] text-slate-400 block font-sans">India VIX (Volatility)</span>
+                    <span className="font-bold text-slate-200">13.48</span>
+                    <span className="text-[10px] text-emerald-400 block">Low Volatility Zone</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+                    <span className="text-[10px] text-slate-400 block font-sans">FII / DII Flow Bias</span>
+                    <span className="font-bold text-emerald-400">+₹1,420 Cr</span>
+                    <span className="text-[10px] text-slate-400 block">Net Buyers</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+                    <span className="text-[10px] text-slate-400 block font-sans">Breadth Dominance</span>
+                    <span className="font-bold text-slate-200">{marketBreadth.advancePct}% Advances</span>
+                    <span className="text-[10px] text-slate-400 block">Positive Momentum</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+                    <span className="text-[10px] text-slate-400 block font-sans">Trading Desk Edge</span>
+                    <span className="font-bold text-cyan-300">Trend Friendly</span>
+                    <span className="text-[10px] text-slate-400 block">Clean Breakouts</span>
+                  </div>
+                </div>
+
+                {/* Desk Shortcuts */}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
+                  <Link
+                    to="/calculator"
+                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium transition-colors"
+                  >
+                    <Calculator size={12} />
+                    <span>Risk Calculator</span>
+                  </Link>
+                  <Link
+                    to="/journal"
+                    className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium transition-colors"
+                  >
+                    <span>Trade Journal</span>
+                    <ArrowRight size={11} />
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2.5 text-xs font-mono">
+                {/* Mini Risk Calculator */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-sans">Capital (₹)</span>
+                    <input
+                      type="number"
+                      value={miniCapital}
+                      onChange={(e) => setMiniCapital(Math.max(1000, Number(e.target.value)))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-sans">Risk (%)</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={miniRiskPct}
+                      onChange={(e) => setMiniRiskPct(Math.max(0.1, Number(e.target.value)))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-sans">Stop Loss (%)</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={miniSlPct}
+                      onChange={(e) => setMiniSlPct(Math.max(0.1, Number(e.target.value)))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Computed Sizing Metrics */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-sans">Max Allowed Loss</span>
+                    <span className="font-bold text-rose-400 text-xs">
+                      -₹{miniRiskAmount?.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-sans">Max Position Size</span>
+                    <span className="font-bold text-emerald-400 text-xs">
+                      ₹{miniPositionSize?.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-2 rounded-xl bg-blue-950/20 border border-blue-500/20 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-300">1:2 R:R Target: <strong className="text-emerald-400">+₹{(miniRiskAmount * 2)?.toLocaleString('en-IN')}</strong></span>
+                  <Link to="/calculator" className="text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
+                    <span>Full Tool</span>
+                    <ArrowRight size={10} />
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
