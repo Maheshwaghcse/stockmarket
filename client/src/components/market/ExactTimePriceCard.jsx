@@ -312,7 +312,7 @@ export default function ExactTimePriceCard({
   const vsDayOpenPct = baseOpen > 0 ? (vsDayOpen / baseOpen) * 100 : 0
 
   return (
-    <div className="card relative overflow-hidden bg-gradient-to-br from-[#0c1631] via-[#091124] to-[#070d1c] border border-cyan-500/20 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4">
+    <div className="card relative overflow-hidden bg-gradient-to-br from-[#0c1631] via-[#091124] to-[#070d1c] border border-cyan-500/20 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 h-full flex flex-col justify-between">
       {/* Decorative neon corner glow */}
       <div className="absolute top-0 right-0 w-64 h-32 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-48 h-24 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />

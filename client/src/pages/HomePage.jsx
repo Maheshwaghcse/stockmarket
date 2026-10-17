@@ -433,90 +433,186 @@ export default function HomePage() {
         })}
       </div>
 
-      {/* ── Main Workspace Grid (Chart & Inspector Left + Balanced Right Column) ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left Column (xl:col-span-2): Main Benchmark Chart + Exact Time Explorer */}
-        <div className="xl:col-span-2 space-y-5">
-          {/* Main Chart Card */}
-          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-bold text-base sm:text-lg text-white">
-                    {activeChartSymbol === 'NIFTY50' ? 'Nifty 50' : activeChartSymbol === 'BANKNIFTY' ? 'Bank Nifty' : activeChartSymbol === 'SENSEX' ? 'BSE Sensex' : activeChartSymbol === 'FINNIFTY' ? 'Nifty Fin Service' : activeChartSymbol}
-                  </h2>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-mono font-bold border border-blue-500/20">
-                    {timeSlicer === '1D' ? 'Intraday (5m)' : timeSlicer === '5D' ? '5 Days (15m)' : timeSlicer === '1M' ? '1 Month (1h)' : '1 Year (1d)'}
-                  </span>
-                  {indices[activeChartSymbol] ? (
-                    <span className={`text-xs font-mono font-bold ${indices[activeChartSymbol].changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      ₹{indices[activeChartSymbol].value?.toLocaleString('en-IN', { maximumFractionDigits: 1 })} ({indices[activeChartSymbol].changePct >= 0 ? '+' : ''}{indices[activeChartSymbol].changePct?.toFixed(2)}%)
+      {/* ── Row 1: Nifty 50 Main Chart Card & Market Movers (Identical Height) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
+        {/* Left Column (xl:col-span-2): Main Benchmark Chart (Nifty 50) */}
+        <div className="xl:col-span-2 flex flex-col">
+          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xl h-full flex flex-col justify-between space-y-4">
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-bold text-base sm:text-lg text-white">
+                      {activeChartSymbol === 'NIFTY50' ? 'Nifty 50' : activeChartSymbol === 'BANKNIFTY' ? 'Bank Nifty' : activeChartSymbol === 'SENSEX' ? 'BSE Sensex' : activeChartSymbol === 'FINNIFTY' ? 'Nifty Fin Service' : activeChartSymbol}
+                    </h2>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-mono font-bold border border-blue-500/20">
+                      {timeSlicer === '1D' ? 'Intraday (5m)' : timeSlicer === '5D' ? '5 Days (15m)' : timeSlicer === '1M' ? '1 Month (1h)' : '1 Year (1d)'}
                     </span>
-                  ) : (
-                    (() => {
-                      const st = allStocks.find((s) => s.symbol === activeChartSymbol)
-                      if (!st) return null
-                      const isUp = (st.changePct || 0) >= 0
-                      return (
-                        <span className={`text-xs font-mono font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          ₹{st.price?.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ({isUp ? '+' : ''}{st.changePct?.toFixed(2)}%)
-                        </span>
-                      )
-                    })()
-                  )}
+                    {indices[activeChartSymbol] ? (
+                      <span className={`text-xs font-mono font-bold ${indices[activeChartSymbol].changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        ₹{indices[activeChartSymbol].value?.toLocaleString('en-IN', { maximumFractionDigits: 1 })} ({indices[activeChartSymbol].changePct >= 0 ? '+' : ''}{indices[activeChartSymbol].changePct?.toFixed(2)}%)
+                      </span>
+                    ) : (
+                      (() => {
+                        const st = allStocks.find((s) => s.symbol === activeChartSymbol)
+                        if (!st) return null
+                        const isUp = (st.changePct || 0) >= 0
+                        return (
+                          <span className={`text-xs font-mono font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            ₹{st.price?.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ({isUp ? '+' : ''}{st.changePct?.toFixed(2)}%)
+                          </span>
+                        )
+                      })()
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {timeSlicer === '1D' ? 'Live intraday candles · Market Reference' : 'Extended historical candlestick view'}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {timeSlicer === '1D' ? 'Live intraday candles · Market Reference' : 'Extended historical candlestick view'}
-                </p>
+
+                <Link
+                  to={indices[activeChartSymbol] ? `/indices/${activeChartSymbol}` : `/stocks/${activeChartSymbol}`}
+                  className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
+                >
+                  <span>Full Chart</span>
+                  <ArrowRight size={12} />
+                </Link>
               </div>
 
-              <Link
-                to={indices[activeChartSymbol] ? `/indices/${activeChartSymbol}` : `/stocks/${activeChartSymbol}`}
-                className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
-              >
-                <span>Full Chart</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {/* Live Market Sentiment & Advance-Decline Meter */}
-            <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-2.5 space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  Advances: {marketBreadth.advances} ({marketBreadth.advancePct}%)
-                </span>
-                <span className="text-slate-400 hidden sm:inline">
-                  Market Breadth Ratio
-                </span>
-                <span className="text-rose-400 font-semibold flex items-center gap-1">
-                  Declines: {marketBreadth.declines} ({marketBreadth.declinePct}%)
-                  <span className="w-2 h-2 rounded-full bg-rose-400" />
-                </span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
-                  style={{ width: `${marketBreadth.advancePct}%` }}
-                />
-                <div
-                  className="h-full bg-gradient-to-r from-rose-500 to-red-600 transition-all duration-500"
-                  style={{ width: `${marketBreadth.declinePct}%` }}
-                />
+              {/* Live Market Sentiment & Advance-Decline Meter */}
+              <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    Advances: {marketBreadth.advances} ({marketBreadth.advancePct}%)
+                  </span>
+                  <span className="text-slate-400 hidden sm:inline">
+                    Market Breadth Ratio
+                  </span>
+                  <span className="text-rose-400 font-semibold flex items-center gap-1">
+                    Declines: {marketBreadth.declines} ({marketBreadth.declinePct}%)
+                    <span className="w-2 h-2 rounded-full bg-rose-400" />
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+                    style={{ width: `${marketBreadth.advancePct}%` }}
+                  />
+                  <div
+                    className="h-full bg-gradient-to-r from-rose-500 to-red-600 transition-all duration-500"
+                    style={{ width: `${marketBreadth.declinePct}%` }}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Interactive Candlestick Chart */}
-            <IndexChart
-              symbol={activeChartSymbol}
-              timeRange={timeSlicer}
-              height={290}
-              onDataLoaded={setChartCandles}
-              onCrosshairMove={setHoveredCandle}
-            />
+            <div className="flex-1 flex flex-col justify-center min-h-[290px] pt-1">
+              <IndexChart
+                symbol={activeChartSymbol}
+                timeRange={timeSlicer}
+                height={290}
+                onDataLoaded={setChartCandles}
+                onCrosshairMove={setHoveredCandle}
+              />
+            </div>
           </div>
+        </div>
 
-          {/* Exact Time & Price Explorer Card */}
+        {/* Right Column (xl:col-span-1): Market Movers (Exact Same Height as Nifty 50 Card) */}
+        <div className="xl:col-span-1 flex flex-col">
+          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl h-full flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={16} className="text-blue-400" />
+                  <h3 className="font-bold text-sm text-white">Market Movers</h3>
+                </div>
+                
+                {/* Movers Tabs */}
+                <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'gainers', label: '▲ Gain' },
+                    { id: 'losers', label: '▼ Loss' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setMoversTab(tab.id)}
+                      className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                        moversTab === tab.id
+                          ? 'bg-blue-600 text-white font-bold'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stock Rows */}
+              <div className="space-y-1">
+                {(moversTab === 'gainers'
+                  ? stockGainers.slice(0, 7)
+                  : moversTab === 'losers'
+                  ? stockLosers.slice(0, 7)
+                  : [...stockGainers.slice(0, 4), ...stockLosers.slice(0, 4)]
+                ).map((item) => {
+                  const isGain = (item.changePct || 0) >= 0
+                  return (
+                    <Link
+                      key={item.symbol}
+                      to={`/stocks/${item.symbol}`}
+                      className="flex items-center justify-between py-2 px-2.5 rounded-xl hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-800 group"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-white group-hover:text-blue-400 font-mono">
+                            {item.symbol}
+                          </span>
+                          {item.sector && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                              {item.sector.slice(0, 4)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400 truncate max-w-[140px]" title={item.name}>
+                          {item.name}
+                        </p>
+                      </div>
+
+                      <div className="text-right font-mono">
+                        <div className="text-xs font-semibold text-white">
+                          ₹{item.price?.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
+                        </div>
+                        <div className={`text-[11px] font-bold ${isGain ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isGain ? '+' : ''}{item.changePct?.toFixed(2)}%
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Footer Bar */}
+            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 mt-2">
+              <span className="text-[11px] font-mono">Live NSE Leaders</span>
+              <Link to="/stocks" className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium transition-colors text-[11px]">
+                <span>All 106 Equities</span>
+                <ArrowRight size={11} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Row 2: Exact Time & Price Explorer & [Sector Performance + Market Radar] (Combined Equal Height) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
+        {/* Left Column (xl:col-span-2): Exact Time & Price Explorer Card */}
+        <div className="xl:col-span-2 flex flex-col">
           <ExactTimePriceCard
             symbol={activeChartSymbol}
             candles={chartCandles}
@@ -526,275 +622,210 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Right Column: Balanced Height & Zero Empty Space */}
-        <div className="space-y-5">
-          {/* Card 1: Top Movers (Gainers & Losers with Tabs) */}
-          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <div className="flex items-center gap-2">
-                <TrendingUp size={16} className="text-blue-400" />
-                <h3 className="font-bold text-sm text-white">Market Movers</h3>
-              </div>
-              
-              {/* Movers Tabs */}
-              <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
-                {[
-                  { id: 'all', label: 'All' },
-                  { id: 'gainers', label: '▲ Gain' },
-                  { id: 'losers', label: '▼ Loss' },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setMoversTab(tab.id)}
-                    className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-                      moversTab === tab.id
-                        ? 'bg-blue-600 text-white font-bold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Stock Rows */}
-            <div className="space-y-1">
-              {(moversTab === 'gainers' ? stockGainers : moversTab === 'losers' ? stockLosers : [...stockGainers.slice(0, 3), ...stockLosers.slice(0, 3)]).map((item) => {
-                const isGain = (item.changePct || 0) >= 0
-                return (
-                  <Link
-                    key={item.symbol}
-                    to={`/stocks/${item.symbol}`}
-                    className="flex items-center justify-between py-2 px-2.5 rounded-xl hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-800 group"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-white group-hover:text-blue-400 font-mono">
-                          {item.symbol}
-                        </span>
-                        {item.sector && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
-                            {item.sector.slice(0, 4)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-400 truncate max-w-[130px]" title={item.name}>
-                        {item.name}
-                      </p>
-                    </div>
-
-                    <div className="text-right font-mono">
-                      <div className="text-xs font-semibold text-white">
-                        ₹{item.price?.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
-                      </div>
-                      <div className={`text-[11px] font-bold ${isGain ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {isGain ? '+' : ''}{item.changePct?.toFixed(2)}%
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-
+        {/* Right Column (xl:col-span-1): Sector Performance + Market Radar (Combined Height Equals Left Card) */}
+        <div className="xl:col-span-1 flex flex-col justify-between gap-5 h-full">
           {/* Card 2: NSE Sector Performance */}
-          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <div className="flex items-center gap-2">
-                <PieChart size={15} className="text-indigo-400" />
-                <h3 className="font-bold text-sm text-white">Sector Performance</h3>
+          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl flex-1 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-2.5">
+                <div className="flex items-center gap-2">
+                  <PieChart size={15} className="text-indigo-400" />
+                  <h3 className="font-bold text-sm text-white">Sector Performance</h3>
+                </div>
+                <span className="text-[10px] text-slate-400 uppercase font-mono">Avg Move</span>
               </div>
-              <span className="text-[10px] text-slate-400 uppercase font-mono">Avg Move</span>
-            </div>
 
-            <div className="space-y-2.5">
-              {sectorPerformance.map((sec) => {
-                const isUp = sec.avgChange >= 0
-                return (
-                  <div key={sec.name} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-300 font-semibold">{sec.name}</span>
-                      <span className={`font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {isUp ? '+' : ''}{sec.avgChange.toFixed(2)}%
-                      </span>
+              <div className="space-y-2.5">
+                {sectorPerformance.map((sec) => {
+                  const isUp = sec.avgChange >= 0
+                  return (
+                    <div key={sec.name} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-slate-300 font-semibold">{sec.name}</span>
+                        <span className={`font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isUp ? '+' : ''}{sec.avgChange.toFixed(2)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${isUp ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-rose-500 to-red-500'}`}
+                          style={{ width: `${Math.min(100, Math.max(15, Math.abs(sec.avgChange) * 30))}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${isUp ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-rose-500 to-red-500'}`}
-                        style={{ width: `${Math.min(100, Math.max(15, Math.abs(sec.avgChange) * 30))}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           </div>
 
           {/* Card 3: Market Sentiment Radar & Quick Risk Sizer */}
-          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <div className="flex items-center gap-2">
-                <Compass size={16} className="text-cyan-400" />
-                <h3 className="font-bold text-sm text-white">Market Radar</h3>
+          <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl flex-1 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-2.5">
+                <div className="flex items-center gap-2">
+                  <Compass size={16} className="text-cyan-400" />
+                  <h3 className="font-bold text-sm text-white">Market Radar</h3>
+                </div>
+
+                {/* Tab Selector */}
+                <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setRadarTab('mood')}
+                    className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                      radarTab === 'mood' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Sentiment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRadarTab('calculator')}
+                    className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                      radarTab === 'calculator' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Risk Sizer
+                  </button>
+                </div>
               </div>
 
-              {/* Tab Selector */}
-              <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setRadarTab('mood')}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-                    radarTab === 'mood' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Sentiment
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRadarTab('calculator')}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-                    radarTab === 'calculator' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Risk Sizer
-                </button>
-              </div>
+              {radarTab === 'mood' ? (
+                <div className="space-y-3">
+                  {/* Sentiment Gauge Bar */}
+                  <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="text-slate-400">Market Mood Index:</span>
+                      <span className={`font-bold px-2 py-0.5 rounded-full text-[11px] ${moodData.bg} ${moodData.color} border border-current/20`}>
+                        {marketMoodScore}/100 · {moodData.label}
+                      </span>
+                    </div>
+
+                    {/* Gradient Progress Gauge Bar */}
+                    <div className="relative w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 transition-all duration-700"
+                        style={{ width: `${marketMoodScore}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[9px] text-slate-500 font-mono">
+                      <span>0 (Extreme Fear)</span>
+                      <span>50 (Neutral)</span>
+                      <span>100 (Extreme Greed)</span>
+                    </div>
+                  </div>
+
+                  {/* 2x2 Indicator Grid */}
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+                      <span className="text-[10px] text-slate-400 block font-sans">India VIX</span>
+                      <span className="font-bold text-slate-200">13.48</span>
+                      <span className="text-[10px] text-emerald-400 block">Low Volatility</span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+                      <span className="text-[10px] text-slate-400 block font-sans">FII / DII Flow Bias</span>
+                      <span className="font-bold text-emerald-400">+₹1,420 Cr</span>
+                      <span className="text-[10px] text-slate-400 block">Net Buyers</span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+                      <span className="text-[10px] text-slate-400 block font-sans">Breadth Dominance</span>
+                      <span className="font-bold text-slate-200">{marketBreadth.advancePct}% Adv</span>
+                      <span className="text-[10px] text-slate-400 block">Positive</span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+                      <span className="text-[10px] text-slate-400 block font-sans">Trading Edge</span>
+                      <span className="font-bold text-cyan-300">Trend Friendly</span>
+                      <span className="text-[10px] text-slate-400 block">Breakouts</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5 text-xs font-mono">
+                  {/* Mini Risk Calculator */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-sans">Capital (₹)</span>
+                      <input
+                        type="number"
+                        value={miniCapital}
+                        onChange={(e) => setMiniCapital(Math.max(1000, Number(e.target.value)))}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-sans">Risk (%)</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={miniRiskPct}
+                        onChange={(e) => setMiniRiskPct(Math.max(0.1, Number(e.target.value)))}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-sans">Stop Loss (%)</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={miniSlPct}
+                        onChange={(e) => setMiniSlPct(Math.max(0.1, Number(e.target.value)))}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Computed Sizing Metrics */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-sans">Max Allowed Loss</span>
+                      <span className="font-bold text-rose-400 text-xs">
+                        -₹{miniRiskAmount?.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-sans">Max Position Size</span>
+                      <span className="font-bold text-emerald-400 text-xs">
+                        ₹{miniPositionSize?.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-blue-950/20 border border-blue-500/20 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-300">1:2 R:R Target: <strong className="text-emerald-400">+₹{(miniRiskAmount * 2)?.toLocaleString('en-IN')}</strong></span>
+                    <Link to="/calculator" className="text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
+                      <span>Full Tool</span>
+                      <ArrowRight size={10} />
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {radarTab === 'mood' ? (
-              <div className="space-y-3">
-                {/* Sentiment Gauge Bar */}
-                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-400">Market Mood Index:</span>
-                    <span className={`font-bold px-2 py-0.5 rounded-full text-[11px] ${moodData.bg} ${moodData.color} border border-current/20`}>
-                      {marketMoodScore}/100 · {moodData.label}
-                    </span>
-                  </div>
-
-                  {/* Gradient Progress Gauge Bar */}
-                  <div className="relative w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 transition-all duration-700"
-                      style={{ width: `${marketMoodScore}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[9px] text-slate-500 font-mono">
-                    <span>0 (Extreme Fear)</span>
-                    <span>50 (Neutral)</span>
-                    <span>100 (Extreme Greed)</span>
-                  </div>
-                </div>
-
-                {/* 2x2 Indicator Grid */}
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 block font-sans">India VIX (Volatility)</span>
-                    <span className="font-bold text-slate-200">13.48</span>
-                    <span className="text-[10px] text-emerald-400 block">Low Volatility Zone</span>
-                  </div>
-
-                  <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 block font-sans">FII / DII Flow Bias</span>
-                    <span className="font-bold text-emerald-400">+₹1,420 Cr</span>
-                    <span className="text-[10px] text-slate-400 block">Net Buyers</span>
-                  </div>
-
-                  <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 block font-sans">Breadth Dominance</span>
-                    <span className="font-bold text-slate-200">{marketBreadth.advancePct}% Advances</span>
-                    <span className="text-[10px] text-slate-400 block">Positive Momentum</span>
-                  </div>
-
-                  <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 block font-sans">Trading Desk Edge</span>
-                    <span className="font-bold text-cyan-300">Trend Friendly</span>
-                    <span className="text-[10px] text-slate-400 block">Clean Breakouts</span>
-                  </div>
-                </div>
-
-                {/* Desk Shortcuts */}
-                <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
-                  <Link
-                    to="/calculator"
-                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium transition-colors"
-                  >
-                    <Calculator size={12} />
-                    <span>Risk Calculator</span>
-                  </Link>
-                  <Link
-                    to="/journal"
-                    className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium transition-colors"
-                  >
-                    <span>Trade Journal</span>
-                    <ArrowRight size={11} />
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2.5 text-xs font-mono">
-                {/* Mini Risk Calculator */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-sans">Capital (₹)</span>
-                    <input
-                      type="number"
-                      value={miniCapital}
-                      onChange={(e) => setMiniCapital(Math.max(1000, Number(e.target.value)))}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-sans">Risk (%)</span>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={miniRiskPct}
-                      onChange={(e) => setMiniRiskPct(Math.max(0.1, Number(e.target.value)))}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-sans">Stop Loss (%)</span>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={miniSlPct}
-                      onChange={(e) => setMiniSlPct(Math.max(0.1, Number(e.target.value)))}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Computed Sizing Metrics */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">Max Allowed Loss</span>
-                    <span className="font-bold text-rose-400 text-xs">
-                      -₹{miniRiskAmount?.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">Max Position Size</span>
-                    <span className="font-bold text-emerald-400 text-xs">
-                      ₹{miniPositionSize?.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-2 rounded-xl bg-blue-950/20 border border-blue-500/20 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-300">1:2 R:R Target: <strong className="text-emerald-400">+₹{(miniRiskAmount * 2)?.toLocaleString('en-IN')}</strong></span>
-                  <Link to="/calculator" className="text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
-                    <span>Full Tool</span>
-                    <ArrowRight size={10} />
-                  </Link>
-                </div>
-              </div>
-            )}
+            {/* Desk Shortcuts */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 text-xs mt-2">
+              <Link
+                to="/calculator"
+                className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium transition-colors text-[11px]"
+              >
+                <Calculator size={12} />
+                <span>Risk Calculator</span>
+              </Link>
+              <Link
+                to="/journal"
+                className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium transition-colors text-[11px]"
+              >
+                <span>Trade Journal</span>
+                <ArrowRight size={11} />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
+
 
       {/* ── Full-Width Section: My Watchlist & Wishlist Stocks ────────── */}
       <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3">
