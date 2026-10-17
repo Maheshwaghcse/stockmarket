@@ -7,6 +7,7 @@ export const useAuthStore = create(
     (set, get) => ({
       user: null,
       accessToken: null,
+      refreshToken: null,
       subscription: null,
       isLoading: false,
 
@@ -15,7 +16,13 @@ export const useAuthStore = create(
         try {
           const { data } = await api.post('/auth/login', { email, password })
           api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
-          set({ user: data.user, accessToken: data.accessToken, subscription: data.subscription, isLoading: false })
+          set({
+            user: data.user,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            subscription: data.subscription,
+            isLoading: false,
+          })
           return { success: true }
         } catch (err) {
           set({ isLoading: false })
@@ -28,7 +35,13 @@ export const useAuthStore = create(
         try {
           const { data } = await api.post('/auth/register', { name, email, password })
           api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
-          set({ user: data.user, accessToken: data.accessToken, subscription: data.subscription, isLoading: false })
+          set({
+            user: data.user,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            subscription: data.subscription,
+            isLoading: false,
+          })
           return { success: true }
         } catch (err) {
           set({ isLoading: false })
@@ -37,22 +50,29 @@ export const useAuthStore = create(
       },
 
       logout: async () => {
-        try { await api.post('/auth/logout') } catch { /* ignore */ }
+        try {
+          const refreshToken = get().refreshToken
+          await api.post('/auth/logout', { refreshToken })
+        } catch { /* ignore */ }
         delete api.defaults.headers.common['Authorization']
-        set({ user: null, accessToken: null, subscription: null })
+        set({ user: null, accessToken: null, refreshToken: null, subscription: null })
       },
 
       refreshAuth: async () => {
         try {
-          const { data } = await api.post('/auth/refresh')
+          const refreshToken = get().refreshToken
+          const { data } = await api.post('/auth/refresh', { refreshToken })
           api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
-          set({ accessToken: data.accessToken })
+          set({
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken || refreshToken,
+          })
           // Re-fetch profile
           const { data: me } = await api.get('/auth/me')
           set({ user: me.user, subscription: me.subscription })
           return true
         } catch {
-          set({ user: null, accessToken: null, subscription: null })
+          set({ user: null, accessToken: null, refreshToken: null, subscription: null })
           return false
         }
       },
@@ -70,7 +90,12 @@ export const useAuthStore = create(
     }),
     {
       name: 'stocksense-auth',
-      partialize: (s) => ({ user: s.user, accessToken: s.accessToken, subscription: s.subscription }),
+      partialize: (s) => ({
+        user: s.user,
+        accessToken: s.accessToken,
+        refreshToken: s.refreshToken,
+        subscription: s.subscription,
+      }),
     }
   )
 )

@@ -18,13 +18,17 @@ const generateRefreshToken = (userId) =>
 const setCookies = (res, accessToken, refreshToken) => {
   const isProd = process.env.NODE_ENV === 'production';
   res.cookie('accessToken', accessToken, {
-    httpOnly: true, secure: isProd, sameSite: 'strict',
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 15 * 60 * 1000,
   });
   res.cookie('refreshToken', refreshToken, {
-    httpOnly: true, secure: isProd, sameSite: 'strict',
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: '/api/auth/refresh',
+    path: '/',
   });
 };
 
@@ -80,6 +84,7 @@ router.post(
         message: 'Registration successful.',
         user,
         accessToken,
+        refreshToken,
         subscription: { plan: sub.plan, status: sub.status, features: sub.features },
       });
     } catch (err) {
@@ -129,6 +134,7 @@ router.post(
         success: true,
         user,
         accessToken,
+        refreshToken,
         subscription: subscription
           ? { plan: subscription.plan, status: subscription.status, features: subscription.features }
           : null,
@@ -162,7 +168,7 @@ router.post('/refresh', async (req, res, next) => {
 
     setCookies(res, newAccessToken, newRefreshToken);
 
-    res.json({ success: true, accessToken: newAccessToken });
+    res.json({ success: true, accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
       return res.status(401).json({ success: false, message: 'Refresh token invalid or expired.' });
@@ -182,7 +188,7 @@ router.post('/logout', protect, async (req, res, next) => {
     }
 
     res.clearCookie('accessToken');
-    res.clearCookie('refreshToken', { path: '/api/auth/refresh' });
+    res.clearCookie('refreshToken', { path: '/' });
 
     logAudit('user.logout', req);
     res.json({ success: true, message: 'Logged out successfully.' });

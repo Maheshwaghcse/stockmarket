@@ -1,9 +1,15 @@
 import axios from 'axios'
 
+// Resolve API base URL:
+// In production on Vercel: set VITE_API_URL to your Render backend (e.g. https://stocksense-backend.onrender.com)
+// In local development: defaults to '/api' which Vite proxies to localhost:5000
+const rawApiUrl = import.meta.env.VITE_API_URL
+const baseURL = rawApiUrl ? `${rawApiUrl.replace(/\/+$/, '')}/api` : '/api'
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   withCredentials: true,
-  timeout: 10000,
+  timeout: 15000,
 })
 
 // Attach token from localStorage on every request
@@ -40,8 +46,11 @@ api.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const { data } = await api.post('/auth/refresh')
+        const stored = JSON.parse(localStorage.getItem('stocksense-auth') || '{}')
+        const refreshToken = stored?.state?.refreshToken
+        const { data } = await api.post('/auth/refresh', { refreshToken })
         const newToken = data.accessToken
+        const newRefreshToken = data.refreshToken || refreshToken
         api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
         try {
           const raw = localStorage.getItem('stocksense-auth')
@@ -49,6 +58,7 @@ api.interceptors.response.use(
             const parsed = JSON.parse(raw)
             if (parsed && parsed.state) {
               parsed.state.accessToken = newToken
+              if (newRefreshToken) parsed.state.refreshToken = newRefreshToken
               localStorage.setItem('stocksense-auth', JSON.stringify(parsed))
             }
           }

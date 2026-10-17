@@ -24,10 +24,13 @@ export function useSocket() {
       .catch((err) => console.warn('Initial indices fetch warning:', err))
 
     if (!socket) {
-      socket = io('/', {
+      const rawSocketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL
+      const socketUrl = rawSocketUrl ? rawSocketUrl.replace(/\/+$/, '') : '/'
+
+      socket = io(socketUrl, {
         path: '/socket.io',
         transports: ['websocket', 'polling'],
-        reconnectionAttempts: 10,
+        reconnectionAttempts: 15,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 10000,
       })

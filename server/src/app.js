@@ -18,24 +18,27 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 const app = express();
 
+// ─── Trust Proxy (Required for Render, Vercel, and reverse proxies) ────────
+app.set('trust proxy', 1);
+
 // ─── Security Headers ──────────────────────────────────────────────────────
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-    },
-  },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false, // Handled by frontend static host (Vercel)
 }));
 
 // ─── CORS ──────────────────────────────────────────────────────────────────
 const isAllowedOrigin = (origin) => {
   if (!origin) return true; // allow mobile apps, curl, postman, server-to-server
 
-  // Configured client URL
-  if (process.env.CLIENT_URL && origin.startsWith(process.env.CLIENT_URL)) return true;
+  // Explicitly configured client URL (e.g. custom domain)
+  if (process.env.CLIENT_URL && origin.startsWith(process.env.CLIENT_URL.replace(/\/+$/, ''))) return true;
+
+  // Any *.vercel.app deployment (production, preview branch, staging)
+  if (/^https:\/\/[a-zA-Z0-9-_.]+\.vercel\.app$/.test(origin)) return true;
+
+  // Any *.onrender.com deployment
+  if (/^https:\/\/[a-zA-Z0-9-_.]+\.onrender\.com$/.test(origin)) return true;
 
   // Any localhost or 127.0.0.1 on any port (HTTP or HTTPS)
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
