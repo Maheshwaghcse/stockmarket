@@ -109,14 +109,44 @@ app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/journal', journalRoutes);
 
-// ─── Health Check ──────────────────────────────────────────────────────────
+// ─── Root & Health Check Endpoints ─────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    service: 'StockSense India Backend API',
+    version: '1.0.0',
+    message: 'Backend server is running live and healthy.',
+    healthCheck: '/api/health',
+    endpoints: {
+      health: '/api/health',
+      indices: '/api/market/indices',
+      stocks: '/api/stocks',
+      news: '/api/news',
+      auth: '/api/auth/login',
+    },
+    clientUrl: process.env.CLIENT_URL || 'Configured on Vercel',
+  });
+});
+
+app.head('/', (req, res) => {
+  res.status(200).end();
+});
+
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
+app.get('/health', (req, res) => {
+  res.redirect(301, '/api/health');
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV,
-    marketDataMode: process.env.MARKET_DATA_MODE || 'demo',
+    uptime: Math.floor(process.uptime()),
+    environment: process.env.NODE_ENV || 'development',
+    marketDataMode: process.env.MARKET_DATA_MODE || 'yahoo',
   });
 });
 
