@@ -48,7 +48,7 @@ export default function TradingJournalPage() {
   // Current calendar month navigation (default to October 2026 / current date)
   const [viewDate, setViewDate] = useState(new Date('2026-10-15'))
 
-  // Form State for New Trade Modal (default lotSize & quantity 0)
+  // Form State for New Trade Modal (default lotSize & quantity blank)
   const [form, setForm] = useState({
     symbol: '',
     tradeType: 'Long',
@@ -56,8 +56,8 @@ export default function TradingJournalPage() {
     exitDate: '',
     entryPrice: '',
     exitPrice: '',
-    quantity: 0,
-    lotSize: 0,
+    quantity: '',
+    lotSize: '',
     position: 'Intraday',
     time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
     instrumentType: 'Equity',
@@ -145,8 +145,8 @@ export default function TradingJournalPage() {
       exitDate: '',
       entryPrice: '',
       exitPrice: '',
-      quantity: 0,
-      lotSize: 0,
+      quantity: '',
+      lotSize: '',
       position: 'Intraday',
       time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
       instrumentType: 'Equity',

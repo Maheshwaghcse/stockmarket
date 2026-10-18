@@ -55,8 +55,10 @@ export default function TradeViewerModal({
         exitDate: currentTrade.exitDate ? new Date(currentTrade.exitDate).toISOString().slice(0, 16) : '',
         entryPrice: currentTrade.entryPrice ?? '',
         exitPrice: currentTrade.exitPrice ?? '',
-        quantity: currentTrade.quantity ?? 0,
-        lotSize: currentTrade.lotSize ?? currentTrade.quantity ?? 0,
+        quantity: (currentTrade.quantity && currentTrade.quantity !== 0) ? currentTrade.quantity : '',
+        lotSize: (currentTrade.lotSize && currentTrade.lotSize !== 0)
+          ? currentTrade.lotSize
+          : ((currentTrade.quantity && currentTrade.quantity !== 0) ? currentTrade.quantity : ''),
         position: currentTrade.position || 'Intraday',
         time: currentTrade.time || (currentTrade.entryDate ? new Date(currentTrade.entryDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''),
         instrumentType: currentTrade.instrumentType || 'Equity',

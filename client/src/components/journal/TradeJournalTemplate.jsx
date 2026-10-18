@@ -118,9 +118,13 @@ export default function TradeJournalTemplate({
   const entryDate = currentData?.entryDate || ''
   const position = currentData?.position || 'Intraday'
   const time = currentData?.time || (entryDate ? new Date(entryDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '')
-  const lotSize = currentData?.lotSize !== undefined && currentData?.lotSize !== null && currentData?.lotSize !== ''
+  const rawLot = currentData?.lotSize !== undefined && currentData?.lotSize !== null
     ? currentData.lotSize
-    : (currentData?.quantity !== undefined && currentData?.quantity !== null && currentData?.quantity !== '' ? currentData.quantity : 0)
+    : (currentData?.quantity !== undefined && currentData?.quantity !== null ? currentData.quantity : '')
+  // Default lot size is blank instead of 0 or 1 so user can freely type their value
+  const lotSize = (rawLot === 0 || rawLot === '0' || rawLot === '' || rawLot === null || rawLot === undefined)
+    ? ''
+    : rawLot
   const instrumentType = currentData?.instrumentType || 'Equity'
   const strategy = currentData?.strategy || ''
   const imageUrl = currentData?.imageUrl || ''
@@ -142,11 +146,11 @@ export default function TradeJournalTemplate({
     const exit = parseFloat(exitPrice)
     const sl = parseFloat(stopLoss)
     const tp = parseFloat(takeProfit)
-    const qty = parseInt(lotSize, 10) || 0
+    const qty = parseInt(lotSize, 10)
 
     let calcPnl = null
     let calcPnlPercent = null
-    if (!isNaN(entry) && !isNaN(exit) && entry > 0 && qty > 0) {
+    if (!isNaN(entry) && !isNaN(exit) && entry > 0 && !isNaN(qty) && qty > 0) {
       if (tradeType === 'Long') {
         calcPnl = (exit - entry) * qty
       } else {
@@ -291,17 +295,75 @@ export default function TradeJournalTemplate({
     return null
   }, [allTrades])
 
+  // Trader's most recent stocks (from trade history + localStorage, falling back to popular market stocks)
+  const traderRecentStocks = useMemo(() => {
+    const list = []
+    const seen = new Set()
+
+    // 1. From allTrades in reverse chronological order
+    if (Array.isArray(allTrades) && allTrades.length > 0) {
+      const sorted = [...allTrades].sort(
+        (a, b) => new Date(b.entryDate || b.createdAt || 0) - new Date(a.entryDate || a.createdAt || 0)
+      )
+      for (const t of sorted) {
+        const sym = t.symbol?.toUpperCase()?.trim()
+        if (sym && !seen.has(sym)) {
+          seen.add(sym)
+          list.push(sym)
+          if (list.length >= 8) break
+        }
+      }
+    }
+
+    // 2. From localStorage trader_recent_stocks
+    try {
+      const stored = JSON.parse(localStorage.getItem('trader_recent_stocks') || '[]')
+      if (Array.isArray(stored)) {
+        for (const s of stored) {
+          const sym = typeof s === 'string' ? s.toUpperCase().trim() : ''
+          if (sym && !seen.has(sym)) {
+            seen.add(sym)
+            list.push(sym)
+            if (list.length >= 8) break
+          }
+        }
+      }
+    } catch {}
+
+    // 3. Fallback to market suggested symbols if fewer than 6
+    for (const s of SUGGESTED_SYMBOLS) {
+      if (!seen.has(s)) {
+        seen.add(s)
+        list.push(s)
+        if (list.length >= 8) break
+      }
+    }
+
+    return list
+  }, [allTrades])
+
+  // Record stock symbol into recent stocks
+  const recordRecentStock = (sym) => {
+    if (!sym || typeof sym !== 'string') return
+    const upper = sym.toUpperCase().trim()
+    if (!upper) return
+    try {
+      const existing = JSON.parse(localStorage.getItem('trader_recent_stocks') || '[]')
+      const filtered = Array.isArray(existing) ? existing.filter((s) => s !== upper) : []
+      const updated = [upper, ...filtered].slice(0, 15)
+      localStorage.setItem('trader_recent_stocks', JSON.stringify(updated))
+    } catch {}
+  }
+
   // Current symbol's previous or default lot size suggestion
   const previousLotSize = useMemo(() => {
     return getPreviousLotSize(symbol)
   }, [symbol, getPreviousLotSize])
 
-  // Suggestion for official or previous lot size is available via 1-click pill below; default stays 0
-  // Save updated lot size to localStorage whenever changed
+  // Save updated lot size to state and localStorage whenever changed
   const handleLotSizeChange = (val) => {
-    const num = val === '' ? 0 : val
-    onChange('lotSize', num)
-    onChange('quantity', num)
+    onChange('lotSize', val)
+    onChange('quantity', val)
     if (symbol && val && Number(val) > 0) {
       try {
         const savedMap = JSON.parse(localStorage.getItem('stock_last_lot_sizes') || '{}')
@@ -326,19 +388,12 @@ export default function TradeJournalTemplate({
     }
   }
 
-  // When a stock suggestion is selected
+  // When a stock suggestion is selected: lot size remains blank for user to enter their value
   const handleSelectSymbol = (item) => {
-    onChange('symbol', item.symbol)
+    const sym = item.symbol?.toUpperCase()?.trim() || ''
+    onChange('symbol', sym)
     setShowSymbolDropdown(false)
-
-    // Suggest/apply previous lot size
-    const prevLot = getPreviousLotSize(item.symbol)
-    if (prevLot) {
-      // If current lotSize is default (1 or empty), autofill it
-      if (!lotSize || lotSize === 1 || lotSize === '1') {
-        handleLotSizeChange(prevLot)
-      }
-    }
+    recordRecentStock(sym)
   }
 
   // Close dropdown on outside click
@@ -556,19 +611,23 @@ export default function TradeJournalTemplate({
                   </div>
                 )}
 
-                {/* Quick Symbol Pills */}
+                {/* Quick Symbol Pills: Trader's Most Recent Stocks */}
                 <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                  <span className="text-[10px] text-slate-500 mr-0.5">Popular:</span>
-                  {SUGGESTED_SYMBOLS.slice(0, 6).map((s) => (
+                  <span className="text-[10px] text-slate-400 font-semibold mr-0.5 flex items-center gap-1">
+                    <Clock size={10} className="text-blue-400" />
+                    <span>Recent:</span>
+                  </span>
+                  {traderRecentStocks.slice(0, 7).map((s) => (
                     <button
                       type="button"
                       key={s}
                       onClick={() => handleSelectSymbol({ symbol: s })}
-                      className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all ${
+                      className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all cursor-pointer ${
                         symbol === s
-                          ? 'bg-blue-600 text-white font-bold'
-                          : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                          ? 'bg-blue-600 text-white font-bold ring-1 ring-blue-400 shadow-sm'
+                          : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
                       }`}
+                      title={`Select ${s}`}
                     >
                       {s}
                     </button>
@@ -669,11 +728,11 @@ export default function TradeJournalTemplate({
                     <>
                       <input
                         type="number"
-                        min="0"
-                        placeholder="0"
+                        min="1"
+                        placeholder="Enter lot size"
                         value={lotSize}
                         onChange={(e) => handleLotSizeChange(e.target.value)}
-                        className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400 font-mono"
+                        className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-400 font-mono"
                       />
                       {/* Previous or Default Lot Size Suggestion Pill */}
                       {previousLotSize && (
@@ -699,7 +758,7 @@ export default function TradeJournalTemplate({
                       )}
                     </>
                   ) : (
-                    <span className="font-mono font-bold text-slate-100">{lotSize}</span>
+                    <span className="font-mono font-bold text-slate-100">{lotSize || '—'}</span>
                   )}
                 </div>
               </div>
