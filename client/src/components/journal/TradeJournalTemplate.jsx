@@ -118,7 +118,9 @@ export default function TradeJournalTemplate({
   const entryDate = currentData?.entryDate || ''
   const position = currentData?.position || 'Intraday'
   const time = currentData?.time || (entryDate ? new Date(entryDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '')
-  const lotSize = currentData?.lotSize || currentData?.quantity || 1
+  const lotSize = currentData?.lotSize !== undefined && currentData?.lotSize !== null && currentData?.lotSize !== ''
+    ? currentData.lotSize
+    : (currentData?.quantity !== undefined && currentData?.quantity !== null && currentData?.quantity !== '' ? currentData.quantity : 0)
   const instrumentType = currentData?.instrumentType || 'Equity'
   const strategy = currentData?.strategy || ''
   const imageUrl = currentData?.imageUrl || ''
@@ -140,11 +142,11 @@ export default function TradeJournalTemplate({
     const exit = parseFloat(exitPrice)
     const sl = parseFloat(stopLoss)
     const tp = parseFloat(takeProfit)
-    const qty = parseInt(lotSize, 10) || 1
+    const qty = parseInt(lotSize, 10) || 0
 
     let calcPnl = null
     let calcPnlPercent = null
-    if (!isNaN(entry) && !isNaN(exit) && entry > 0) {
+    if (!isNaN(entry) && !isNaN(exit) && entry > 0 && qty > 0) {
       if (tradeType === 'Long') {
         calcPnl = (exit - entry) * qty
       } else {
@@ -294,22 +296,12 @@ export default function TradeJournalTemplate({
     return getPreviousLotSize(symbol)
   }, [symbol, getPreviousLotSize])
 
-  // Auto-apply official default lot size for indices/stocks when symbol matches and current lot is default (1 or empty)
-  useEffect(() => {
-    if (isEditing && symbol) {
-      const sym = symbol.toUpperCase().trim()
-      const defLot = DEFAULT_STOCK_LOT_SIZES[sym]
-      if (defLot && (!lotSize || lotSize === 1 || lotSize === '1' || lotSize === '')) {
-        onChange('lotSize', defLot)
-        onChange('quantity', defLot)
-      }
-    }
-  }, [symbol, isEditing])
-
+  // Suggestion for official or previous lot size is available via 1-click pill below; default stays 0
   // Save updated lot size to localStorage whenever changed
   const handleLotSizeChange = (val) => {
-    onChange('lotSize', val)
-    onChange('quantity', val)
+    const num = val === '' ? 0 : val
+    onChange('lotSize', num)
+    onChange('quantity', num)
     if (symbol && val && Number(val) > 0) {
       try {
         const savedMap = JSON.parse(localStorage.getItem('stock_last_lot_sizes') || '{}')
@@ -677,9 +669,8 @@ export default function TradeJournalTemplate({
                     <>
                       <input
                         type="number"
-                        required
-                        min="1"
-                        placeholder="Units / Quantity"
+                        min="0"
+                        placeholder="0"
                         value={lotSize}
                         onChange={(e) => handleLotSizeChange(e.target.value)}
                         className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400 font-mono"

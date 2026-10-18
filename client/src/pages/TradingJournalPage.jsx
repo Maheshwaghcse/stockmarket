@@ -5,7 +5,7 @@ import {
   Trash2, X, ChevronLeft, ChevronRight, Info, CheckCircle2, 
   Clock, ArrowUpRight, ArrowDownRight, Filter, AlertCircle,
   Target, LogOut, Lightbulb, Image, ChevronDown, ChevronUp,
-  Eye, FileText, Download
+  Eye, FileText, Download, LayoutGrid, CalendarDays, Tag, Sparkles
 } from 'lucide-react'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
@@ -41,11 +41,14 @@ export default function TradingJournalPage() {
   const [selectedDayKey, setSelectedDayKey] = useState(null)
   const [showHowToUse, setShowHowToUse] = useState(false)
   const [heatmapTimeSlicer, setHeatmapTimeSlicer] = useState('1Y') // '7D' | '1M' | '6M' | '1Y' | 'ALL'
+  const [desktopHeatmapView, setDesktopHeatmapView] = useState('matrix') // 'matrix' | 'cards'
+  const [tradeOutcomeFilter, setTradeOutcomeFilter] = useState('ALL') // 'ALL' | 'WIN' | 'LOSS' | 'OPEN'
+  const [tradeReasonFilter, setTradeReasonFilter] = useState('ALL')
 
   // Current calendar month navigation (default to October 2026 / current date)
   const [viewDate, setViewDate] = useState(new Date('2026-10-15'))
 
-  // Form State for New Trade Modal
+  // Form State for New Trade Modal (default lotSize & quantity 0)
   const [form, setForm] = useState({
     symbol: '',
     tradeType: 'Long',
@@ -53,8 +56,8 @@ export default function TradingJournalPage() {
     exitDate: '',
     entryPrice: '',
     exitPrice: '',
-    quantity: 1,
-    lotSize: 1,
+    quantity: 0,
+    lotSize: 0,
     position: 'Intraday',
     time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
     instrumentType: 'Equity',
@@ -142,8 +145,8 @@ export default function TradingJournalPage() {
       exitDate: '',
       entryPrice: '',
       exitPrice: '',
-      quantity: 1,
-      lotSize: 1,
+      quantity: 0,
+      lotSize: 0,
       position: 'Intraday',
       time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
       instrumentType: 'Equity',
@@ -173,9 +176,9 @@ export default function TradingJournalPage() {
   const calculatedPnL = useMemo(() => {
     const entry = parseFloat(form.entryPrice)
     const exit = parseFloat(form.exitPrice)
-    const qty = parseInt(form.quantity, 10)
+    const qty = parseInt(form.lotSize !== undefined && form.lotSize !== '' ? form.lotSize : form.quantity, 10) || 0
 
-    if (!entry || isNaN(entry) || !qty || isNaN(qty)) return null
+    if (!entry || isNaN(entry) || !qty || qty <= 0) return null
     if (isNaN(exit)) return { status: 'OPEN', pnl: 0, pnlPercent: 0 }
 
     let pnl = 0
@@ -187,7 +190,7 @@ export default function TradingJournalPage() {
     const invested = entry * qty
     const pnlPercent = invested > 0 ? (pnl / invested) * 100 : 0
     return { status: 'CLOSED', pnl: +pnl.toFixed(2), pnlPercent: +pnlPercent.toFixed(2) }
-  }, [form.entryPrice, form.exitPrice, form.quantity, form.tradeType])
+  }, [form.entryPrice, form.exitPrice, form.quantity, form.lotSize, form.tradeType])
 
   const stats = journalData?.stats || {
     totalTrades: 0,
@@ -234,11 +237,26 @@ export default function TradingJournalPage() {
     })
   }, [trades, selectedDayKey])
 
-  // Filter trades by selected calendar day if user clicks a day
+  // Filter trades by selected calendar day and slicer filters (Outcome & Reason)
   const displayedTrades = useMemo(() => {
-    if (!selectedDayKey) return trades
-    return selectedDayTrades
-  }, [trades, selectedDayKey, selectedDayTrades])
+    let list = selectedDayKey ? selectedDayTrades : trades
+    if (tradeOutcomeFilter === 'WIN') {
+      list = list.filter((t) => t.status === 'CLOSED' && (t.pnl || 0) > 0)
+    } else if (tradeOutcomeFilter === 'LOSS') {
+      list = list.filter((t) => t.status === 'CLOSED' && (t.pnl || 0) < 0)
+    } else if (tradeOutcomeFilter === 'OPEN') {
+      list = list.filter((t) => t.status === 'OPEN')
+    }
+    if (tradeReasonFilter && tradeReasonFilter !== 'ALL') {
+      const lower = tradeReasonFilter.toLowerCase()
+      list = list.filter((t) =>
+        t.entryReason?.toLowerCase().includes(lower) ||
+        t.assumptions?.toLowerCase().includes(lower) ||
+        t.strategy?.toLowerCase().includes(lower)
+      )
+    }
+    return list
+  }, [trades, selectedDayKey, selectedDayTrades, tradeOutcomeFilter, tradeReasonFilter])
 
   // Month Calendar Calculations (Matches Screenshot 2)
   const currentMonthYear = useMemo(() => {
@@ -341,6 +359,32 @@ export default function TradingJournalPage() {
       .sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey))
   }, [calendarMap, heatmapTimeSlicer])
 
+  // Dynamic month / date labels computed directly from visible heatmapWeeks
+  const heatmapMonthLabels = useMemo(() => {
+    if (!heatmapWeeks || heatmapWeeks.length === 0) return []
+    if (heatmapTimeSlicer === '7D' || heatmapTimeSlicer === '1M') {
+      return heatmapWeeks.map((week) => {
+        const firstDay = week[0].date
+        return {
+          label: firstDay.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        }
+      })
+    }
+
+    const labels = []
+    let lastMonth = -1
+    heatmapWeeks.forEach((week) => {
+      const m = week[0].date.getMonth()
+      if (m !== lastMonth) {
+        lastMonth = m
+        labels.push({
+          label: week[0].date.toLocaleDateString('en-IN', { month: 'short' }),
+        })
+      }
+    })
+    return labels
+  }, [heatmapWeeks, heatmapTimeSlicer])
+
   // Heatmap consistency and streak summary for right-side dashboard
   const heatmapStats = useMemo(() => {
     let greenDays = 0
@@ -438,8 +482,8 @@ export default function TradingJournalPage() {
     if (e && e.preventDefault) e.preventDefault()
     if (!form.symbol?.trim()) return toast.error('Please enter a symbol / ticker')
     if (!form.entryPrice) return toast.error('Please enter entry price')
-    const qty = parseInt(form.quantity || form.lotSize || 1, 10)
-    if (!qty || qty <= 0) return toast.error('Please enter a valid quantity / lot size')
+    const qty = parseInt(form.lotSize !== undefined && form.lotSize !== '' ? form.lotSize : form.quantity, 10)
+    if (isNaN(qty) || qty <= 0) return toast.error('Please enter quantity / lot size (must be greater than 0)')
 
     createTradeMutation.mutate({
       ...form,
@@ -568,6 +612,36 @@ export default function TradingJournalPage() {
             <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium hidden sm:inline">
               Daily Trading Consistency
             </span>
+          </div>
+
+          {/* Desktop View Switcher: Matrix Heatmap vs Only Traded Days */}
+          <div className="hidden md:flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setDesktopHeatmapView('matrix')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                desktopHeatmapView === 'matrix'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+              title="View full calendar heatmap matrix"
+            >
+              <LayoutGrid size={13} />
+              <span>Matrix View</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDesktopHeatmapView('cards')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                desktopHeatmapView === 'cards'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+              title="View only active traded days without blank gaps"
+            >
+              <CalendarDays size={13} />
+              <span>Traded Days ({tradedDaysList.length})</span>
+            </button>
           </div>
 
           {/* Heatmap Slicer: 7D, 1M, 6M, 1Y, All */}
@@ -699,86 +773,168 @@ export default function TradingJournalPage() {
             </p>
           </div>
 
-          {/* ── DESKTOP VIEW: Full Calendar Matrix Heatmap (hidden on mobile) ── */}
-          <div className="hidden md:flex flex-1 overflow-x-auto touch-scroll pb-2 flex-col justify-center">
-            <div className="min-w-[760px] mx-auto">
-              <div className="flex gap-1.5 items-center justify-center">
-                {/* Day Labels */}
-                <div className="flex flex-col gap-1.5 text-[10px] text-slate-500 font-mono pr-2">
-                  <span>Mo</span>
-                  <span>Tu</span>
-                  <span>We</span>
-                  <span>Th</span>
-                  <span>Fr</span>
-                  <span>Sa</span>
-                  <span>Su</span>
+          {/* ── DESKTOP VIEW: Full Calendar Matrix Heatmap OR Traded Days Only (Zero Blank Days) ── */}
+          {desktopHeatmapView === 'cards' ? (
+            <div className="hidden md:flex flex-1 flex-col space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-400 pb-1 border-b border-slate-800">
+                <span className="font-bold text-slate-200">
+                  Active Traded Days ({tradedDaysList.length}) — Only Traded Days (Zero Blank Days)
+                </span>
+                <span className="text-[11px] text-blue-400 font-mono font-medium">
+                  {heatmapTimeSlicer === '7D'
+                    ? 'Last 7 Days'
+                    : heatmapTimeSlicer === '1M'
+                    ? 'Last 30 Days'
+                    : heatmapTimeSlicer === '6M'
+                    ? 'Last 6 Months'
+                    : heatmapTimeSlicer === '1Y'
+                    ? 'Last 1 Year'
+                    : 'All Time'}
+                </span>
+              </div>
+
+              {tradedDaysList.length === 0 ? (
+                <div className="p-8 rounded-xl bg-slate-900/60 border border-slate-800 text-center space-y-2 my-auto">
+                  <Calendar size={32} className="mx-auto text-slate-500 opacity-60" />
+                  <p className="text-xs text-slate-400">
+                    No trades recorded during the selected {heatmapTimeSlicer} window.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setHeatmapTimeSlicer('ALL')}
+                    className="text-xs text-blue-400 hover:underline font-semibold cursor-pointer"
+                  >
+                    Switch slicer to All Time
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2.5 max-h-[290px] overflow-y-auto pr-1">
+                  {tradedDaysList.map((day) => {
+                    const isProfitable = day.pnl >= 0
+                    const isSelected = selectedDayKey === day.dateKey
+                    return (
+                      <button
+                        key={day.dateKey}
+                        type="button"
+                        onClick={() => handleDayClick(day.dateKey)}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                          isSelected
+                            ? 'ring-2 ring-blue-400 bg-blue-950/70 border-blue-500 shadow-lg'
+                            : isProfitable
+                            ? 'bg-emerald-950/20 hover:bg-emerald-950/40 border-emerald-500/30'
+                            : 'bg-rose-950/20 hover:bg-rose-950/40 border-rose-500/30'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-bold text-white font-mono">
+                            {new Date(day.dateKey).toLocaleDateString('en-IN', {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold font-mono">
+                            {day.count} {day.count === 1 ? 'trade' : 'trades'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-baseline justify-between gap-1 pt-1.5 border-t border-slate-800/60">
+                          <span
+                            className={`text-sm font-extrabold font-mono ${
+                              isProfitable ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {formatINR(day.pnl, { compact: false, showSign: true })}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {day.wins}W / {day.losses}L
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              <p className="text-[10px] text-slate-500 text-center pt-0.5">
+                Click any day card to inspect in trade template with Prev / Next
+              </p>
+            </div>
+          ) : (
+            <div className="hidden md:flex flex-1 overflow-x-auto touch-scroll pb-2 flex-col justify-center">
+              <div className={heatmapWeeks.length < 10 ? 'w-auto max-w-fit mx-auto' : 'min-w-[760px] mx-auto'}>
+                <div className="flex gap-1.5 items-center justify-center">
+                  {/* Day Labels */}
+                  <div className="flex flex-col gap-1.5 text-[10px] text-slate-500 font-mono pr-2">
+                    <span>Mo</span>
+                    <span>Tu</span>
+                    <span>We</span>
+                    <span>Th</span>
+                    <span>Fr</span>
+                    <span>Sa</span>
+                    <span>Su</span>
+                  </div>
+
+                  {/* Weeks */}
+                  <div className="flex gap-1">
+                    {heatmapWeeks.map((week, wIdx) => (
+                      <div key={wIdx} className="flex flex-col gap-1">
+                        {week.map((day, dIdx) => {
+                          const pnl = day.data?.pnl || 0
+                          const count = day.data?.count || 0
+                          const isSelected = selectedDayKey === day.dateKey
+
+                          let cellColor = '#151e32' // default no trade
+                          if (count > 0) {
+                            if (pnl > 5000) cellColor = '#15803d'
+                            else if (pnl > 0) cellColor = '#22c55e'
+                            else if (pnl < -2000) cellColor = '#b91c1c'
+                            else cellColor = '#ef4444'
+                          }
+
+                          return (
+                            <div
+                              key={dIdx}
+                              onClick={() => handleDayClick(day.dateKey)}
+                              title={`${day.dateKey}: ${count} trades, P&L: ₹${pnl.toLocaleString('en-IN')} (Click to inspect trade template with Prev/Next)`}
+                              className={`${
+                                heatmapWeeks.length <= 5 ? 'w-5 h-5 rounded-md' : 'w-3.5 h-3.5 rounded-sm'
+                              } transition-all cursor-pointer ${
+                                isSelected ? 'ring-2 ring-white scale-110 shadow-lg shadow-blue-500/50' : 'hover:scale-125 hover:z-10'
+                              }`}
+                              style={{ background: cellColor }}
+                            />
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Weeks */}
-                <div className="flex gap-1">
-                  {heatmapWeeks.map((week, wIdx) => (
-                    <div key={wIdx} className="flex flex-col gap-1">
-                      {week.map((day, dIdx) => {
-                        const pnl = day.data?.pnl || 0
-                        const count = day.data?.count || 0
-                        const isSelected = selectedDayKey === day.dateKey
-
-                        let cellColor = '#151e32' // default no trade
-                        if (count > 0) {
-                          if (pnl > 5000) cellColor = '#15803d'
-                          else if (pnl > 0) cellColor = '#22c55e'
-                          else if (pnl < -2000) cellColor = '#b91c1c'
-                          else cellColor = '#ef4444'
-                        }
-
-                        return (
-                          <div
-                            key={dIdx}
-                            onClick={() => handleDayClick(day.dateKey)}
-                            title={`${day.dateKey}: ${count} trades, P&L: ₹${pnl.toLocaleString('en-IN')} (Click to inspect trade template with Prev/Next)`}
-                            className={`w-3.5 h-3.5 rounded-sm transition-all cursor-pointer ${
-                              isSelected ? 'ring-2 ring-white scale-110 shadow-lg shadow-blue-500/50' : 'hover:scale-125 hover:z-10'
-                            }`}
-                            style={{ background: cellColor }}
-                          />
-                        )
-                      })}
-                    </div>
+                {/* Dynamic Months / Dates row */}
+                <div className="flex justify-between text-[11px] text-slate-400 pt-3 pl-8 font-mono">
+                  {heatmapMonthLabels.map((item, idx) => (
+                    <span key={idx} className="hover:text-blue-400 transition-colors">
+                      {item.label}
+                    </span>
                   ))}
                 </div>
-              </div>
 
-              {/* Months row */}
-              <div className="flex justify-between text-[11px] text-slate-500 pt-3 pl-8 font-medium">
-                <span>Nov</span>
-                <span>Dec</span>
-                <span>Jan</span>
-                <span>Feb</span>
-                <span>Mar</span>
-                <span>Apr</span>
-                <span>May</span>
-                <span>Jun</span>
-                <span>Jul</span>
-                <span>Aug</span>
-                <span>Sept</span>
-                <span>Oct</span>
-              </div>
-
-              {/* Heatmap Legend */}
-              <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2.5 pt-2 border-t border-slate-800/60">
-                <span className="text-[10px] text-slate-500">Tap any colored square to inspect daily trades &amp; 3 setup reasons</span>
-                <div className="flex items-center gap-1.5">
-                  <span>Max Loss</span>
-                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#b91c1c' }} />
-                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#ef4444' }} />
-                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#151e32' }} />
-                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#22c55e' }} />
-                  <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#15803d' }} />
-                  <span>Max Profit</span>
+                {/* Heatmap Legend */}
+                <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2.5 pt-2 border-t border-slate-800/60">
+                  <span className="text-[10px] text-slate-500">Tap any colored square to inspect daily trades &amp; 3 setup reasons</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>Max Loss</span>
+                    <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#b91c1c' }} />
+                    <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#ef4444' }} />
+                    <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#151e32' }} />
+                    <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#22c55e' }} />
+                    <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#15803d' }} />
+                    <span>Max Profit</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Right Side Feature: Consistency & Day Distribution Metrics */}
           <div className="xl:w-72 2xl:w-80 bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 flex flex-col justify-between shrink-0">
@@ -1163,6 +1319,103 @@ export default function TradingJournalPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Trade History Slicers: Outcome & Reason (Desktop & Mobile) */}
+        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2.5">
+          {/* Row 1: Outcome Slicers */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1">
+                Outcome:
+              </span>
+              {[
+                { id: 'ALL', label: 'All', count: (selectedDayKey ? selectedDayTrades : trades).length },
+                {
+                  id: 'WIN',
+                  label: '🟢 Wins',
+                  count: (selectedDayKey ? selectedDayTrades : trades).filter(
+                    (t) => t.status === 'CLOSED' && (t.pnl || 0) > 0
+                  ).length,
+                },
+                {
+                  id: 'LOSS',
+                  label: '🔴 Losses',
+                  count: (selectedDayKey ? selectedDayTrades : trades).filter(
+                    (t) => t.status === 'CLOSED' && (t.pnl || 0) < 0
+                  ).length,
+                },
+                {
+                  id: 'OPEN',
+                  label: '⏳ Open',
+                  count: (selectedDayKey ? selectedDayTrades : trades).filter(
+                    (t) => t.status === 'OPEN'
+                  ).length,
+                },
+              ].map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setTradeOutcomeFilter(filter.id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    tradeOutcomeFilter === filter.id
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                      : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  {filter.label} ({filter.count})
+                </button>
+              ))}
+            </div>
+
+            {(tradeOutcomeFilter !== 'ALL' || tradeReasonFilter !== 'ALL') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTradeOutcomeFilter('ALL')
+                  setTradeReasonFilter('ALL')
+                }}
+                className="text-xs text-rose-400 hover:text-rose-300 font-semibold cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20"
+              >
+                <span>Reset Slicers ✕</span>
+              </button>
+            )}
+          </div>
+
+          {/* Row 2: Preset Reason / Setup Slicers */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1.5 border-t border-slate-800/60">
+            <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1 flex items-center gap-1">
+              <Tag size={12} className="text-blue-400" />
+              Reason:
+            </span>
+            {[
+              'ALL',
+              'Breakout',
+              'Support Bounce',
+              'Resistance Rejection',
+              'Pullback to EMA',
+              'VWAP Reversal',
+              'Trend Following',
+              'Chart Pattern',
+              'Scalp Momentum',
+            ].map((reason) => {
+              const active = tradeReasonFilter === reason
+              return (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => setTradeReasonFilter(reason)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer ${
+                    active
+                      ? 'bg-purple-600 text-white font-bold shadow-sm shadow-purple-500/30 ring-1 ring-purple-400'
+                      : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  {reason === 'ALL' ? 'All Reasons' : reason}
+                </button>
+              )
+            })}
           </div>
         </div>
 

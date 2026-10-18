@@ -13,6 +13,7 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import TradeJournalTemplate from './TradeJournalTemplate'
+import toast from 'react-hot-toast'
 
 export default function TradeViewerModal({
   isOpen,
@@ -54,8 +55,8 @@ export default function TradeViewerModal({
         exitDate: currentTrade.exitDate ? new Date(currentTrade.exitDate).toISOString().slice(0, 16) : '',
         entryPrice: currentTrade.entryPrice ?? '',
         exitPrice: currentTrade.exitPrice ?? '',
-        quantity: currentTrade.quantity ?? 1,
-        lotSize: currentTrade.lotSize ?? currentTrade.quantity ?? 1,
+        quantity: currentTrade.quantity ?? 0,
+        lotSize: currentTrade.lotSize ?? currentTrade.quantity ?? 0,
         position: currentTrade.position || 'Intraday',
         time: currentTrade.time || (currentTrade.entryDate ? new Date(currentTrade.entryDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''),
         instrumentType: currentTrade.instrumentType || 'Equity',
@@ -123,9 +124,15 @@ export default function TradeViewerModal({
 
   const handleSaveEdit = async () => {
     if (!currentTrade || !onUpdateTrade) return
+    const qty = parseInt(editFormData.lotSize !== undefined && editFormData.lotSize !== '' ? editFormData.lotSize : editFormData.quantity, 10)
+    if (isNaN(qty) || qty <= 0) return toast.error('Please enter quantity / lot size (must be greater than 0)')
     setIsSubmitting(true)
     try {
-      await onUpdateTrade(currentTrade._id, editFormData)
+      await onUpdateTrade(currentTrade._id, {
+        ...editFormData,
+        quantity: qty,
+        lotSize: qty,
+      })
       setIsEditing(false)
     } catch {
       // Handled by caller toast
