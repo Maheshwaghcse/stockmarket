@@ -30,6 +30,12 @@ const errorHandler = (err, req, res, next) => {
     statusCode = 401;
   }
 
+  // Request entity / payload too large (413)
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    message = 'The uploaded trade or image is too large. Please upload an image under 15MB.';
+    statusCode = 413;
+  }
+
   if (process.env.NODE_ENV === 'development') {
     console.error('ERROR:', err);
   }

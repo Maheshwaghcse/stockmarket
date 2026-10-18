@@ -122,35 +122,79 @@ export default function TradeJournalTemplate({
     }
   }, [entryPrice, exitPrice, stopLoss, takeProfit, lotSize, tradeType, riskReward, isEditing, currentData])
 
+  // Compress large screenshots/images using HTML5 canvas
+  const compressImageFile = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const rawData = event.target?.result
+        if (!rawData) return resolve(null)
+        const img = new Image()
+        img.onload = () => {
+          const maxDim = 1600
+          let width = img.width
+          let height = img.height
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width)
+              width = maxDim
+            } else {
+              width = Math.round((width * maxDim) / height)
+              height = maxDim
+            }
+          }
+
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+
+          try {
+            const compressed = canvas.toDataURL('image/jpeg', 0.85)
+            resolve(compressed)
+          } catch {
+            resolve(rawData)
+          }
+        }
+        img.onerror = () => resolve(rawData)
+        img.src = rawData
+      }
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(file)
+    })
+  }
+
   // Handle local image file upload -> Base64
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 3 * 1024 * 1024) {
-      alert('Image file is too large (max 3 MB).')
+    if (file.size > 20 * 1024 * 1024) {
+      alert('Image file is too large (max 20 MB).')
       return
     }
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      onChange('imageUrl', event.target?.result)
+    const compressed = await compressImageFile(file)
+    if (compressed) {
+      onChange('imageUrl', compressed)
     }
-    reader.readAsDataURL(file)
   }
 
   // Handle paste screenshot from clipboard
-  const handlePaste = (e) => {
+  const handlePaste = async (e) => {
     if (!isEditing) return
     const items = e.clipboardData?.items
     if (!items) return
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
         const blob = items[i].getAsFile()
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          onChange('imageUrl', event.target?.result)
+        if (blob) {
+          e.preventDefault()
+          const compressed = await compressImageFile(blob)
+          if (compressed) {
+            onChange('imageUrl', compressed)
+          }
         }
-        reader.readAsDataURL(blob)
-        e.preventDefault()
         break
       }
     }

@@ -73,8 +73,8 @@ app.options('*', cors(corsOptions));
 app.use('/api/webhook', webhookRoutes);
 
 // ─── Body Parsers ──────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
 // ─── Logging ───────────────────────────────────────────────────────────────
