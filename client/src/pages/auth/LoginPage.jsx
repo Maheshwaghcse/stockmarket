@@ -64,29 +64,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Quick Demo & Admin Credentials Auto-fill */}
-        <div className="mt-4 p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs space-y-2">
-          <span className="text-[11px] text-slate-400 font-semibold block">Quick 1-Click Fill:</span>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setForm({ email: 'admin@stocksense.in', password: 'Admin@123456' })}
-              className="py-1.5 px-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-semibold text-center transition-all cursor-pointer"
-              title="Auto-fill admin credentials"
-            >
-              👑 Fill Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => setForm({ email: 'demo@stocksense.in', password: 'Demo@123456' })}
-              className="py-1.5 px-2.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 font-semibold text-center transition-all cursor-pointer"
-              title="Auto-fill demo trader credentials"
-            >
-              👤 Fill Demo
-            </button>
-          </div>
-        </div>
-
         <p className="text-center text-sm muted mt-6">
           Don't have an account?{' '}
           <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium">Create one</Link>
