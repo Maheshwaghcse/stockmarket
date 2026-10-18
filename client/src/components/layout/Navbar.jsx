@@ -43,6 +43,8 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [visible, setVisible] = useState(true)
+  const lastScrollY = useRef(0)
   const { user, subscription, logout, isAdmin } = useAuthStore()
   const { marketStatus, isConnected, fetchIndices } = useMarketStore()
   const navigate = useNavigate()
@@ -53,7 +55,46 @@ export default function Navbar() {
   useEffect(() => {
     setOpen(false)
     setUserMenuOpen(false)
+    setVisible(true)
   }, [location.pathname])
+
+  // Scroll direction detection: hide navbar on scroll down, show on scroll up
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+
+      // Always show navbar near top of the page
+      if (currentScrollY <= 25) {
+        setVisible(true)
+        lastScrollY.current = currentScrollY
+        return
+      }
+
+      // If mobile drawer or user dropdown is open, keep navbar pinned
+      if (open || userMenuOpen) {
+        setVisible(true)
+        lastScrollY.current = currentScrollY
+        return
+      }
+
+      const diff = currentScrollY - lastScrollY.current
+      // Avoid micro-jitter triggers
+      if (Math.abs(diff) < 8) return
+
+      if (diff > 0 && currentScrollY > 60) {
+        // Scrolling down -> hide navbar
+        setVisible(false)
+      } else if (diff < 0) {
+        // Scrolling up -> show navbar
+        setVisible(true)
+      }
+
+      lastScrollY.current = currentScrollY
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [open, userMenuOpen])
 
   // Close menus on ESC key or click outside
   useEffect(() => {
@@ -113,7 +154,12 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 glass border-b select-none" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+      <header
+        className={`sticky top-0 z-40 glass border-b select-none transition-transform duration-300 ${
+          visible ? 'translate-y-0' : '-translate-y-full'
+        }`}
+        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+      >
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
 

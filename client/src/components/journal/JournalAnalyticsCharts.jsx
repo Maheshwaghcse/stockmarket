@@ -578,10 +578,10 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
             )}
 
             {/* SVG Interactive Multi-Visual Equity Chart */}
-            <div className="relative overflow-x-auto touch-scroll bg-[#080d1a] rounded-xl border border-slate-800/80 p-2">
+            <div className="relative bg-[#080d1a] rounded-xl border border-slate-800/80 p-2 overflow-hidden">
               <svg
                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                className="w-full h-auto min-w-[500px] sm:min-w-[640px] select-none"
+                className="w-full h-auto select-none"
                 style={{ overflow: 'visible' }}
               >
                 <defs>
@@ -910,8 +910,8 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   </div>
                 </div>
 
-                <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-4 overflow-x-auto touch-scroll">
-                  <div className="min-w-[620px] flex items-end gap-2 h-52 relative border-b border-slate-700/60 pb-1">
+                <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-3 sm:p-4 overflow-hidden">
+                  <div className="w-full flex items-end gap-1 sm:gap-2 h-44 sm:h-52 relative border-b border-slate-700/60 pb-1">
                     {/* Zero Reference Line */}
                     <div
                       className="absolute w-full border-b border-slate-600/80 border-dashed z-0"
@@ -1033,10 +1033,10 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   </div>
                 </div>
 
-                <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-3 overflow-x-auto touch-scroll">
+                <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-3 overflow-hidden">
                   <svg
                     viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                    className="w-full h-auto min-w-[500px] sm:min-w-[640px] select-none"
+                    className="w-full h-auto select-none"
                     style={{ overflow: 'visible' }}
                   >
                     <defs>
@@ -1180,10 +1180,10 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
                   </div>
                 </div>
 
-                <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-3 overflow-x-auto touch-scroll">
+                <div className="bg-[#080d1a] rounded-xl border border-slate-800/80 p-3 overflow-hidden">
                   <svg
                     viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                    className="w-full h-auto min-w-[500px] sm:min-w-[640px] select-none"
+                    className="w-full h-auto select-none"
                     style={{ overflow: 'visible' }}
                   >
                     {/* Zero Reference Line */}

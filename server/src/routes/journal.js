@@ -61,6 +61,7 @@ router.get('/', protect, async (req, res, next) => {
         entryPrice: trade.entryPrice,
         exitPrice: trade.exitPrice,
         quantity: trade.quantity,
+        lotSize: trade.lotSize || trade.quantity,
         entryDate: trade.entryDate,
         exitDate: trade.exitDate,
         pnl,
@@ -71,6 +72,18 @@ router.get('/', protect, async (req, res, next) => {
         exitReason: trade.exitReason || '',
         lessonLearned: trade.lessonLearned || '',
         tags: trade.tags || [],
+        position: trade.position || 'Intraday',
+        time: trade.time || '',
+        instrumentType: trade.instrumentType || 'Equity',
+        strategy: trade.strategy || '',
+        stopLoss: trade.stopLoss || null,
+        takeProfit: trade.takeProfit || null,
+        riskReward: trade.riskReward || '',
+        assumptions: trade.assumptions || '',
+        disciplined: trade.disciplined || 'Y',
+        followedRules: trade.followedRules || 'Y',
+        rating: trade.rating !== undefined ? trade.rating : 5,
+        chartNotes: trade.chartNotes || '',
       });
     });
 
@@ -130,14 +143,29 @@ router.post('/', protect, async (req, res, next) => {
       entryPrice,
       exitPrice,
       quantity,
+      lotSize,
       imageUrl,
       entryReason,
       exitReason,
       lessonLearned,
       tags,
+      position,
+      time,
+      instrumentType,
+      strategy,
+      stopLoss,
+      takeProfit,
+      riskReward,
+      assumptions,
+      disciplined,
+      followedRules,
+      rating,
+      chartNotes,
     } = req.body;
 
-    if (!symbol || !entryPrice || !quantity) {
+    const parsedQty = parseInt(quantity || lotSize || 1, 10);
+
+    if (!symbol || !entryPrice || !parsedQty) {
       return res.status(400).json({
         success: false,
         message: 'Symbol, entry price, and quantity are required.',
@@ -152,12 +180,25 @@ router.post('/', protect, async (req, res, next) => {
       exitDate: exitDate ? new Date(exitDate) : null,
       entryPrice: parseFloat(entryPrice),
       exitPrice: exitPrice !== undefined && exitPrice !== '' && exitPrice !== null ? parseFloat(exitPrice) : null,
-      quantity: parseInt(quantity, 10),
+      quantity: parsedQty,
+      lotSize: lotSize ? parseInt(lotSize, 10) : parsedQty,
       imageUrl: imageUrl || null,
       entryReason: entryReason || '',
       exitReason: exitReason || '',
       lessonLearned: lessonLearned || '',
       tags: Array.isArray(tags) ? tags : [],
+      position: position || 'Intraday',
+      time: time || '',
+      instrumentType: instrumentType || 'Equity',
+      strategy: strategy || '',
+      stopLoss: stopLoss !== undefined && stopLoss !== '' && stopLoss !== null ? parseFloat(stopLoss) : null,
+      takeProfit: takeProfit !== undefined && takeProfit !== '' && takeProfit !== null ? parseFloat(takeProfit) : null,
+      riskReward: riskReward || '',
+      assumptions: assumptions || '',
+      disciplined: disciplined || 'Y',
+      followedRules: followedRules || 'Y',
+      rating: rating ? parseInt(rating, 10) : 5,
+      chartNotes: chartNotes || '',
     });
 
     await trade.save();
@@ -195,16 +236,23 @@ router.put('/:id', protect, async (req, res, next) => {
 
     const updatable = [
       'symbol', 'tradeType', 'entryDate', 'exitDate',
-      'entryPrice', 'exitPrice', 'quantity', 'imageUrl',
+      'entryPrice', 'exitPrice', 'quantity', 'lotSize', 'imageUrl',
       'entryReason', 'exitReason', 'lessonLearned', 'tags',
+      'position', 'time', 'instrumentType', 'strategy',
+      'stopLoss', 'takeProfit', 'riskReward', 'assumptions',
+      'disciplined', 'followedRules', 'rating', 'chartNotes',
     ];
 
     updatable.forEach((field) => {
       if (req.body[field] !== undefined) {
         if (field === 'symbol') trade.symbol = req.body[field].toUpperCase().trim();
-        else if (field === 'entryPrice' || field === 'exitPrice') trade[field] = req.body[field] ? parseFloat(req.body[field]) : null;
-        else if (field === 'quantity') trade[field] = parseInt(req.body[field], 10);
-        else trade[field] = req.body[field];
+        else if (field === 'entryPrice' || field === 'exitPrice' || field === 'stopLoss' || field === 'takeProfit') {
+          trade[field] = req.body[field] !== '' && req.body[field] !== null ? parseFloat(req.body[field]) : null;
+        } else if (field === 'quantity' || field === 'lotSize' || field === 'rating') {
+          trade[field] = req.body[field] !== '' && req.body[field] !== null ? parseInt(req.body[field], 10) : trade[field];
+        } else {
+          trade[field] = req.body[field];
+        }
       }
     });
 

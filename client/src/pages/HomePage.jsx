@@ -246,6 +246,37 @@ export default function HomePage() {
       {/* ── Simple, Crystal-Clear Slicers Bar (One-Visit Intuitive) ── */}
       <div className="card p-3.5 sm:p-4 bg-gradient-to-r from-[#0b1329] via-[#091124] to-[#070d1c] border border-slate-800 rounded-2xl shadow-xl space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Quick 1-Click Reset View / Remove Filter Action Button (Left Aligned) */}
+          <div className="flex items-center gap-2">
+            {outcomeSlicer !== 'all' ? (
+              <button
+                onClick={() => {
+                  setOutcomeSlicer('all')
+                  setMoversTab('all')
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition-all shadow-sm"
+                title="1-Click: Remove filter and show all stocks"
+              >
+                <RotateCcw size={12} className="text-rose-400" />
+                <span>Remove Filter</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setOutcomeSlicer('all')
+                  setTimeSlicer('1D')
+                  setActiveChartSymbol('NIFTY50')
+                  setMoversTab('all')
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all"
+                title="Reset all chart and slicer filters to default view"
+              >
+                <RotateCcw size={11} className="text-slate-400" />
+                <span>Reset View</span>
+              </button>
+            )}
+          </div>
+
           {/* Slicer Group 1: Timeframe */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
@@ -338,37 +369,6 @@ export default function HomePage() {
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Quick 1-Click Remove Filter Action Button */}
-          <div className="flex items-center gap-2 ml-auto">
-            {outcomeSlicer !== 'all' ? (
-              <button
-                onClick={() => {
-                  setOutcomeSlicer('all')
-                  setMoversTab('all')
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition-all shadow-sm"
-                title="1-Click: Remove filter and show all stocks"
-              >
-                <RotateCcw size={12} className="text-rose-400" />
-                <span>Remove Filter</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  setOutcomeSlicer('all')
-                  setTimeSlicer('1D')
-                  setActiveChartSymbol('NIFTY50')
-                  setMoversTab('all')
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all"
-                title="Reset all chart and slicer filters to default view"
-              >
-                <RotateCcw size={11} className="text-slate-400" />
-                <span>Reset View</span>
-              </button>
-            )}
           </div>
         </div>
 

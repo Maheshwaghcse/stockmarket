@@ -9,6 +9,7 @@ import {
   Heart,
   Calculator,
   BookOpen,
+  Settings,
 } from 'lucide-react'
 
 export default function Footer() {
@@ -63,7 +64,7 @@ export default function Footer() {
 
       {/* ── Main Navigation & Brand Section ───────────────────────────── */}
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10">
+        <div className="flex flex-col lg:grid lg:grid-cols-6 gap-8 lg:gap-10">
 
           {/* Col 1 & 2: Brand & Platform Overview */}
           <div className="lg:col-span-2 space-y-3.5">
@@ -100,75 +101,103 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Col 3: Markets & Benchmarks */}
-          <div className="space-y-2.5">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-              <Activity size={13} className="text-blue-400" />
-              <span>Markets</span>
-            </h4>
-            <ul className="space-y-1.5 text-xs">
-              {[
-                ['Nifty 50 Benchmark', '/indices'],
-                ['Bank Nifty Derivatives', '/indices'],
-                ['BSE Sensex 30', '/indices'],
-                ['Nifty Financial (FinNifty)', '/indices'],
-                ['Top 106 Equities Directory', '/stocks'],
-                ['Market Breadth & Heatmap', '/stocks'],
-              ].map(([l, to]) => (
-                <li key={l}>
-                  <Link to={to} className="text-slate-400 hover:text-white transition-colors duration-150 block py-0.5">
-                    {l}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* 2x2 Grid of Market, Trading, Platform (Middle), and Settings in Mobile View / 4 cols on Desktop */}
+          <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
 
-          {/* Col 4: Trading Desk & Calculators */}
-          <div className="space-y-2.5">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-              <Calculator size={13} className="text-emerald-400" />
-              <span>Trading Desk</span>
-            </h4>
-            <ul className="space-y-1.5 text-xs">
-              {[
-                ['Trading Journal Desk', '/journal'],
-                ['Performance & P&L Analytics', '/journal'],
-                ['Position Sizing Calculator', '/calculator'],
-                ['Option Risk & Lot Calculator', '/calculator'],
-                ['CAGR & SIP Growth Engine', '/calculator'],
-                ['Multi-Asset Watchlists', '/watchlist'],
-              ].map(([l, to]) => (
-                <li key={l}>
-                  <Link to={to} className="text-slate-400 hover:text-white transition-colors duration-150 block py-0.5">
-                    {l}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+            {/* 1. Markets & Benchmarks */}
+            <div className="space-y-2.5">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+                <Activity size={13} className="text-blue-400" />
+                <span>Markets</span>
+              </h4>
+              <ul className="space-y-1.5 text-xs">
+                {[
+                  ['Nifty 50 Benchmark', '/indices'],
+                  ['Bank Nifty', '/indices'],
+                  ['BSE Sensex 30', '/indices'],
+                  ['Fin Nifty', '/indices'],
+                  ['106 Equities List', '/stocks'],
+                  ['Market Heatmap', '/stocks'],
+                ].map(([l, to]) => (
+                  <li key={l}>
+                    <Link to={to} className="text-slate-400 hover:text-white transition-colors duration-150 block py-0.5">
+                      {l}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Col 5: Academy & Platform */}
-          <div className="space-y-2.5">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-              <BookOpen size={13} className="text-indigo-400" />
-              <span>Platform</span>
-            </h4>
-            <ul className="space-y-1.5 text-xs">
-              {[
-                ['Candlestick Patterns Guide', '/education'],
-                ['Technical Analysis Sandbox', '/education'],
-                ['Financial News & Macro RBI', '/news'],
-                ['Pricing Plans & Pro Access', '/pricing'],
-                ['Trader Profile & Settings', '/profile'],
-              ].map(([l, to]) => (
-                <li key={l}>
-                  <Link to={to} className="text-slate-400 hover:text-white transition-colors duration-150 block py-0.5">
-                    {l}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            {/* 2. Platform (Positioned in Middle) */}
+            <div className="space-y-2.5 bg-slate-900/40 p-2.5 rounded-xl border border-indigo-500/20 sm:bg-transparent sm:p-0 sm:border-0">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                <BookOpen size={13} className="text-indigo-400" />
+                <span>Platform</span>
+              </h4>
+              <ul className="space-y-1.5 text-xs">
+                {[
+                  ['Patterns Guide', '/education'],
+                  ['Technical Sandbox', '/education'],
+                  ['Macro Market News', '/news'],
+                  ['Pro Pricing Access', '/pricing'],
+                  ['Trading Journal', '/journal'],
+                ].map(([l, to]) => (
+                  <li key={l}>
+                    <Link to={to} className="text-slate-400 hover:text-white transition-colors duration-150 block py-0.5">
+                      {l}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 3. Trading Desk & Calculators */}
+            <div className="space-y-2.5">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+                <Calculator size={13} className="text-emerald-400" />
+                <span>Trading Desk</span>
+              </h4>
+              <ul className="space-y-1.5 text-xs">
+                {[
+                  ['Trading Journal Desk', '/journal'],
+                  ['P&L Analytics Suite', '/journal'],
+                  ['Position Calculator', '/calculator'],
+                  ['Options Lot Risk', '/calculator'],
+                  ['CAGR & SIP Engine', '/calculator'],
+                  ['Custom Watchlists', '/watchlist'],
+                ].map(([l, to]) => (
+                  <li key={l}>
+                    <Link to={to} className="text-slate-400 hover:text-white transition-colors duration-150 block py-0.5">
+                      {l}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 4. Settings & Trading Setup */}
+            <div className="space-y-2.5">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+                <Settings size={13} className="text-amber-400" />
+                <span>Settings &amp; Setup</span>
+              </h4>
+              <ul className="space-y-1.5 text-xs">
+                {[
+                  ['Trader Profile', '/profile'],
+                  ['Account Settings', '/profile'],
+                  ['Watchlist Manager', '/watchlist'],
+                  ['Subscription Tier', '/pricing'],
+                  ['SEBI Audit Guidelines', '/education'],
+                ].map(([l, to]) => (
+                  <li key={l}>
+                    <Link to={to} className="text-slate-400 hover:text-white transition-colors duration-150 block py-0.5">
+                      {l}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
           </div>
 
         </div>

@@ -77,6 +77,69 @@ const tradeSchema = new mongoose.Schema(
       trim: true,
     },
     tags: [{ type: String, trim: true }],
+    position: {
+      type: String,
+      default: 'Intraday',
+      trim: true,
+    },
+    time: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    lotSize: {
+      type: Number,
+      default: 1,
+    },
+    instrumentType: {
+      type: String,
+      default: 'Equity',
+      trim: true,
+    },
+    strategy: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    stopLoss: {
+      type: Number,
+      default: null,
+    },
+    takeProfit: {
+      type: Number,
+      default: null,
+    },
+    riskReward: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    assumptions: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    disciplined: {
+      type: String,
+      enum: ['Y', 'N'],
+      default: 'Y',
+    },
+    followedRules: {
+      type: String,
+      enum: ['Y', 'N'],
+      default: 'Y',
+    },
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: 5,
+    },
+    chartNotes: {
+      type: String,
+      default: '',
+      trim: true,
+    },
   },
   { timestamps: true }
 );
