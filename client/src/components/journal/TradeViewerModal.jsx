@@ -343,6 +343,7 @@ export default function TradeViewerModal({
               onSave={handleSaveEdit}
               onCancel={() => setIsEditing(false)}
               isSubmitting={isSubmitting}
+              allTrades={trades}
             />
           )}
         </div>

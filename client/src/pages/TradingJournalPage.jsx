@@ -1527,6 +1527,7 @@ export default function TradingJournalPage() {
                 onSave={handleSaveTrade}
                 onCancel={() => setModalOpen(false)}
                 isSubmitting={createTradeMutation.isPending}
+                allTrades={trades}
               />
             </div>
           </div>
