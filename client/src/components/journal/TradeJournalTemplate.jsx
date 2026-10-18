@@ -19,7 +19,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { formatINR } from '../../lib/journalAnalytics'
-import { searchStockCatalog } from '../../lib/stockCatalog'
+import { searchStockCatalog, DEFAULT_STOCK_LOT_SIZES } from '../../lib/stockCatalog'
 
 const SUGGESTED_SYMBOLS = [
   'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN',
@@ -260,12 +260,12 @@ export default function TradeJournalTemplate({
     }
   }
 
-  // Helper to retrieve previous lot size for a stock
+  // Helper to retrieve previous or default lot size for a stock
   const getPreviousLotSize = useCallback((targetSymbol) => {
     if (!targetSymbol) return null
     const sym = targetSymbol.toUpperCase().trim()
 
-    // 1. Check local storage cache
+    // 1. Check local storage cache of user's customized lot sizes
     try {
       const savedMap = JSON.parse(localStorage.getItem('stock_last_lot_sizes') || '{}')
       if (savedMap[sym]) return Number(savedMap[sym])
@@ -280,13 +280,31 @@ export default function TradeJournalTemplate({
         return Number(match.lotSize || match.quantity)
       }
     }
+
+    // 3. Fallback to official default lot sizes (NIFTY: 65, BANKNIFTY: 30, FINNIFTY: 60, MIDCPNIFTY: 120)
+    if (DEFAULT_STOCK_LOT_SIZES[sym]) {
+      return DEFAULT_STOCK_LOT_SIZES[sym]
+    }
+
     return null
   }, [allTrades])
 
-  // Current symbol's previous lot size suggestion
+  // Current symbol's previous or default lot size suggestion
   const previousLotSize = useMemo(() => {
     return getPreviousLotSize(symbol)
   }, [symbol, getPreviousLotSize])
+
+  // Auto-apply official default lot size for indices/stocks when symbol matches and current lot is default (1 or empty)
+  useEffect(() => {
+    if (isEditing && symbol) {
+      const sym = symbol.toUpperCase().trim()
+      const defLot = DEFAULT_STOCK_LOT_SIZES[sym]
+      if (defLot && (!lotSize || lotSize === 1 || lotSize === '1' || lotSize === '')) {
+        onChange('lotSize', defLot)
+        onChange('quantity', defLot)
+      }
+    }
+  }, [symbol, isEditing])
 
   // Save updated lot size to localStorage whenever changed
   const handleLotSizeChange = (val) => {
@@ -666,24 +684,24 @@ export default function TradeJournalTemplate({
                         onChange={(e) => handleLotSizeChange(e.target.value)}
                         className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400 font-mono"
                       />
-                      {/* Previous Lot Size Suggestion Pill */}
+                      {/* Previous or Default Lot Size Suggestion Pill */}
                       {previousLotSize && (
                         <div className="flex items-center gap-1.5 pt-0.5">
                           <button
                             type="button"
                             onClick={() => handleLotSizeChange(previousLotSize)}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
                               Number(lotSize) === Number(previousLotSize)
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
                                 : 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30'
                             }`}
-                            title={`Use previous lot size (${previousLotSize}) used for ${symbol || 'this share'}`}
+                            title={`Apply lot size (${previousLotSize}) for ${symbol || 'this stock'}`}
                           >
                             <Sparkles size={10} className="text-amber-400" />
                             <span>
                               {Number(lotSize) === Number(previousLotSize)
-                                ? `Using previous lot for ${symbol || 'share'}: ${previousLotSize}`
-                                : `Suggested: Previous lot size is ${previousLotSize} (Click to apply)`}
+                                ? `Using ${DEFAULT_STOCK_LOT_SIZES[symbol?.toUpperCase()?.trim()] ? 'default' : 'previous'} lot for ${symbol || 'share'}: ${previousLotSize} units`
+                                : `Default lot for ${symbol || 'share'} is ${previousLotSize} units (Click to apply)`}
                             </span>
                           </button>
                         </div>

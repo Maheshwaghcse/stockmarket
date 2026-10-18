@@ -3,16 +3,30 @@
  * Used for Symbol Autocomplete, Company Name resolution, and Quick Slicers.
  */
 
+/**
+ * Official default lot sizes for major Indian indices and derivatives
+ */
+export const DEFAULT_STOCK_LOT_SIZES = {
+  NIFTY: 65,
+  NIFTY50: 65,
+  BANKNIFTY: 30,
+  FINNIFTY: 60,
+  MIDCPNIFTY: 120,
+  NIFTYMIDCAP: 120,
+}
+
 export const STOCK_CATALOG = [
-  // Primary Benchmark Indices
-  { symbol: 'NIFTY50', name: 'Nifty 50 Index', type: 'Index', sector: 'Benchmark' },
-  { symbol: 'BANKNIFTY', name: 'Bank Nifty Index', type: 'Index', sector: 'Banking' },
-  { symbol: 'SENSEX', name: 'BSE Sensex Index', type: 'Index', sector: 'Benchmark' },
-  { symbol: 'FINNIFTY', name: 'Nifty Financial Services', type: 'Index', sector: 'Financials' },
+  // Primary Benchmark Indices & Derivatives
+  { symbol: 'NIFTY', name: 'Nifty 50 Index', type: 'Index', sector: 'Benchmark', defaultLotSize: 65 },
+  { symbol: 'NIFTY50', name: 'Nifty 50 Index', type: 'Index', sector: 'Benchmark', defaultLotSize: 65 },
+  { symbol: 'BANKNIFTY', name: 'Nifty Bank (Bank Nifty)', type: 'Index', sector: 'Banking', defaultLotSize: 30 },
+  { symbol: 'FINNIFTY', name: 'Nifty Financial Services', type: 'Index', sector: 'Financials', defaultLotSize: 60 },
+  { symbol: 'MIDCPNIFTY', name: 'Nifty Midcap Select', type: 'Index', sector: 'Midcap', defaultLotSize: 120 },
+  { symbol: 'NIFTYMIDCAP', name: 'Nifty Midcap Select', type: 'Index', sector: 'Midcap', defaultLotSize: 120 },
+  { symbol: 'SENSEX', name: 'BSE Sensex Index', type: 'Index', sector: 'Benchmark', defaultLotSize: 10 },
   { symbol: 'NIFTYIT', name: 'Nifty IT Index', type: 'Index', sector: 'IT' },
   { symbol: 'NIFTYAUTO', name: 'Nifty Auto Index', type: 'Index', sector: 'Auto' },
   { symbol: 'NIFTYPHARMA', name: 'Nifty Pharma Index', type: 'Index', sector: 'Pharma' },
-  { symbol: 'NIFTYMIDCAP', name: 'Nifty Midcap 100 Index', type: 'Index', sector: 'Midcap' },
 
   // Banking & Financial Services
   { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', type: 'Stock', sector: 'Banking' },
