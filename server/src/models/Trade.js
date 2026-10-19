@@ -96,6 +96,13 @@ const tradeSchema = new mongoose.Schema(
       default: 'Equity',
       trim: true,
     },
+    optionType: {
+      type: String,
+      enum: ['CALL', 'PUT', 'Call', 'Put', 'CE', 'PE', ''],
+      default: 'CALL',
+      uppercase: true,
+      trim: true,
+    },
     strategy: {
       type: String,
       default: '',
@@ -110,6 +117,11 @@ const tradeSchema = new mongoose.Schema(
       default: null,
     },
     riskReward: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    mistakes: {
       type: String,
       default: '',
       trim: true,

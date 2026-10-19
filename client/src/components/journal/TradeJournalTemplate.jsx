@@ -17,6 +17,7 @@ import {
   Tag,
   Search,
   ChevronDown,
+  AlertTriangle,
 } from 'lucide-react'
 import { formatINR } from '../../lib/journalAnalytics'
 import { searchStockCatalog, DEFAULT_STOCK_LOT_SIZES } from '../../lib/stockCatalog'
@@ -41,16 +42,19 @@ const DEFAULT_REASONS = [
   'Earnings Catalyst',
 ]
 
-const DEFAULT_ASSUMPTIONS = [
-  'Market Bullish Sentiment',
-  'High Volume Confirmation',
-  'Sector Strength / Tailwind',
-  'Favorable Risk-to-Reward',
-  'Tight Stop Loss Setup',
-  'RSI Oversold / Divergence',
-  'Higher Timeframe Confluence',
-  'Range-Bound Market',
-  'Pre-Market Gap Fill',
+const DEFAULT_MISTAKES = [
+  'FOMO Entry',
+  'Chased Price',
+  'Revenge Trade',
+  'No Stop Loss / Moved SL',
+  'Position Too Large / Overleveraged',
+  'Exited Too Early (Paper Hands)',
+  'Held Too Long / Greed',
+  'Traded Against Trend',
+  'Ignored Rules',
+  'Late Entry / Hesitation',
+  'Overtrading',
+  'None (Executed Well)',
 ]
 
 const STRATEGY_OPTIONS = [
@@ -98,16 +102,16 @@ export default function TradeJournalTemplate({
   const [newReasonInput, setNewReasonInput] = useState('')
   const [showAddReason, setShowAddReason] = useState(false)
 
-  // Custom assumptions state & inline add modal
-  const [customAssumptions, setCustomAssumptions] = useState(() => {
+  // Custom mistakes state & inline add modal
+  const [customMistakes, setCustomMistakes] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('custom_trade_assumptions') || '[]')
+      return JSON.parse(localStorage.getItem('custom_trade_mistakes') || localStorage.getItem('custom_trade_assumptions') || '[]')
     } catch {
       return []
     }
   })
-  const [newAssumptionInput, setNewAssumptionInput] = useState('')
-  const [showAddAssumption, setShowAddAssumption] = useState(false)
+  const [newMistakeInput, setNewMistakeInput] = useState('')
+  const [showAddMistake, setShowAddMistake] = useState(false)
 
   // Use either active formData (edit/create) or trade (view)
   const currentData = isEditing ? formData : trade
@@ -126,6 +130,9 @@ export default function TradeJournalTemplate({
     ? ''
     : rawLot
   const instrumentType = currentData?.instrumentType || 'Equity'
+  const rawOption = (currentData?.optionType || 'CALL').toUpperCase().trim()
+  const optionType = rawOption === 'PUT' || rawOption === 'PE' ? 'PUT' : 'CALL'
+  const isOptions = instrumentType === 'Options' || instrumentType === 'Option'
   const strategy = currentData?.strategy || ''
   const imageUrl = currentData?.imageUrl || ''
   const chartNotes = currentData?.chartNotes || ''
@@ -135,7 +142,9 @@ export default function TradeJournalTemplate({
   const takeProfit = currentData?.takeProfit !== undefined && currentData?.takeProfit !== null ? currentData?.takeProfit : ''
   const riskReward = currentData?.riskReward || ''
   const entryReason = currentData?.entryReason || ''
-  const assumptions = currentData?.assumptions || ''
+  const mistakes = currentData?.mistakes !== undefined && currentData?.mistakes !== null
+    ? currentData.mistakes
+    : (currentData?.assumptions || '')
   const disciplined = currentData?.disciplined || 'Y'
   const followedRules = currentData?.followedRules || 'Y'
   const rating = currentData?.rating !== undefined ? Number(currentData?.rating) : 5
@@ -275,7 +284,7 @@ export default function TradeJournalTemplate({
     try {
       const savedMap = JSON.parse(localStorage.getItem('stock_last_lot_sizes') || '{}')
       if (savedMap[sym]) return Number(savedMap[sym])
-    } catch {}
+    } catch { }
 
     // 2. Check trade history
     if (Array.isArray(allTrades) && allTrades.length > 0) {
@@ -328,7 +337,7 @@ export default function TradeJournalTemplate({
           }
         }
       }
-    } catch {}
+    } catch { }
 
     // 3. Fallback to market suggested symbols if fewer than 6
     for (const s of SUGGESTED_SYMBOLS) {
@@ -352,7 +361,7 @@ export default function TradeJournalTemplate({
       const filtered = Array.isArray(existing) ? existing.filter((s) => s !== upper) : []
       const updated = [upper, ...filtered].slice(0, 15)
       localStorage.setItem('trader_recent_stocks', JSON.stringify(updated))
-    } catch {}
+    } catch { }
   }
 
   // Current symbol's previous or default lot size suggestion
@@ -369,7 +378,7 @@ export default function TradeJournalTemplate({
         const savedMap = JSON.parse(localStorage.getItem('stock_last_lot_sizes') || '{}')
         savedMap[symbol.toUpperCase().trim()] = Number(val)
         localStorage.setItem('stock_last_lot_sizes', JSON.stringify(savedMap))
-      } catch {}
+      } catch { }
     }
   }
 
@@ -440,51 +449,56 @@ export default function TradeJournalTemplate({
       setCustomReasons(updated)
       try {
         localStorage.setItem('custom_trade_reasons', JSON.stringify(updated))
-      } catch {}
+      } catch { }
     }
     toggleReason(val)
     setNewReasonInput('')
     setShowAddReason(false)
   }
 
-  // Slicer handlers: Assumptions before trade
-  const toggleAssumption = (text) => {
-    const current = (assumptions || '').trim()
+  // Slicer handlers: Mistakes
+  const updateMistakes = (val) => {
+    onChange('mistakes', val)
+    onChange('assumptions', val)
+  }
+
+  const toggleMistake = (text) => {
+    const current = (mistakes || '').trim()
     if (!current) {
-      onChange('assumptions', text)
+      updateMistakes(text)
       return
     }
     const parts = current.split(',').map((s) => s.trim()).filter(Boolean)
     const index = parts.findIndex((p) => p.toLowerCase() === text.toLowerCase())
     if (index >= 0) {
       parts.splice(index, 1)
-      onChange('assumptions', parts.join(', '))
+      updateMistakes(parts.join(', '))
     } else {
-      onChange('assumptions', `${current}, ${text}`)
+      updateMistakes(`${current}, ${text}`)
     }
   }
 
-  const isAssumptionActive = (text) => {
-    if (!assumptions) return false
-    return assumptions.toLowerCase().includes(text.toLowerCase())
+  const isMistakeActive = (text) => {
+    if (!mistakes) return false
+    return mistakes.toLowerCase().includes(text.toLowerCase())
   }
 
-  const handleAddNewAssumption = () => {
-    const val = newAssumptionInput.trim()
+  const handleAddNewMistake = () => {
+    const val = newMistakeInput.trim()
     if (!val) return
     if (
-      !customAssumptions.some((a) => a.toLowerCase() === val.toLowerCase()) &&
-      !DEFAULT_ASSUMPTIONS.some((a) => a.toLowerCase() === val.toLowerCase())
+      !customMistakes.some((a) => a.toLowerCase() === val.toLowerCase()) &&
+      !DEFAULT_MISTAKES.some((a) => a.toLowerCase() === val.toLowerCase())
     ) {
-      const updated = [...customAssumptions, val]
-      setCustomAssumptions(updated)
+      const updated = [...customMistakes, val]
+      setCustomMistakes(updated)
       try {
-        localStorage.setItem('custom_trade_assumptions', JSON.stringify(updated))
-      } catch {}
+        localStorage.setItem('custom_trade_mistakes', JSON.stringify(updated))
+      } catch { }
     }
-    toggleAssumption(val)
-    setNewAssumptionInput('')
-    setShowAddAssumption(false)
+    toggleMistake(val)
+    setNewMistakeInput('')
+    setShowAddMistake(false)
   }
 
   return (
@@ -525,11 +539,11 @@ export default function TradeJournalTemplate({
               <span className="font-bold text-sm sm:text-base text-white font-mono">
                 {entryDate
                   ? new Date(entryDate).toLocaleDateString('en-IN', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    }) + (time ? ` • ${time}` : '')
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  }) + (time ? ` • ${time}` : '')
                   : '—'}
               </span>
             )}
@@ -622,11 +636,10 @@ export default function TradeJournalTemplate({
                       type="button"
                       key={s}
                       onClick={() => handleSelectSymbol({ symbol: s })}
-                      className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all cursor-pointer ${
-                        symbol === s
+                      className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all cursor-pointer ${symbol === s
                           ? 'bg-blue-600 text-white font-bold ring-1 ring-blue-400 shadow-sm'
                           : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-                      }`}
+                        }`}
                       title={`Select ${s}`}
                     >
                       {s}
@@ -640,14 +653,24 @@ export default function TradeJournalTemplate({
                   {symbol || '—'}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-[11px] font-extrabold font-mono uppercase ${
-                    tradeType === 'Long'
+                  className={`px-2 py-0.5 rounded text-[11px] font-extrabold font-mono uppercase ${tradeType === 'Long'
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                       : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                  }`}
+                    }`}
                 >
                   {tradeType}
                 </span>
+                {isOptions && (
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                      optionType === 'CALL'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                    }`}
+                  >
+                    {optionType}
+                  </span>
+                )}
                 {currentData?.status && (
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
                     {currentData.status}
@@ -696,26 +719,6 @@ export default function TradeJournalTemplate({
                 </div>
               </div>
 
-              {/* TIME */}
-              <div className="grid grid-cols-3 items-center px-3 sm:px-4 py-2">
-                <span className="font-bold text-slate-300 uppercase tracking-wide">
-                  TIME:
-                </span>
-                <div className="col-span-2">
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      placeholder="e.g. 09:30 AM"
-                      value={time}
-                      onChange={(e) => onChange('time', e.target.value)}
-                      className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400 font-mono"
-                    />
-                  ) : (
-                    <span className="font-mono text-slate-100">{time || '—'}</span>
-                  )}
-                </div>
-              </div>
-
               {/* LOT SIZE (with lavender highlight from screenshot) */}
               <div className="grid grid-cols-3 items-center px-3 sm:px-4 py-2">
                 <span className="font-bold text-slate-300 uppercase tracking-wide">
@@ -740,11 +743,10 @@ export default function TradeJournalTemplate({
                           <button
                             type="button"
                             onClick={() => handleLotSizeChange(previousLotSize)}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
-                              Number(lotSize) === Number(previousLotSize)
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${Number(lotSize) === Number(previousLotSize)
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
                                 : 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30'
-                            }`}
+                              }`}
                             title={`Apply lot size (${previousLotSize}) for ${symbol || 'this stock'}`}
                           >
                             <Sparkles size={10} className="text-amber-400" />
@@ -776,31 +778,28 @@ export default function TradeJournalTemplate({
                       <button
                         type="button"
                         onClick={() => onChange('tradeType', 'Long')}
-                        className={`flex-1 py-1 rounded text-xs font-bold transition-all ${
-                          tradeType === 'Long'
+                        className={`flex-1 py-1 rounded text-xs font-bold transition-all ${tradeType === 'Long'
                             ? 'bg-emerald-600 text-white shadow'
                             : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                        }`}
+                          }`}
                       >
                         LONG
                       </button>
                       <button
                         type="button"
                         onClick={() => onChange('tradeType', 'Short')}
-                        className={`flex-1 py-1 rounded text-xs font-bold transition-all ${
-                          tradeType === 'Short'
+                        className={`flex-1 py-1 rounded text-xs font-bold transition-all ${tradeType === 'Short'
                             ? 'bg-rose-600 text-white shadow'
                             : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                        }`}
+                          }`}
                       >
                         SHORT
                       </button>
                     </div>
                   ) : (
                     <span
-                      className={`font-black uppercase tracking-wider ${
-                        tradeType === 'Long' ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
+                      className={`font-black uppercase tracking-wider ${tradeType === 'Long' ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
                     >
                       {tradeType}
                     </span>
@@ -813,21 +812,70 @@ export default function TradeJournalTemplate({
                 <span className="font-bold text-slate-300 uppercase tracking-wide">
                   TYPE:
                 </span>
-                <div className="col-span-2">
+                <div className="col-span-2 space-y-1.5">
                   {isEditing ? (
-                    <select
-                      value={instrumentType}
-                      onChange={(e) => onChange('instrumentType', e.target.value)}
-                      className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400"
-                    >
-                      {INSTRUMENT_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
+                    <>
+                      <select
+                        value={instrumentType}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          onChange('instrumentType', val)
+                          if ((val === 'Options' || val === 'Option') && !currentData?.optionType) {
+                            onChange('optionType', 'CALL')
+                          }
+                        }}
+                        className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400"
+                      >
+                        {INSTRUMENT_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* CALL / PUT buttons on downside when TYPE is Options */}
+                      {isOptions && (
+                        <div className="flex items-center gap-2 pt-0.5 animate-in fade-in duration-150">
+                          <button
+                            type="button"
+                            onClick={() => onChange('optionType', 'CALL')}
+                            className={`flex-1 py-1 rounded text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              optionType === 'CALL'
+                                ? 'bg-emerald-600 text-white shadow ring-1 ring-emerald-400'
+                                : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            CALL
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onChange('optionType', 'PUT')}
+                            className={`flex-1 py-1 rounded text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              optionType === 'PUT'
+                                ? 'bg-rose-600 text-white shadow ring-1 ring-rose-400'
+                                : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            PUT
+                          </button>
+                        </div>
+                      )}
+                    </>
                   ) : (
-                    <span className="font-semibold text-slate-100">{instrumentType || 'Equity'}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-100">{instrumentType || 'Equity'}</span>
+                      {isOptions && (
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                            optionType === 'CALL'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                          }`}
+                        >
+                          {optionType}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1092,9 +1140,8 @@ export default function TradeJournalTemplate({
                 <div className="col-span-2">
                   {computedMetrics.pnl !== null ? (
                     <span
-                      className={`font-mono font-black text-sm ${
-                        computedMetrics.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
+                      className={`font-mono font-black text-sm ${computedMetrics.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
                     >
                       {formatINR(computedMetrics.pnl, { compact: false, showSign: true })}
                       {computedMetrics.pnlPercent !== null && (
@@ -1155,11 +1202,10 @@ export default function TradeJournalTemplate({
                           type="button"
                           key={r}
                           onClick={() => toggleReason(r)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                            active
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${active
                               ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/30 ring-1 ring-blue-400'
                               : 'bg-[#152244] border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'
-                          }`}
+                            }`}
                         >
                           {active && <Check size={11} className="text-white" />}
                           <span>{r}</span>
@@ -1222,18 +1268,18 @@ export default function TradeJournalTemplate({
               )}
             </div>
 
-            {/* ASSUMPTIONS BEFORE TRADE WITH PRESET SLICERS & ADD NEW */}
+            {/* MISTAKES WITH PRESET SLICERS & ADD NEW */}
             <div className="p-3 sm:p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-slate-300 uppercase tracking-wider text-xs sm:text-sm flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-purple-400" />
-                  <span>ASSUMPTIONS BEFORE TRADE:</span>
+                  <AlertTriangle size={13} className="text-amber-400" />
+                  <span>MISTAKES:</span>
                 </span>
                 {isEditing && (
                   <button
                     type="button"
-                    onClick={() => setShowAddAssumption((v) => !v)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 rounded transition-all cursor-pointer"
+                    onClick={() => setShowAddMistake((v) => !v)}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded transition-all cursor-pointer"
                   >
                     <Plus size={11} />
                     <span>Add New</span>
@@ -1245,55 +1291,54 @@ export default function TradeJournalTemplate({
               {isEditing && (
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {[...DEFAULT_ASSUMPTIONS, ...customAssumptions].map((a) => {
-                      const active = isAssumptionActive(a)
+                    {[...DEFAULT_MISTAKES, ...customMistakes].map((m) => {
+                      const active = isMistakeActive(m)
                       return (
                         <button
                           type="button"
-                          key={a}
-                          onClick={() => toggleAssumption(a)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                            active
-                              ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-500/30 ring-1 ring-purple-400'
+                          key={m}
+                          onClick={() => toggleMistake(m)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${active
+                              ? 'bg-amber-600 text-white font-bold shadow-md shadow-amber-500/30 ring-1 ring-amber-400'
                               : 'bg-[#152244] border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'
-                          }`}
+                            }`}
                         >
                           {active && <Check size={11} className="text-white" />}
-                          <span>{a}</span>
+                          <span>{m}</span>
                         </button>
                       )
                     })}
                   </div>
 
-                  {/* Add New Assumption Inline Input */}
-                  {showAddAssumption && (
+                  {/* Add New Mistake Inline Input */}
+                  {showAddMistake && (
                     <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-150">
                       <input
                         type="text"
-                        placeholder="Type new assumption (e.g. Earnings Momentum Continuation)..."
-                        value={newAssumptionInput}
-                        onChange={(e) => setNewAssumptionInput(e.target.value)}
+                        placeholder="Type new mistake (e.g. FOMO Entry, Chased Price)..."
+                        value={newMistakeInput}
+                        onChange={(e) => setNewMistakeInput(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault()
-                            handleAddNewAssumption()
+                            handleAddNewMistake()
                           }
                         }}
-                        className="flex-1 bg-[#152244] border border-purple-500/60 rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-purple-400"
+                        className="flex-1 bg-[#152244] border border-amber-500/60 rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-amber-400"
                         autoFocus
                       />
                       <button
                         type="button"
-                        onClick={handleAddNewAssumption}
-                        className="px-2.5 py-1 rounded bg-purple-600 text-white text-xs font-bold hover:bg-purple-500 cursor-pointer"
+                        onClick={handleAddNewMistake}
+                        className="px-2.5 py-1 rounded bg-amber-600 text-white text-xs font-bold hover:bg-amber-500 cursor-pointer"
                       >
                         Add
                       </button>
                       <button
                         type="button"
                         onClick={() => {
-                          setShowAddAssumption(false)
-                          setNewAssumptionInput('')
+                          setShowAddMistake(false)
+                          setNewMistakeInput('')
                         }}
                         className="p-1 rounded text-slate-400 hover:text-white cursor-pointer"
                       >
@@ -1307,16 +1352,16 @@ export default function TradeJournalTemplate({
               {isEditing ? (
                 <textarea
                   rows="2"
-                  placeholder="Market conditions, macro sentiment, risk factors, or click preset slicers above..."
-                  value={assumptions}
-                  onChange={(e) => onChange('assumptions', e.target.value)}
-                  className="w-full bg-[#152244] border border-slate-600 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-400 leading-relaxed"
+                  placeholder="Identify execution or discipline mistakes (e.g. FOMO, moved SL, greed, overtrading), or click preset tags above..."
+                  value={mistakes}
+                  onChange={(e) => updateMistakes(e.target.value)}
+                  className="w-full bg-[#152244] border border-slate-600 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-amber-400 leading-relaxed"
                 />
               ) : (
                 <p className="text-slate-200 leading-relaxed bg-[#091024]/50 p-2.5 rounded-lg border border-slate-800 font-sans">
-                  {assumptions || (
+                  {mistakes || (
                     <span className="text-slate-500 italic">
-                      No pre-trade assumptions recorded.
+                      No mistakes recorded (Flawless Execution).
                     </span>
                   )}
                 </p>
@@ -1347,33 +1392,30 @@ export default function TradeJournalTemplate({
                     <button
                       type="button"
                       onClick={() => onChange('disciplined', 'Y')}
-                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                        disciplined === 'Y'
+                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${disciplined === 'Y'
                           ? 'bg-emerald-600 text-white shadow'
                           : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                      }`}
+                        }`}
                     >
                       Y
                     </button>
                     <button
                       type="button"
                       onClick={() => onChange('disciplined', 'N')}
-                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                        disciplined === 'N'
+                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${disciplined === 'N'
                           ? 'bg-rose-600 text-white shadow'
                           : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                      }`}
+                        }`}
                     >
                       N
                     </button>
                   </div>
                 ) : (
                   <span
-                    className={`font-black text-sm px-2.5 py-0.5 rounded border ${
-                      disciplined === 'Y'
+                    className={`font-black text-sm px-2.5 py-0.5 rounded border ${disciplined === 'Y'
                         ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
                         : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
-                    }`}
+                      }`}
                   >
                     {disciplined === 'Y' ? 'YES' : 'NO'}
                   </span>
@@ -1390,33 +1432,30 @@ export default function TradeJournalTemplate({
                     <button
                       type="button"
                       onClick={() => onChange('followedRules', 'Y')}
-                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                        followedRules === 'Y'
+                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${followedRules === 'Y'
                           ? 'bg-emerald-600 text-white shadow'
                           : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                      }`}
+                        }`}
                     >
                       Y
                     </button>
                     <button
                       type="button"
                       onClick={() => onChange('followedRules', 'N')}
-                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                        followedRules === 'N'
+                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${followedRules === 'N'
                           ? 'bg-rose-600 text-white shadow'
                           : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                      }`}
+                        }`}
                     >
                       N
                     </button>
                   </div>
                 ) : (
                   <span
-                    className={`font-black text-sm px-2.5 py-0.5 rounded border ${
-                      followedRules === 'Y'
+                    className={`font-black text-sm px-2.5 py-0.5 rounded border ${followedRules === 'Y'
                         ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
                         : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
-                    }`}
+                      }`}
                   >
                     {followedRules === 'Y' ? 'YES' : 'NO'}
                   </span>
@@ -1438,9 +1477,8 @@ export default function TradeJournalTemplate({
                       key={starIdx}
                       disabled={!isEditing}
                       onClick={() => isEditing && onChange('rating', starIdx)}
-                      className={`p-1 rounded transition-transform ${
-                        isEditing ? 'cursor-pointer hover:scale-125' : 'cursor-default'
-                      }`}
+                      className={`p-1 rounded transition-transform ${isEditing ? 'cursor-pointer hover:scale-125' : 'cursor-default'
+                        }`}
                       title={`${starIdx} Star${starIdx > 1 ? 's' : ''}`}
                     >
                       <Star

@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, Fragment } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-  Plus, Calendar, TrendingUp, TrendingDown, HelpCircle, 
-  Trash2, X, ChevronLeft, ChevronRight, Info, CheckCircle2, 
+import {
+  Plus, Calendar, TrendingUp, TrendingDown, HelpCircle,
+  Trash2, X, ChevronLeft, ChevronRight, Info, CheckCircle2,
   Clock, ArrowUpRight, ArrowDownRight, Filter, AlertCircle,
   Target, LogOut, Lightbulb, Image, ChevronDown, ChevronUp,
   Eye, FileText, Download, LayoutGrid, CalendarDays, Tag, Sparkles
@@ -19,8 +19,8 @@ import { formatINR } from '../lib/journalAnalytics'
 
 // Quick suggested symbols
 const SUGGESTED_SYMBOLS = [
-  'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN', 
-  'BHARTIARTL', 'ITC', 'LT', 'MARUTI', 'TATASTEEL', 'BEL', 'HAL', 
+  'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN',
+  'BHARTIARTL', 'ITC', 'LT', 'MARUTI', 'TATASTEEL', 'BEL', 'HAL',
   'NIFTY50', 'BANKNIFTY'
 ]
 
@@ -61,12 +61,14 @@ export default function TradingJournalPage() {
     position: 'Intraday',
     time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
     instrumentType: 'Equity',
+    optionType: 'CALL',
     strategy: '',
     stopLoss: '',
     takeProfit: '',
     riskReward: '',
     imageUrl: '',
     entryReason: '',
+    mistakes: '',
     assumptions: '',
     disciplined: 'Y',
     followedRules: 'Y',
@@ -150,12 +152,14 @@ export default function TradingJournalPage() {
       position: 'Intraday',
       time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
       instrumentType: 'Equity',
+      optionType: 'CALL',
       strategy: '',
       stopLoss: '',
       takeProfit: '',
       riskReward: '',
       imageUrl: '',
       entryReason: '',
+      mistakes: '',
       assumptions: '',
       disciplined: 'Y',
       followedRules: 'Y',
@@ -251,6 +255,7 @@ export default function TradingJournalPage() {
       const lower = tradeReasonFilter.toLowerCase()
       list = list.filter((t) =>
         t.entryReason?.toLowerCase().includes(lower) ||
+        t.mistakes?.toLowerCase().includes(lower) ||
         t.assumptions?.toLowerCase().includes(lower) ||
         t.strategy?.toLowerCase().includes(lower)
       )
@@ -619,11 +624,10 @@ export default function TradingJournalPage() {
             <button
               type="button"
               onClick={() => setDesktopHeatmapView('matrix')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                desktopHeatmapView === 'matrix'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${desktopHeatmapView === 'matrix'
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
               title="View full calendar heatmap matrix"
             >
               <LayoutGrid size={13} />
@@ -632,11 +636,10 @@ export default function TradingJournalPage() {
             <button
               type="button"
               onClick={() => setDesktopHeatmapView('cards')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                desktopHeatmapView === 'cards'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${desktopHeatmapView === 'cards'
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
               title="View only active traded days without blank gaps"
             >
               <CalendarDays size={13} />
@@ -660,11 +663,10 @@ export default function TradingJournalPage() {
                 key={sl.id}
                 type="button"
                 onClick={() => setHeatmapTimeSlicer(sl.id)}
-                className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  heatmapTimeSlicer === sl.id
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${heatmapTimeSlicer === sl.id
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
               >
                 {sl.label}
               </button>
@@ -698,12 +700,12 @@ export default function TradingJournalPage() {
                 {heatmapTimeSlicer === '7D'
                   ? 'Last 7 Days'
                   : heatmapTimeSlicer === '1M'
-                  ? 'Last 30 Days'
-                  : heatmapTimeSlicer === '6M'
-                  ? 'Last 6 Months'
-                  : heatmapTimeSlicer === '1Y'
-                  ? 'Last 1 Year'
-                  : 'All Time'}
+                    ? 'Last 30 Days'
+                    : heatmapTimeSlicer === '6M'
+                      ? 'Last 6 Months'
+                      : heatmapTimeSlicer === '1Y'
+                        ? 'Last 1 Year'
+                        : 'All Time'}
               </span>
             </div>
 
@@ -731,13 +733,12 @@ export default function TradingJournalPage() {
                       key={day.dateKey}
                       type="button"
                       onClick={() => handleDayClick(day.dateKey)}
-                      className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${
-                        isSelected
-                          ? 'ring-2 ring-blue-400 bg-blue-950/60 border-blue-500 shadow-lg'
-                          : isProfitable
+                      className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${isSelected
+                        ? 'ring-2 ring-blue-400 bg-blue-950/60 border-blue-500 shadow-lg'
+                        : isProfitable
                           ? 'bg-emerald-950/20 hover:bg-emerald-950/40 border-emerald-500/30'
                           : 'bg-rose-950/20 hover:bg-rose-950/40 border-rose-500/30'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-xs font-bold text-white font-mono">
@@ -753,9 +754,8 @@ export default function TradingJournalPage() {
 
                       <div className="flex items-baseline justify-between gap-1 pt-1 border-t border-slate-800/60">
                         <span
-                          className={`text-xs sm:text-sm font-extrabold font-mono ${
-                            isProfitable ? 'text-emerald-400' : 'text-rose-400'
-                          }`}
+                          className={`text-xs sm:text-sm font-extrabold font-mono ${isProfitable ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
                         >
                           {formatINR(day.pnl, { compact: false, showSign: true })}
                         </span>
@@ -784,12 +784,12 @@ export default function TradingJournalPage() {
                   {heatmapTimeSlicer === '7D'
                     ? 'Last 7 Days'
                     : heatmapTimeSlicer === '1M'
-                    ? 'Last 30 Days'
-                    : heatmapTimeSlicer === '6M'
-                    ? 'Last 6 Months'
-                    : heatmapTimeSlicer === '1Y'
-                    ? 'Last 1 Year'
-                    : 'All Time'}
+                      ? 'Last 30 Days'
+                      : heatmapTimeSlicer === '6M'
+                        ? 'Last 6 Months'
+                        : heatmapTimeSlicer === '1Y'
+                          ? 'Last 1 Year'
+                          : 'All Time'}
                 </span>
               </div>
 
@@ -817,13 +817,12 @@ export default function TradingJournalPage() {
                         key={day.dateKey}
                         type="button"
                         onClick={() => handleDayClick(day.dateKey)}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
-                          isSelected
-                            ? 'ring-2 ring-blue-400 bg-blue-950/70 border-blue-500 shadow-lg'
-                            : isProfitable
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${isSelected
+                          ? 'ring-2 ring-blue-400 bg-blue-950/70 border-blue-500 shadow-lg'
+                          : isProfitable
                             ? 'bg-emerald-950/20 hover:bg-emerald-950/40 border-emerald-500/30'
                             : 'bg-rose-950/20 hover:bg-rose-950/40 border-rose-500/30'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-xs font-bold text-white font-mono">
@@ -840,9 +839,8 @@ export default function TradingJournalPage() {
 
                         <div className="flex items-baseline justify-between gap-1 pt-1.5 border-t border-slate-800/60">
                           <span
-                            className={`text-sm font-extrabold font-mono ${
-                              isProfitable ? 'text-emerald-400' : 'text-rose-400'
-                            }`}
+                            className={`text-sm font-extrabold font-mono ${isProfitable ? 'text-emerald-400' : 'text-rose-400'
+                              }`}
                           >
                             {formatINR(day.pnl, { compact: false, showSign: true })}
                           </span>
@@ -896,11 +894,9 @@ export default function TradingJournalPage() {
                               key={dIdx}
                               onClick={() => handleDayClick(day.dateKey)}
                               title={`${day.dateKey}: ${count} trades, P&L: ₹${pnl.toLocaleString('en-IN')} (Click to inspect trade template with Prev/Next)`}
-                              className={`${
-                                heatmapWeeks.length <= 5 ? 'w-5 h-5 rounded-md' : 'w-3.5 h-3.5 rounded-sm'
-                              } transition-all cursor-pointer ${
-                                isSelected ? 'ring-2 ring-white scale-110 shadow-lg shadow-blue-500/50' : 'hover:scale-125 hover:z-10'
-                              }`}
+                              className={`${heatmapWeeks.length <= 5 ? 'w-5 h-5 rounded-md' : 'w-3.5 h-3.5 rounded-sm'
+                                } transition-all cursor-pointer ${isSelected ? 'ring-2 ring-white scale-110 shadow-lg shadow-blue-500/50' : 'hover:scale-125 hover:z-10'
+                                }`}
                               style={{ background: cellColor }}
                             />
                           )
@@ -1061,22 +1057,20 @@ export default function TradingJournalPage() {
                         ? `${item.dateKey}: ${item.data.count} trades, P&L: ₹${pnl.toLocaleString('en-IN')} (Click to view trade template with Prev/Next)`
                         : `${item.dateKey}: Click to browse trades or log trade`
                     }
-                    className={`h-11 rounded-lg flex flex-col items-center justify-center transition-all relative cursor-pointer ${
-                      isSelected
-                        ? 'ring-2 ring-blue-400 bg-blue-500/20 shadow-md'
-                        : hasTrade
+                    className={`h-11 rounded-lg flex flex-col items-center justify-center transition-all relative cursor-pointer ${isSelected
+                      ? 'ring-2 ring-blue-400 bg-blue-500/20 shadow-md'
+                      : hasTrade
                         ? 'hover:bg-slate-800/80 bg-slate-800/20'
                         : 'text-slate-400 hover:bg-slate-800/40'
-                    }`}
+                      }`}
                   >
                     <span className="font-medium text-xs text-slate-300">{item.dayNumber}</span>
                     {hasTrade && (
                       <span
-                        className={`text-[9px] font-bold ${
-                          pnl >= 0 ? 'text-green-400' : 'text-red-400'
-                        }`}
+                        className={`text-[9px] font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'
+                          }`}
                       >
-                        {pnl > 0 ? `+${pnl > 999 ? (pnl/1000).toFixed(1)+'k' : pnl}` : pnl < 0 ? `-${Math.abs(pnl) > 999 ? (Math.abs(pnl)/1000).toFixed(1)+'k' : Math.abs(pnl)}` : '0'}
+                        {pnl > 0 ? `+${pnl > 999 ? (pnl / 1000).toFixed(1) + 'k' : pnl}` : pnl < 0 ? `-${Math.abs(pnl) > 999 ? (Math.abs(pnl) / 1000).toFixed(1) + 'k' : Math.abs(pnl)}` : '0'}
                       </span>
                     )}
                   </button>
@@ -1245,9 +1239,8 @@ export default function TradingJournalPage() {
                 <span className="font-bold text-slate-100 block text-sm flex items-center gap-2">
                   <span>{formatDayTitle(selectedDayKey)}</span>
                   {selectedDayData && (
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      selectedDayData.pnl >= 0 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${selectedDayData.pnl >= 0 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                      }`}>
                       {selectedDayData.pnl >= 0 ? 'Profitable Day' : 'Loss Day'}
                     </span>
                   )}
@@ -1358,11 +1351,10 @@ export default function TradingJournalPage() {
                   key={filter.id}
                   type="button"
                   onClick={() => setTradeOutcomeFilter(filter.id)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    tradeOutcomeFilter === filter.id
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                      : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${tradeOutcomeFilter === filter.id
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
                 >
                   {filter.label} ({filter.count})
                 </button>
@@ -1406,11 +1398,10 @@ export default function TradingJournalPage() {
                   key={reason}
                   type="button"
                   onClick={() => setTradeReasonFilter(reason)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer ${
-                    active
-                      ? 'bg-purple-600 text-white font-bold shadow-sm shadow-purple-500/30 ring-1 ring-purple-400'
-                      : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800'
-                  }`}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer ${active
+                    ? 'bg-purple-600 text-white font-bold shadow-sm shadow-purple-500/30 ring-1 ring-purple-400'
+                    : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
                 >
                   {reason === 'ALL' ? 'All Reasons' : reason}
                 </button>
@@ -1455,15 +1446,27 @@ export default function TradingJournalPage() {
                       <Fragment key={trade._id}>
                         <tr className="hover:bg-slate-800/50 transition-colors">
                           <td className="py-3.5 px-4 font-bold text-slate-100 text-left">
-                            {trade.symbol}
+                            <div className="flex items-center gap-1.5">
+                              <span>{trade.symbol}</span>
+                              {(trade.instrumentType === 'Options' || trade.instrumentType === 'Option') && (
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                    String(trade.optionType).toUpperCase() === 'PUT'
+                                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                  }`}
+                                >
+                                  {String(trade.optionType).toUpperCase() === 'PUT' ? 'PUT' : 'CALL'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3.5 px-3 text-center">
                             <span
-                              className={`px-2.5 py-0.5 rounded text-[11px] font-semibold ${
-                                trade.tradeType === 'Long'
-                                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                              }`}
+                              className={`px-2.5 py-0.5 rounded text-[11px] font-semibold ${trade.tradeType === 'Long'
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                }`}
                             >
                               {trade.tradeType}
                             </span>
@@ -1499,13 +1502,12 @@ export default function TradingJournalPage() {
                           <td className="py-3.5 px-3 text-center">
                             <button
                               onClick={() => setExpandedTradeId(isExpanded ? null : trade._id)}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${
-                                isExpanded
-                                  ? 'bg-blue-600 text-white'
-                                  : hasReasons
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${isExpanded
+                                ? 'bg-blue-600 text-white'
+                                : hasReasons
                                   ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30'
                                   : 'bg-slate-800 text-slate-500 hover:text-slate-400'
-                              }`}
+                                }`}
                               title="Click to view Entry Reason, Exit Reason, and Lesson Learned"
                             >
                               <span>3 Reasons</span>
@@ -1513,9 +1515,8 @@ export default function TradingJournalPage() {
                             </button>
                           </td>
                           <td className="py-3.5 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                              isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                              }`}>
                               {trade.status}
                             </span>
                           </td>
@@ -1624,18 +1625,27 @@ export default function TradingJournalPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-slate-100">{trade.symbol}</span>
+                        {(trade.instrumentType === 'Options' || trade.instrumentType === 'Option') && (
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                              String(trade.optionType).toUpperCase() === 'PUT'
+                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            }`}
+                          >
+                            {String(trade.optionType).toUpperCase() === 'PUT' ? 'PUT' : 'CALL'}
+                          </span>
+                        )}
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                            trade.tradeType === 'Long'
-                              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${trade.tradeType === 'Long'
+                            ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            }`}
                         >
                           {trade.tradeType}
                         </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                          isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                          }`}>
                           {trade.status}
                         </span>
                       </div>
@@ -1699,13 +1709,12 @@ export default function TradingJournalPage() {
                       <span>{new Date(trade.entryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                       <button
                         onClick={() => setExpandedTradeId(isExpanded ? null : trade._id)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${
-                          isExpanded
-                            ? 'bg-blue-600 text-white'
-                            : hasReasons
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${isExpanded
+                          ? 'bg-blue-600 text-white'
+                          : hasReasons
                             ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30'
                             : 'bg-slate-800 text-slate-500 hover:text-slate-400'
-                        }`}
+                          }`}
                       >
                         <span>3 Reasons</span>
                         {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}

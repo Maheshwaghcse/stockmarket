@@ -583,7 +583,7 @@ export async function generateTradingJournalPdf({
 
     const tableHeaders = [
       '#',
-      'Date (IST)',
+      'Date & Time (IST)',
       'Symbol',
       'Side',
       'Qty',
@@ -606,11 +606,21 @@ export async function generateTradingJournalPdf({
       const dateStr = d
         ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })
         : '—'
+      const timeStr = t.time
+        ? t.time
+        : d && !isNaN(d.getTime())
+        ? d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+        : ''
+      const dateTimeStr = timeStr && timeStr !== '—'
+        ? `${dateStr}\n${timeStr}`
+        : dateStr
 
       const row = [
         String(idx + 1),
-        dateStr,
-        t.symbol || '—',
+        dateTimeStr,
+        (t.instrumentType === 'Options' || t.instrumentType === 'Option') && t.optionType
+          ? `${t.symbol || '—'} (${t.optionType})`
+          : (t.symbol || '—'),
         t.tradeType || 'Long',
         String(t.quantity || 1),
         t.entryPrice ? `INR ${parseFloat(t.entryPrice).toFixed(1)}` : '—',
@@ -632,7 +642,7 @@ export async function generateTradingJournalPdf({
       ]
 
       if (includeNotes) {
-        const note = t.lessonLearned || t.entryReason || t.exitReason || '—'
+        const note = t.mistakes || t.lessonLearned || t.entryReason || t.exitReason || t.assumptions || '—'
         row.push(note)
       }
 
@@ -687,14 +697,14 @@ export async function generateTradingJournalPdf({
         fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { cellWidth: 8, halign: 'center' },
-        1: { cellWidth: 16 },
+        0: { cellWidth: 7, halign: 'center' },
+        1: { cellWidth: 20 },
         2: { cellWidth: 18, fontStyle: 'bold' },
-        3: { cellWidth: 12 },
+        3: { cellWidth: 11 },
         4: { cellWidth: 10, halign: 'right' },
         5: { cellWidth: 17, halign: 'right' },
         6: { cellWidth: 17, halign: 'right' },
-        7: { cellWidth: 22, halign: 'right' },
+        7: { cellWidth: 21, halign: 'right' },
         8: { cellWidth: 14, halign: 'right' },
         9: { cellWidth: 14, halign: 'center' },
         ...(includeNotes ? { 10: { cellWidth: 'auto' } } : {}),
