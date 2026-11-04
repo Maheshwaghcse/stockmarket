@@ -297,3 +297,356 @@ export function computeJournalAnalytics(trades = []) {
     typeStats,
   }
 }
+
+/**
+ * Compute P&L for a single trade
+ */
+export function calculateTradePnl(trade) {
+  if (!trade) return 0
+
+  if (typeof trade.pnl === 'number' && !isNaN(trade.pnl)) {
+    return trade.pnl
+  }
+  if (trade.pnl !== undefined && trade.pnl !== null && trade.pnl !== '') {
+    const parsed = parseFloat(trade.pnl)
+    if (!isNaN(parsed)) return parsed
+  }
+
+  const entry = parseFloat(trade.entryPrice)
+  const exit = parseFloat(trade.exitPrice)
+  const qty = parseInt(trade.lotSize || trade.quantity, 10)
+
+  if (!isNaN(entry) && !isNaN(exit) && entry > 0 && !isNaN(qty) && qty > 0) {
+    const isLong = (trade.tradeType || 'Long').toLowerCase() === 'long'
+    return isLong ? (exit - entry) * qty : (entry - exit) * qty
+  }
+
+  return 0
+}
+
+/**
+ * Check if a trade is completed (has an exit price or explicit pnl)
+ */
+export function isTradeCompleted(trade) {
+  if (!trade) return false
+  if (trade.status && trade.status.toLowerCase() === 'open') return false
+  if (trade.exitPrice !== undefined && trade.exitPrice !== null && trade.exitPrice !== '') return true
+  if (trade.pnl !== undefined && trade.pnl !== null && trade.pnl !== '') return true
+  return false
+}
+
+/**
+ * Calculate consecutive winning and losing streaks chronologically
+ */
+export function calculateConsecutiveStreaks(trades) {
+  if (!Array.isArray(trades) || trades.length === 0) {
+    return {
+      maxConsecutiveWins: 0,
+      maxConsecutiveLosses: 0,
+      currentStreakType: 'none',
+      currentStreakCount: 0,
+    }
+  }
+
+  const sorted = [...trades].sort((a, b) => {
+    const dateA = new Date(a.entryDate || a.createdAt || 0).getTime()
+    const dateB = new Date(b.entryDate || b.createdAt || 0).getTime()
+    return dateA - dateB
+  })
+
+  let maxWins = 0
+  let maxLosses = 0
+  let currentWins = 0
+  let currentLosses = 0
+
+  for (const t of sorted) {
+    const pnl = calculateTradePnl(t)
+    if (pnl > 0) {
+      currentWins += 1
+      currentLosses = 0
+      if (currentWins > maxWins) maxWins = currentWins
+    } else if (pnl < 0) {
+      currentLosses += 1
+      currentWins = 0
+      if (currentLosses > maxLosses) maxLosses = currentLosses
+    }
+  }
+
+  let currentStreakType = 'none'
+  let currentStreakCount = 0
+  if (currentWins > 0) {
+    currentStreakType = 'win'
+    currentStreakCount = currentWins
+  } else if (currentLosses > 0) {
+    currentStreakType = 'loss'
+    currentStreakCount = currentLosses
+  }
+
+  return {
+    maxConsecutiveWins: maxWins,
+    maxConsecutiveLosses: maxLosses,
+    currentStreakType,
+    currentStreakCount,
+  }
+}
+
+/**
+ * Calculate independent strategy performance metrics
+ * STRICTLY uses only the trades provided in the array.
+ */
+export function calculateStrategyMetrics(trades) {
+  if (!Array.isArray(trades) || trades.length === 0) {
+    return {
+      totalTrades: 0,
+      winningTrades: 0,
+      losingTrades: 0,
+      breakevenTrades: 0,
+      openTrades: 0,
+      winRate: 0,
+      lossRate: 0,
+      totalPnl: 0,
+      totalProfit: 0,
+      totalLoss: 0,
+      averageProfit: 0,
+      averageLoss: 0,
+      averagePnlPerTrade: 0,
+      riskRewardRatio: '0.00',
+      riskRewardNumeric: 0,
+      profitFactor: '0.00',
+      largestWin: 0,
+      largestLoss: 0,
+      maxConsecutiveWins: 0,
+      maxConsecutiveLosses: 0,
+      currentStreakType: 'none',
+      currentStreakCount: 0,
+    }
+  }
+
+  const totalTrades = trades.length
+  let winningTrades = 0
+  let losingTrades = 0
+  let breakevenTrades = 0
+  let openTrades = 0
+
+  let totalWinAmount = 0
+  let totalLossAmount = 0
+  let netPnl = 0
+
+  let largestWin = 0
+  let largestLoss = 0
+
+  const completedTrades = []
+
+  for (const t of trades) {
+    const completed = isTradeCompleted(t)
+    if (!completed) {
+      openTrades += 1
+      continue
+    }
+
+    completedTrades.push(t)
+    const pnl = calculateTradePnl(t)
+    netPnl += pnl
+
+    if (pnl > 0) {
+      winningTrades += 1
+      totalWinAmount += pnl
+      if (pnl > largestWin) largestWin = pnl
+    } else if (pnl < 0) {
+      losingTrades += 1
+      totalLossAmount += Math.abs(pnl)
+      if (pnl < largestLoss) largestLoss = pnl
+    } else {
+      breakevenTrades += 1
+    }
+  }
+
+  const finishedCount = completedTrades.length
+  const winRate = finishedCount > 0 ? (winningTrades / finishedCount) * 100 : 0
+  const lossRate = finishedCount > 0 ? (losingTrades / finishedCount) * 100 : 0
+
+  const averageProfit = winningTrades > 0 ? totalWinAmount / winningTrades : 0
+  const averageLoss = losingTrades > 0 ? totalLossAmount / losingTrades : 0
+  const averagePnlPerTrade = finishedCount > 0 ? netPnl / finishedCount : 0
+
+  let rrNumeric = 0
+  let riskRewardRatio = '0.00'
+  if (averageLoss > 0) {
+    rrNumeric = averageProfit / averageLoss
+    riskRewardRatio = `1 : ${rrNumeric.toFixed(2)}`
+  } else if (averageProfit > 0) {
+    riskRewardRatio = '1 : ∞'
+    rrNumeric = 999
+  }
+
+  let profitFactor = '0.00'
+  if (totalLossAmount > 0) {
+    profitFactor = (totalWinAmount / totalLossAmount).toFixed(2)
+  } else if (totalWinAmount > 0) {
+    profitFactor = '∞'
+  }
+
+  const streakData = calculateConsecutiveStreaks(completedTrades)
+
+  return {
+    totalTrades,
+    winningTrades,
+    losingTrades,
+    breakevenTrades,
+    openTrades,
+    winRate: Number(winRate.toFixed(2)),
+    lossRate: Number(lossRate.toFixed(2)),
+    totalPnl: netPnl,
+    totalProfit: totalWinAmount,
+    totalLoss: totalLossAmount,
+    averageProfit: Math.round(averageProfit * 100) / 100,
+    averageLoss: Math.round(averageLoss * 100) / 100,
+    averagePnlPerTrade: Math.round(averagePnlPerTrade * 100) / 100,
+    riskRewardRatio,
+    riskRewardNumeric: rrNumeric,
+    profitFactor,
+    largestWin,
+    largestLoss,
+    maxConsecutiveWins: streakData.maxConsecutiveWins,
+    maxConsecutiveLosses: streakData.maxConsecutiveLosses,
+    currentStreakType: streakData.currentStreakType,
+    currentStreakCount: streakData.currentStreakCount,
+  }
+}
+
+/**
+ * Calculate Date-wise breakdown for a strategy
+ */
+export function calculateDateWisePerformance(trades, options = {}) {
+  const { startDate, endDate } = options
+  const startTs = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null
+  const endTs = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null
+
+  const filtered = trades.filter((t) => {
+    if (!startTs && !endTs) return true
+    const d = new Date(t.entryDate || t.createdAt || 0).getTime()
+    if (startTs && d < startTs) return false
+    if (endTs && d > endTs) return false
+    return true
+  })
+
+  const dayMap = {}
+
+  for (const t of filtered) {
+    const rawDate = t.entryDate || t.createdAt
+    const dateKey = rawDate ? new Date(rawDate).toISOString().slice(0, 10) : 'Unknown Date'
+
+    if (!dayMap[dateKey]) {
+      dayMap[dateKey] = {
+        date: dateKey,
+        displayDate: dateKey !== 'Unknown Date'
+          ? new Date(dateKey).toLocaleDateString('en-IN', {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
+          : 'Unknown Date',
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        breakevenTrades: 0,
+        totalPnl: 0,
+        trades: [],
+      }
+    }
+
+    const pnl = calculateTradePnl(t)
+    dayMap[dateKey].totalTrades += 1
+    dayMap[dateKey].totalPnl += pnl
+    dayMap[dateKey].trades.push(t)
+
+    if (pnl > 0) dayMap[dateKey].winningTrades += 1
+    else if (pnl < 0) dayMap[dateKey].losingTrades += 1
+    else dayMap[dateKey].breakevenTrades += 1
+  }
+
+  const result = Object.values(dayMap)
+    .map((item) => {
+      const completed = item.winningTrades + item.losingTrades + item.breakevenTrades
+      const winRate = completed > 0 ? (item.winningTrades / completed) * 100 : 0
+      const lossRate = completed > 0 ? (item.losingTrades / completed) * 100 : 0
+      return {
+        ...item,
+        winRate: Number(winRate.toFixed(1)),
+        lossRate: Number(lossRate.toFixed(1)),
+      }
+    })
+    .sort((a, b) => (b.date > a.date ? 1 : -1))
+
+  return result
+}
+
+/**
+ * Calculate Monthly Strategy Performance
+ */
+export function calculateMonthlyPerformance(trades, options = {}) {
+  const { year } = options
+  const monthMap = {}
+
+  for (const t of trades) {
+    const rawDate = t.entryDate || t.createdAt
+    if (!rawDate) continue
+
+    const d = new Date(rawDate)
+    const tYear = d.getFullYear()
+    if (year && tYear !== parseInt(year, 10)) continue
+
+    const monthKey = `${tYear}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const monthLabel = d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+
+    if (!monthMap[monthKey]) {
+      monthMap[monthKey] = {
+        monthKey,
+        monthLabel,
+        year: tYear,
+        monthNumber: d.getMonth() + 1,
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        breakevenTrades: 0,
+        totalPnl: 0,
+        grossProfit: 0,
+        grossLoss: 0,
+        trades: [],
+      }
+    }
+
+    const pnl = calculateTradePnl(t)
+    monthMap[monthKey].totalTrades += 1
+    monthMap[monthKey].totalPnl += pnl
+    monthMap[monthKey].trades.push(t)
+
+    if (pnl > 0) {
+      monthMap[monthKey].winningTrades += 1
+      monthMap[monthKey].grossProfit += pnl
+    } else if (pnl < 0) {
+      monthMap[monthKey].losingTrades += 1
+      monthMap[monthKey].grossLoss += Math.abs(pnl)
+    } else {
+      monthMap[monthKey].breakevenTrades += 1
+    }
+  }
+
+  const result = Object.values(monthMap)
+    .map((m) => {
+      const completed = m.winningTrades + m.losingTrades + m.breakevenTrades
+      const winRate = completed > 0 ? (m.winningTrades / completed) * 100 : 0
+      const lossRate = completed > 0 ? (m.losingTrades / completed) * 100 : 0
+      const avgPnl = completed > 0 ? m.totalPnl / completed : 0
+      return {
+        ...m,
+        winRate: Number(winRate.toFixed(1)),
+        lossRate: Number(lossRate.toFixed(1)),
+        averagePnl: Math.round(avgPnl * 100) / 100,
+      }
+    })
+    .sort((a, b) => (b.monthKey > a.monthKey ? 1 : -1))
+
+  return result
+}

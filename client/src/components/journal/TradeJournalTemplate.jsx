@@ -1,26 +1,21 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import {
-  Calendar,
   Clock,
   Upload,
   Image as ImageIcon,
   Star,
   Check,
   X,
-  TrendingUp,
-  TrendingDown,
-  Info,
   Maximize2,
   Trash2,
   Plus,
   Sparkles,
-  Tag,
-  Search,
-  ChevronDown,
-  AlertTriangle,
+  Smile,
+  BarChart3,
 } from 'lucide-react'
 import { formatINR } from '../../lib/journalAnalytics'
 import { searchStockCatalog, DEFAULT_STOCK_LOT_SIZES } from '../../lib/stockCatalog'
+import StrategyPerformanceDashboard from './StrategyPerformanceDashboard'
 
 const SUGGESTED_SYMBOLS = [
   'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN',
@@ -28,36 +23,169 @@ const SUGGESTED_SYMBOLS = [
   'NIFTY50', 'BANKNIFTY'
 ]
 
-const DEFAULT_REASONS = [
-  'Breakout',
-  'Support Bounce',
-  'Resistance Rejection',
-  'Pullback to EMA',
-  'VWAP Reversal',
-  'Trend Following',
-  'Chart Pattern',
-  'Scalp Momentum',
-  'Supply-Demand Zone',
-  'Fibonacci Retracement',
-  'Earnings Catalyst',
+export const BEFORE_TRADE_EMOTIONS = [
+  {
+    name: 'Calm',
+    marathi: 'शांत',
+    desc: 'मन स्थिर आहे, कोणताही ताण नाही.',
+  },
+  {
+    name: 'Confident',
+    marathi: 'आत्मविश्वास',
+    desc: 'माझ्या Setup वर विश्वास आहे.',
+  },
+  {
+    name: 'Fearful',
+    marathi: 'भीती',
+    desc: 'Loss होण्याची भीती वाटते.',
+  },
+  {
+    name: 'Anxious',
+    marathi: 'चिंता',
+    desc: 'Market बद्दल चिंता वाटते.',
+  },
+  {
+    name: 'Greedy',
+    marathi: 'लोभ',
+    desc: 'जास्त Profit मिळवण्याची इच्छा.',
+  },
+  {
+    name: 'Excited',
+    marathi: 'उत्साहित',
+    desc: 'Trade घेण्याची खूप उत्सुकता.',
+  },
+  {
+    name: 'Impatient',
+    marathi: 'अधीर',
+    desc: 'Setup पूर्ण होण्याआधी Entry घ्यायची घाई.',
+  },
+  {
+    name: 'Doubtful',
+    marathi: 'साशंक',
+    desc: 'Setup योग्य आहे की नाही याबद्दल शंका.',
+  },
+  {
+    name: 'FOMO',
+    marathi: 'संधी गमावण्याची भीती',
+    desc: 'Market निघून जाईल म्हणून घाई.',
+  },
+  {
+    name: 'Frustrated',
+    marathi: 'त्रस्त',
+    desc: 'मागील Loss मुळे मन खराब आहे.',
+  },
+  {
+    name: 'Revengeful',
+    marathi: 'बदला घेण्याची भावना',
+    desc: 'मागील Loss भरून काढण्याची इच्छा.',
+  },
 ]
 
-const DEFAULT_MISTAKES = [
-  'FOMO Entry',
-  'Chased Price',
-  'Revenge Trade',
-  'No Stop Loss / Moved SL',
-  'Position Too Large / Overleveraged',
-  'Exited Too Early (Paper Hands)',
-  'Held Too Long / Greed',
-  'Traded Against Trend',
-  'Ignored Rules',
-  'Late Entry / Hesitation',
-  'Overtrading',
-  'None (Executed Well)',
+export const AFTER_TRADE_EMOTIONS = [
+  {
+    name: 'Satisfied',
+    marathi: 'समाधानी',
+    desc: 'Plan पाळला आणि Result स्वीकारला.',
+  },
+  {
+    name: 'Regret',
+    marathi: 'पश्चात्ताप',
+    desc: 'लवकर Exit केला किंवा Trade Miss केला.',
+  },
+  {
+    name: 'Frustrated',
+    marathi: 'त्रस्त',
+    desc: 'Loss किंवा स्वतःची चूक झाली.',
+  },
+  {
+    name: 'Relieved',
+    marathi: 'सुटकेचा आनंद',
+    desc: 'Trade संपल्यावर तनाव कमी झाला.',
+  },
+  {
+    name: 'Disappointed',
+    marathi: 'निराश',
+    desc: 'अपेक्षित Result मिळाला नाही.',
+  },
+  
+  {
+    name: 'Confident',
+    marathi: 'आत्मविश्वास',
+    desc: 'चांगला Trade झाल्याने आत्मविश्वास वाढला.',
+  },
+  {
+    name: 'Overconfident',
+    marathi: 'अतिआत्मविश्वास',
+    desc: 'Profit मुळे स्वतःवर जास्त विश्वास बसला.',
+  },
+  {
+    name: 'Greedy',
+    marathi: 'लोभी',
+    desc: 'अजून जास्त Profit हवा होता.',
+  },
+  {
+    name: 'Fearful',
+    marathi: 'भयभीत',
+    desc: 'पुढचा Trade घेण्याची भीती वाटते.',
+  },
+  {
+    name: 'Anxious',
+    marathi: 'चिंताग्रस्त',
+    desc: 'Loss किंवा पुढील Trading बद्दल चिंता.',
+  },
+  {
+    name: 'Angry',
+    marathi: 'रागावलेला',
+    desc: 'Market किंवा स्वतःच्या चुकीमुळे राग.',
+  },
+  {
+    name: 'Guilty',
+    marathi: 'अपराधीपणा',
+    desc: 'Trading Rules मोडले.',
+  },
+  {
+    name: 'Jealous',
+    marathi: 'मत्सरी',
+    desc: 'दुसऱ्या Trader चा Profit पाहून वाईट वाटले.',
+  },
+  {
+    name: 'Excited',
+    marathi: 'उत्साहित',
+    desc: 'मोठा Profit मिळाला.',
+  },
+  {
+    name: 'Confused',
+    marathi: 'गोंधळलेला',
+    desc: 'Trade योग्य होता की चुकीचा हे समजत नाही.',
+  },
+  {
+    name: 'Calm',
+    marathi: 'शांत',
+    desc: 'Result स्वीकारून मन स्थिर आहे.',
+  },
+  {
+    name: 'Impatient',
+    marathi: 'अधीर',
+    desc: 'पुढचा Trade लगेच घेण्याची इच्छा.',
+  },
+]
+
+const DEFAULT_ASSUMPTIONS = [
+  'Market Bullish Sentiment',
+  'High Volume Confirmation',
+  'Sector Strength / Tailwind',
+  'Favorable Risk-to-Reward',
+  'Tight Stop Loss Setup',
+  'RSI Oversold / Divergence',
+  'Higher Timeframe Confluence',
+  'Range-Bound Market',
+  'Pre-Market Gap Fill',
 ]
 
 const STRATEGY_OPTIONS = [
+  'Tiger Breakout',
+  'Camarilla Pivot',
+  'First Candle Close Range',
   'Breakout',
   'Pullback',
   'VWAP Reversal',
@@ -84,6 +212,7 @@ export default function TradeJournalTemplate({
 }) {
   const isEditing = mode === 'create' || mode === 'edit'
   const [zoomImage, setZoomImage] = useState(false)
+  const [showStrategyDashboard, setShowStrategyDashboard] = useState(false)
   const fileInputRef = useRef(null)
   const symbolWrapperRef = useRef(null)
 
@@ -91,27 +220,37 @@ export default function TradeJournalTemplate({
   const [symbolSuggestions, setSymbolSuggestions] = useState([])
   const [showSymbolDropdown, setShowSymbolDropdown] = useState(false)
 
-  // Custom reasons state & inline add modal
-  const [customReasons, setCustomReasons] = useState(() => {
+  // Emotion tabs & slicers state
+  const [activeEmotionTab, setActiveEmotionTab] = useState('before') // 'before' | 'after'
+  const [customBeforeEmotions, setCustomBeforeEmotions] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('custom_trade_reasons') || '[]')
+      return JSON.parse(localStorage.getItem('custom_before_trade_emotions') || '[]')
     } catch {
       return []
     }
   })
-  const [newReasonInput, setNewReasonInput] = useState('')
-  const [showAddReason, setShowAddReason] = useState(false)
+  const [customAfterEmotions, setCustomAfterEmotions] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('custom_after_trade_emotions') || '[]')
+    } catch {
+      return []
+    }
+  })
+  const [showAddEmotion, setShowAddEmotion] = useState(false)
+  const [newEmotionName, setNewEmotionName] = useState('')
+  const [newEmotionMarathi, setNewEmotionMarathi] = useState('')
+  const [newEmotionDesc, setNewEmotionDesc] = useState('')
 
-  // Custom mistakes state & inline add modal
-  const [customMistakes, setCustomMistakes] = useState(() => {
+  // Custom assumptions state & inline add modal
+  const [customAssumptions, setCustomAssumptions] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('custom_trade_mistakes') || localStorage.getItem('custom_trade_assumptions') || '[]')
+      return JSON.parse(localStorage.getItem('custom_trade_assumptions') || '[]')
     } catch {
       return []
     }
   })
-  const [newMistakeInput, setNewMistakeInput] = useState('')
-  const [showAddMistake, setShowAddMistake] = useState(false)
+  const [newAssumptionInput, setNewAssumptionInput] = useState('')
+  const [showAddAssumption, setShowAddAssumption] = useState(false)
 
   // Use either active formData (edit/create) or trade (view)
   const currentData = isEditing ? formData : trade
@@ -130,7 +269,7 @@ export default function TradeJournalTemplate({
     ? ''
     : rawLot
   const instrumentType = currentData?.instrumentType || 'Equity'
-  const rawOption = (currentData?.optionType || 'CALL').toUpperCase().trim()
+  const rawOption = (currentData?.optionType || 'Call').toUpperCase().trim()
   const optionType = rawOption === 'PUT' || rawOption === 'PE' ? 'PUT' : 'CALL'
   const isOptions = instrumentType === 'Options' || instrumentType === 'Option'
   const strategy = currentData?.strategy || ''
@@ -141,10 +280,9 @@ export default function TradeJournalTemplate({
   const exitPrice = currentData?.exitPrice !== undefined && currentData?.exitPrice !== null ? currentData?.exitPrice : ''
   const takeProfit = currentData?.takeProfit !== undefined && currentData?.takeProfit !== null ? currentData?.takeProfit : ''
   const riskReward = currentData?.riskReward || ''
-  const entryReason = currentData?.entryReason || ''
-  const mistakes = currentData?.mistakes !== undefined && currentData?.mistakes !== null
-    ? currentData.mistakes
-    : (currentData?.assumptions || '')
+  const beforeTradeEmotions = currentData?.beforeTradeEmotions || currentData?.beforeEmotions || currentData?.emotionsBefore || ''
+  const afterTradeEmotions = currentData?.afterTradeEmotions || currentData?.afterEmotions || currentData?.emotionsAfter || ''
+  const assumptions = currentData?.assumptions || ''
   const disciplined = currentData?.disciplined || 'Y'
   const followedRules = currentData?.followedRules || 'Y'
   const rating = currentData?.rating !== undefined ? Number(currentData?.rating) : 5
@@ -416,89 +554,157 @@ export default function TradeJournalTemplate({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Slicer handlers: Reason for trade
-  const toggleReason = (text) => {
-    const current = (entryReason || '').trim()
+  // Helper to parse comma-separated or array emotions
+  const getEmotionsList = useCallback((val) => {
+    if (!val) return []
+    if (Array.isArray(val)) return val.map((s) => String(s).trim()).filter(Boolean)
+    if (typeof val === 'string') {
+      return val.split(',').map((s) => s.trim()).filter(Boolean)
+    }
+    return []
+  }, [])
+
+  const beforeEmotionsList = useMemo(() => getEmotionsList(beforeTradeEmotions), [beforeTradeEmotions, getEmotionsList])
+  const afterEmotionsList = useMemo(() => getEmotionsList(afterTradeEmotions), [afterTradeEmotions, getEmotionsList])
+
+  // Slicer handlers: Before Trade Emotions
+  const isBeforeEmotionActive = useCallback((name) => {
+    return beforeEmotionsList.some((e) => e.toLowerCase() === name.toLowerCase())
+  }, [beforeEmotionsList])
+
+  const toggleBeforeEmotion = (name) => {
+    if (!isEditing) return
+    const current = [...beforeEmotionsList]
+    const idx = current.findIndex((e) => e.toLowerCase() === name.toLowerCase())
+    if (idx >= 0) {
+      current.splice(idx, 1)
+    } else {
+      current.push(name)
+    }
+    const val = current.join(', ')
+    onChange('beforeTradeEmotions', val)
+    if (currentData?.beforeEmotions !== undefined) {
+      onChange('beforeEmotions', val)
+    }
+  }
+
+  // Slicer handlers: After Trade Emotions
+  const isAfterEmotionActive = useCallback((name) => {
+    return afterEmotionsList.some((e) => e.toLowerCase() === name.toLowerCase())
+  }, [afterEmotionsList])
+
+  const toggleAfterEmotion = (name) => {
+    if (!isEditing) return
+    const current = [...afterEmotionsList]
+    const idx = current.findIndex((e) => e.toLowerCase() === name.toLowerCase())
+    if (idx >= 0) {
+      current.splice(idx, 1)
+    } else {
+      current.push(name)
+    }
+    const val = current.join(', ')
+    onChange('afterTradeEmotions', val)
+    if (currentData?.afterEmotions !== undefined) {
+      onChange('afterEmotions', val)
+    }
+  }
+
+  const clearCurrentTabEmotions = () => {
+    if (!isEditing) return
+    if (activeEmotionTab === 'before') {
+      onChange('beforeTradeEmotions', '')
+      if (currentData?.beforeEmotions !== undefined) onChange('beforeEmotions', '')
+    } else {
+      onChange('afterTradeEmotions', '')
+      if (currentData?.afterEmotions !== undefined) onChange('afterEmotions', '')
+    }
+  }
+
+  const handleAddNewEmotion = () => {
+    const name = newEmotionName.trim()
+    if (!name) return
+    const marathi = newEmotionMarathi.trim()
+    const desc = newEmotionDesc.trim()
+    const newEntry = { name, marathi: marathi || name, desc: desc || '' }
+
+    if (activeEmotionTab === 'before') {
+      const exists = [...BEFORE_TRADE_EMOTIONS, ...customBeforeEmotions].some(
+        (e) => e.name.toLowerCase() === name.toLowerCase()
+      )
+      if (!exists) {
+        const updated = [...customBeforeEmotions, newEntry]
+        setCustomBeforeEmotions(updated)
+        try {
+          localStorage.setItem('custom_before_trade_emotions', JSON.stringify(updated))
+        } catch { }
+      }
+      toggleBeforeEmotion(name)
+    } else {
+      const exists = [...AFTER_TRADE_EMOTIONS, ...customAfterEmotions].some(
+        (e) => e.name.toLowerCase() === name.toLowerCase()
+      )
+      if (!exists) {
+        const updated = [...customAfterEmotions, newEntry]
+        setCustomAfterEmotions(updated)
+        try {
+          localStorage.setItem('custom_after_trade_emotions', JSON.stringify(updated))
+        } catch { }
+      }
+      toggleAfterEmotion(name)
+    }
+
+    setNewEmotionName('')
+    setNewEmotionMarathi('')
+    setNewEmotionDesc('')
+    setShowAddEmotion(false)
+  }
+
+  const allBeforeEmotions = useMemo(() => {
+    return [...BEFORE_TRADE_EMOTIONS, ...customBeforeEmotions]
+  }, [customBeforeEmotions])
+
+  const allAfterEmotions = useMemo(() => {
+    return [...AFTER_TRADE_EMOTIONS, ...customAfterEmotions]
+  }, [customAfterEmotions])
+
+  // Slicer handlers: Assumptions before trade
+  const toggleAssumption = (text) => {
+    const current = (assumptions || '').trim()
     if (!current) {
-      onChange('entryReason', text)
+      onChange('assumptions', text)
       return
     }
     const parts = current.split(',').map((s) => s.trim()).filter(Boolean)
     const index = parts.findIndex((p) => p.toLowerCase() === text.toLowerCase())
     if (index >= 0) {
       parts.splice(index, 1)
-      onChange('entryReason', parts.join(', '))
+      onChange('assumptions', parts.join(', '))
     } else {
-      onChange('entryReason', `${current}, ${text}`)
+      onChange('assumptions', `${current}, ${text}`)
     }
   }
 
-  const isReasonActive = (text) => {
-    if (!entryReason) return false
-    return entryReason.toLowerCase().includes(text.toLowerCase())
+  const isAssumptionActive = (text) => {
+    if (!assumptions) return false
+    return assumptions.toLowerCase().includes(text.toLowerCase())
   }
 
-  const handleAddNewReason = () => {
-    const val = newReasonInput.trim()
+  const handleAddNewAssumption = () => {
+    const val = newAssumptionInput.trim()
     if (!val) return
     if (
-      !customReasons.some((r) => r.toLowerCase() === val.toLowerCase()) &&
-      !DEFAULT_REASONS.some((r) => r.toLowerCase() === val.toLowerCase())
+      !customAssumptions.some((a) => a.toLowerCase() === val.toLowerCase()) &&
+      !DEFAULT_ASSUMPTIONS.some((a) => a.toLowerCase() === val.toLowerCase())
     ) {
-      const updated = [...customReasons, val]
-      setCustomReasons(updated)
+      const updated = [...customAssumptions, val]
+      setCustomAssumptions(updated)
       try {
-        localStorage.setItem('custom_trade_reasons', JSON.stringify(updated))
+        localStorage.setItem('custom_trade_assumptions', JSON.stringify(updated))
       } catch { }
     }
-    toggleReason(val)
-    setNewReasonInput('')
-    setShowAddReason(false)
-  }
-
-  // Slicer handlers: Mistakes
-  const updateMistakes = (val) => {
-    onChange('mistakes', val)
-    onChange('assumptions', val)
-  }
-
-  const toggleMistake = (text) => {
-    const current = (mistakes || '').trim()
-    if (!current) {
-      updateMistakes(text)
-      return
-    }
-    const parts = current.split(',').map((s) => s.trim()).filter(Boolean)
-    const index = parts.findIndex((p) => p.toLowerCase() === text.toLowerCase())
-    if (index >= 0) {
-      parts.splice(index, 1)
-      updateMistakes(parts.join(', '))
-    } else {
-      updateMistakes(`${current}, ${text}`)
-    }
-  }
-
-  const isMistakeActive = (text) => {
-    if (!mistakes) return false
-    return mistakes.toLowerCase().includes(text.toLowerCase())
-  }
-
-  const handleAddNewMistake = () => {
-    const val = newMistakeInput.trim()
-    if (!val) return
-    if (
-      !customMistakes.some((a) => a.toLowerCase() === val.toLowerCase()) &&
-      !DEFAULT_MISTAKES.some((a) => a.toLowerCase() === val.toLowerCase())
-    ) {
-      const updated = [...customMistakes, val]
-      setCustomMistakes(updated)
-      try {
-        localStorage.setItem('custom_trade_mistakes', JSON.stringify(updated))
-      } catch { }
-    }
-    toggleMistake(val)
-    setNewMistakeInput('')
-    setShowAddMistake(false)
+    toggleAssumption(val)
+    setNewAssumptionInput('')
+    setShowAddAssumption(false)
   }
 
   return (
@@ -508,6 +714,30 @@ export default function TradeJournalTemplate({
     >
       {/* ─── TEMPLATE CONTAINER ─────────────────────────────────────────── */}
       <div className="bg-[#0b1329] border-2 border-slate-700/90 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4">
+
+        {/* ─── TOP TOOLBAR: STRATEGY ANALYTICS SHORTCUT ───────────────────── */}
+        <div className="flex items-center justify-between gap-2 pb-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Trade Journal
+            </span>
+            {strategy && (
+              <span className="text-[11px] font-semibold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-md">
+                Strategy: {strategy}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowStrategyDashboard(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-md shadow-purple-600/30 transition-all cursor-pointer"
+            title="Open Independent Strategy Performance & Win Rate Analysis"
+          >
+            <BarChart3 size={13} />
+            <span>Strategy Analytics & Win Rate</span>
+          </button>
+        </div>
 
         {/* ─── 1. TOP HEADER BOX: DATE & SYMBOL ───────────────────────────── */}
         <div className="border-2 border-slate-700/90 rounded-xl p-3 sm:p-4 bg-[#0f1a36]/90 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -637,8 +867,8 @@ export default function TradeJournalTemplate({
                       key={s}
                       onClick={() => handleSelectSymbol({ symbol: s })}
                       className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all cursor-pointer ${symbol === s
-                          ? 'bg-blue-600 text-white font-bold ring-1 ring-blue-400 shadow-sm'
-                          : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
+                        ? 'bg-blue-600 text-white font-bold ring-1 ring-blue-400 shadow-sm'
+                        : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
                         }`}
                       title={`Select ${s}`}
                     >
@@ -654,19 +884,18 @@ export default function TradeJournalTemplate({
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded text-[11px] font-extrabold font-mono uppercase ${tradeType === 'Long'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                     }`}
                 >
                   {tradeType}
                 </span>
                 {isOptions && (
                   <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                      optionType === 'CALL'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                    }`}
+                    className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${optionType === 'CALL'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                      }`}
                   >
                     {optionType}
                   </span>
@@ -719,6 +948,26 @@ export default function TradeJournalTemplate({
                 </div>
               </div>
 
+              {/* TIME */}
+              <div className="grid grid-cols-3 items-center px-3 sm:px-4 py-2">
+                <span className="font-bold text-slate-300 uppercase tracking-wide">
+                  TIME:
+                </span>
+                <div className="col-span-2">
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      placeholder="e.g. 09:30 AM"
+                      value={time}
+                      onChange={(e) => onChange('time', e.target.value)}
+                      className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400 font-mono"
+                    />
+                  ) : (
+                    <span className="font-mono text-slate-100">{time || '—'}</span>
+                  )}
+                </div>
+              </div>
+
               {/* LOT SIZE (with lavender highlight from screenshot) */}
               <div className="grid grid-cols-3 items-center px-3 sm:px-4 py-2">
                 <span className="font-bold text-slate-300 uppercase tracking-wide">
@@ -744,8 +993,8 @@ export default function TradeJournalTemplate({
                             type="button"
                             onClick={() => handleLotSizeChange(previousLotSize)}
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${Number(lotSize) === Number(previousLotSize)
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
-                                : 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
+                              : 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30'
                               }`}
                             title={`Apply lot size (${previousLotSize}) for ${symbol || 'this stock'}`}
                           >
@@ -779,8 +1028,8 @@ export default function TradeJournalTemplate({
                         type="button"
                         onClick={() => onChange('tradeType', 'Long')}
                         className={`flex-1 py-1 rounded text-xs font-bold transition-all ${tradeType === 'Long'
-                            ? 'bg-emerald-600 text-white shadow'
-                            : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
                           }`}
                       >
                         LONG
@@ -789,8 +1038,8 @@ export default function TradeJournalTemplate({
                         type="button"
                         onClick={() => onChange('tradeType', 'Short')}
                         className={`flex-1 py-1 rounded text-xs font-bold transition-all ${tradeType === 'Short'
-                            ? 'bg-rose-600 text-white shadow'
-                            : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                          ? 'bg-rose-600 text-white shadow'
+                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
                           }`}
                       >
                         SHORT
@@ -839,22 +1088,20 @@ export default function TradeJournalTemplate({
                           <button
                             type="button"
                             onClick={() => onChange('optionType', 'CALL')}
-                            className={`flex-1 py-1 rounded text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                              optionType === 'CALL'
-                                ? 'bg-emerald-600 text-white shadow ring-1 ring-emerald-400'
-                                : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                            }`}
+                            className={`flex-1 py-1 rounded text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${optionType === 'CALL'
+                              ? 'bg-emerald-600 text-white shadow ring-1 ring-emerald-400'
+                              : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                              }`}
                           >
                             CALL
                           </button>
                           <button
                             type="button"
                             onClick={() => onChange('optionType', 'PUT')}
-                            className={`flex-1 py-1 rounded text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                              optionType === 'PUT'
-                                ? 'bg-rose-600 text-white shadow ring-1 ring-rose-400'
-                                : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                            }`}
+                            className={`flex-1 py-1 rounded text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${optionType === 'PUT'
+                              ? 'bg-rose-600 text-white shadow ring-1 ring-rose-400'
+                              : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                              }`}
                           >
                             PUT
                           </button>
@@ -866,11 +1113,10 @@ export default function TradeJournalTemplate({
                       <span className="font-semibold text-slate-100">{instrumentType || 'Equity'}</span>
                       {isOptions && (
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                            optionType === 'CALL'
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${optionType === 'CALL'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                            }`}
                         >
                           {optionType}
                         </span>
@@ -885,12 +1131,12 @@ export default function TradeJournalTemplate({
                 <span className="font-bold text-slate-300 uppercase tracking-wide">
                   STRATEGY:
                 </span>
-                <div className="col-span-2">
+                <div className="col-span-2 space-y-1">
                   {isEditing ? (
                     <input
                       type="text"
                       list="strategy-list"
-                      placeholder="e.g. Breakout, Pullback"
+                      placeholder="e.g. Tiger Breakout, Camarilla Pivot"
                       value={strategy}
                       onChange={(e) => onChange('strategy', e.target.value)}
                       className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400"
@@ -904,6 +1150,19 @@ export default function TradeJournalTemplate({
                         <option key={s} value={s} />
                       ))}
                     </datalist>
+                  )}
+                  {strategy && (
+                    <div className="pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowStrategyDashboard(true)}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-300 hover:text-white bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 px-2 py-0.5 rounded transition-all cursor-pointer"
+                        title={`View independent win rate and performance for ${strategy}`}
+                      >
+                        <BarChart3 size={10} />
+                        <span>View Win Rate & Analytics ({strategy})</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1172,18 +1431,339 @@ export default function TradeJournalTemplate({
           </div>
 
           <div className="divide-y divide-slate-700/80 text-xs sm:text-sm">
-            {/* REASON FOR TRADE WITH PRESET SLICERS & ADD NEW */}
+            {/* ─── EMOTIONS SECTION WITH BEFORE & AFTER TRADE SLICERS ─── */}
+            <div className="p-3 sm:p-5 space-y-4">
+              {/* Header with Title, Tab Slicers, and Add New */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-700/70">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-slate-200 uppercase tracking-wider text-xs sm:text-sm flex items-center gap-1.5">
+                    <Smile size={16} className="text-purple-400" />
+                    <span>EMOTIONS:</span>
+                  </span>
+
+                  {/* Badges showing counts */}
+                  {beforeEmotionsList.length > 0 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                      Before: {beforeEmotionsList.length}
+                    </span>
+                  )}
+                  {afterEmotionsList.length > 0 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                      After: {afterEmotionsList.length}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
+                  {/* Segmented Slicer Tabs */}
+                  <div className="inline-flex p-1 rounded-xl bg-[#070d1e] border border-slate-700/80 shadow-inner">
+                    <button
+                      type="button"
+                      onClick={() => setActiveEmotionTab('before')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeEmotionTab === 'before'
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/40'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span>1) Before Trade Emotions</span>
+                      {beforeEmotionsList.length > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-mono">
+                          {beforeEmotionsList.length}
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveEmotionTab('after')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeEmotionTab === 'after'
+                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/40'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span>2) After Trade Emotions</span>
+                      {afterEmotionsList.length > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-mono">
+                          {afterEmotionsList.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Actions in Edit Mode: Add Custom / Clear */}
+                  {isEditing && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddEmotion((v) => !v)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                        title="Add custom emotion"
+                      >
+                        <Plus size={11} />
+                        <span>Add Custom</span>
+                      </button>
+
+                      {((activeEmotionTab === 'before' && beforeEmotionsList.length > 0) ||
+                        (activeEmotionTab === 'after' && afterEmotionsList.length > 0)) && (
+                        <button
+                          type="button"
+                          onClick={clearCurrentTabEmotions}
+                          className="text-[11px] text-slate-400 hover:text-rose-400 px-2 py-1 rounded transition-colors cursor-pointer"
+                          title="Clear selections in current tab"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Inline Add Custom Emotion Form */}
+              {showAddEmotion && isEditing && (
+                <div className="bg-[#091124] border border-purple-500/40 rounded-xl p-3 space-y-2 animate-in fade-in duration-150">
+                  <div className="text-xs font-bold text-purple-300 flex items-center justify-between">
+                    <span>Add Custom Emotion ({activeEmotionTab === 'before' ? 'Before Trade' : 'After Trade'})</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddEmotion(false)}
+                      className="text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      placeholder="English Name (e.g. Hopeful)"
+                      value={newEmotionName}
+                      onChange={(e) => setNewEmotionName(e.target.value)}
+                      className="bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:border-purple-400"
+                      autoFocus
+                    />
+                    <input
+                      type="text"
+                      placeholder="Marathi Meaning (e.g. आशावादी)"
+                      value={newEmotionMarathi}
+                      onChange={(e) => setNewEmotionMarathi(e.target.value)}
+                      className="bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:border-purple-400"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Description / Context"
+                      value={newEmotionDesc}
+                      onChange={(e) => setNewEmotionDesc(e.target.value)}
+                      className="bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddEmotion(false)}
+                      className="px-2.5 py-1 rounded text-xs text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddNewEmotion}
+                      className="px-3 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow transition-all cursor-pointer"
+                    >
+                      Add & Select
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── OPTION 1: BEFORE TRADE EMOTIONS SLICER ─── */}
+              {activeEmotionTab === 'before' && (
+                <div className="bg-[#050811] border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+                  {/* Header matching Picture 1 */}
+                  <div className="space-y-1">
+                    <h3 className="font-serif italic text-xl sm:text-2xl text-white font-medium tracking-wide">
+                      Before Trade Emotions
+                    </h3>
+                    <p className="font-serif italic text-xs sm:text-sm text-slate-400">
+                      Trade घेण्यापूर्वी तुझी मानसिक स्थिती निवड.
+                    </p>
+                  </div>
+
+                  {/* Slicer Cards 2-column Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {allBeforeEmotions.map((item) => {
+                      const active = isBeforeEmotionActive(item.name)
+                      return (
+                        <div
+                          key={item.name}
+                          onClick={() => isEditing && toggleBeforeEmotion(item.name)}
+                          className={`rounded-2xl p-3.5 sm:p-4 border transition-all select-none relative ${
+                            isEditing ? 'cursor-pointer' : 'cursor-default'
+                          } ${
+                            active
+                              ? 'bg-[#0f1d38] border-blue-400 shadow-lg shadow-blue-950/70 ring-1 ring-blue-400/80'
+                              : isEditing
+                              ? 'bg-[#070b14] border-slate-800/90 hover:border-slate-700 hover:bg-[#0c1222]'
+                              : 'bg-[#070b14]/60 border-slate-800/60 opacity-60'
+                          }`}
+                        >
+                          {/* Active checkmark */}
+                          {active && (
+                            <div className="absolute top-3.5 right-3.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow">
+                              <Check size={12} strokeWidth={3} />
+                            </div>
+                          )}
+
+                          {/* 1. English Emotion Name: Large, bold, italic serif */}
+                          <div className="font-serif italic font-bold text-lg sm:text-xl text-white tracking-wide pr-6">
+                            {item.name}
+                          </div>
+
+                          {/* 2. Marathi Meaning: Directly below, bold */}
+                          <div className="font-sans font-bold text-sm sm:text-base text-slate-100 mt-1">
+                            {item.marathi}
+                          </div>
+
+                          {/* 3. Description: Muted */}
+                          <div className="font-sans text-xs sm:text-[13px] text-slate-400 font-normal mt-1 leading-snug">
+                            {item.desc}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ─── OPTION 2: AFTER TRADE EMOTIONS SLICER ─── */}
+              {activeEmotionTab === 'after' && (
+                <div className="bg-[#050811] border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+                  {/* Header matching Picture 2 */}
+                  <div className="space-y-1">
+                    <div className="text-xs text-slate-400 font-serif italic">2. After Trade Emotions</div>
+                    <h3 className="font-serif italic text-xl sm:text-2xl text-white font-medium tracking-wide">
+                      After Trade Emotions
+                    </h3>
+                    <p className="font-serif italic text-xs sm:text-sm text-slate-400">
+                      Trade संपल्यानंतर तुला काय जाणवले ते निवड.
+                    </p>
+                  </div>
+
+                  {/* Slicer Cards 2-column Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {allAfterEmotions.map((item) => {
+                      const active = isAfterEmotionActive(item.name)
+                      return (
+                        <div
+                          key={item.name}
+                          onClick={() => isEditing && toggleAfterEmotion(item.name)}
+                          className={`rounded-2xl p-3.5 sm:p-4 border transition-all select-none relative ${
+                            isEditing ? 'cursor-pointer' : 'cursor-default'
+                          } ${
+                            active
+                              ? 'bg-[#1b1236] border-purple-400 shadow-lg shadow-purple-950/70 ring-1 ring-purple-400/80'
+                              : isEditing
+                              ? 'bg-[#070b14] border-slate-800/90 hover:border-slate-700 hover:bg-[#0c1222]'
+                              : 'bg-[#070b14]/60 border-slate-800/60 opacity-60'
+                          }`}
+                        >
+                          {/* Active checkmark */}
+                          {active && (
+                            <div className="absolute top-3.5 right-3.5 w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shadow">
+                              <Check size={12} strokeWidth={3} />
+                            </div>
+                          )}
+
+                          {/* 1. English Emotion Name: Large, bold, italic serif */}
+                          <div className="font-serif italic font-bold text-lg sm:text-xl text-white tracking-wide pr-6">
+                            {item.name}
+                          </div>
+
+                          {/* 2. Marathi Meaning: Directly below, bold */}
+                          <div className="font-sans font-bold text-sm sm:text-base text-slate-100 mt-1">
+                            {item.marathi}
+                          </div>
+
+                          {/* 3. Description: Muted */}
+                          <div className="font-sans text-xs sm:text-[13px] text-slate-400 font-normal mt-1 leading-snug">
+                            {item.desc}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ─── SUMMARY DISPLAY OF SELECTED EMOTIONS ─── */}
+              <div className="bg-[#091124]/70 border border-slate-800/90 rounded-xl p-3 space-y-2 text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-400 uppercase tracking-wide">
+                      Before Trade:
+                    </span>
+                    {beforeEmotionsList.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {beforeEmotionsList.map((em) => {
+                          const meta = allBeforeEmotions.find((b) => b.name.toLowerCase() === em.toLowerCase())
+                          return (
+                            <span
+                              key={em}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                            >
+                              <span className="font-bold">{em}</span>
+                              {meta && <span className="opacity-80">({meta.marathi})</span>}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-slate-500 italic">None selected</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-400 uppercase tracking-wide">
+                      After Trade:
+                    </span>
+                    {afterEmotionsList.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {afterEmotionsList.map((em) => {
+                          const meta = allAfterEmotions.find((a) => a.name.toLowerCase() === em.toLowerCase())
+                          return (
+                            <span
+                              key={em}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                            >
+                              <span className="font-bold">{em}</span>
+                              {meta && <span className="opacity-80">({meta.marathi})</span>}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-slate-500 italic">None selected</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ASSUMPTIONS BEFORE TRADE WITH PRESET SLICERS & ADD NEW */}
             <div className="p-3 sm:p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-slate-300 uppercase tracking-wider text-xs sm:text-sm flex items-center gap-1.5">
-                  <Tag size={13} className="text-blue-400" />
-                  <span>REASON FOR TRADE:</span>
+                  <Sparkles size={13} className="text-purple-400" />
+                  <span>ASSUMPTIONS BEFORE TRADE:</span>
                 </span>
                 {isEditing && (
                   <button
                     type="button"
-                    onClick={() => setShowAddReason((v) => !v)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded transition-all cursor-pointer"
+                    onClick={() => setShowAddAssumption((v) => !v)}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 rounded transition-all cursor-pointer"
                   >
                     <Plus size={11} />
                     <span>Add New</span>
@@ -1195,54 +1775,54 @@ export default function TradeJournalTemplate({
               {isEditing && (
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {[...DEFAULT_REASONS, ...customReasons].map((r) => {
-                      const active = isReasonActive(r)
+                    {[...DEFAULT_ASSUMPTIONS, ...customAssumptions].map((a) => {
+                      const active = isAssumptionActive(a)
                       return (
                         <button
                           type="button"
-                          key={r}
-                          onClick={() => toggleReason(r)}
+                          key={a}
+                          onClick={() => toggleAssumption(a)}
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${active
-                              ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/30 ring-1 ring-blue-400'
-                              : 'bg-[#152244] border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'
+                            ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-500/30 ring-1 ring-purple-400'
+                            : 'bg-[#152244] border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'
                             }`}
                         >
                           {active && <Check size={11} className="text-white" />}
-                          <span>{r}</span>
+                          <span>{a}</span>
                         </button>
                       )
                     })}
                   </div>
 
-                  {/* Add New Reason Inline Input */}
-                  {showAddReason && (
+                  {/* Add New Assumption Inline Input */}
+                  {showAddAssumption && (
                     <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-150">
                       <input
                         type="text"
-                        placeholder="Type new reason (e.g. 52-Week High Breakout)..."
-                        value={newReasonInput}
-                        onChange={(e) => setNewReasonInput(e.target.value)}
+                        placeholder="Type new assumption (e.g. Earnings Momentum Continuation)..."
+                        value={newAssumptionInput}
+                        onChange={(e) => setNewAssumptionInput(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault()
-                            handleAddNewReason()
+                            handleAddNewAssumption()
                           }
                         }}
-                        className="flex-1 bg-[#152244] border border-blue-500/60 rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-blue-400"
+                        className="flex-1 bg-[#152244] border border-purple-500/60 rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-purple-400"
                         autoFocus
                       />
                       <button
                         type="button"
-                        onClick={handleAddNewReason}
-                        className="px-2.5 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 cursor-pointer"
+                        onClick={handleAddNewAssumption}
+                        className="px-2.5 py-1 rounded bg-purple-600 text-white text-xs font-bold hover:bg-purple-500 cursor-pointer"
                       >
                         Add
                       </button>
                       <button
                         type="button"
                         onClick={() => {
-                          setShowAddReason(false)
-                          setNewReasonInput('')
+                          setShowAddAssumption(false)
+                          setNewAssumptionInput('')
                         }}
                         className="p-1 rounded text-slate-400 hover:text-white cursor-pointer"
                       >
@@ -1256,112 +1836,16 @@ export default function TradeJournalTemplate({
               {isEditing ? (
                 <textarea
                   rows="2"
-                  placeholder="Detail the technical setup trigger, chart pattern, support/resistance, or click preset slicers above..."
-                  value={entryReason}
-                  onChange={(e) => onChange('entryReason', e.target.value)}
+                  placeholder="Market conditions, macro sentiment, risk factors, or click preset slicers above..."
+                  value={assumptions}
+                  onChange={(e) => onChange('assumptions', e.target.value)}
                   className="w-full bg-[#152244] border border-slate-600 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-400 leading-relaxed"
                 />
               ) : (
                 <p className="text-slate-200 leading-relaxed bg-[#091024]/50 p-2.5 rounded-lg border border-slate-800 font-sans">
-                  {entryReason || <span className="text-slate-500 italic">No trade reason specified.</span>}
-                </p>
-              )}
-            </div>
-
-            {/* MISTAKES WITH PRESET SLICERS & ADD NEW */}
-            <div className="p-3 sm:p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-extrabold text-slate-300 uppercase tracking-wider text-xs sm:text-sm flex items-center gap-1.5">
-                  <AlertTriangle size={13} className="text-amber-400" />
-                  <span>MISTAKES:</span>
-                </span>
-                {isEditing && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddMistake((v) => !v)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded transition-all cursor-pointer"
-                  >
-                    <Plus size={11} />
-                    <span>Add New</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Slicers Pills */}
-              {isEditing && (
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {[...DEFAULT_MISTAKES, ...customMistakes].map((m) => {
-                      const active = isMistakeActive(m)
-                      return (
-                        <button
-                          type="button"
-                          key={m}
-                          onClick={() => toggleMistake(m)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${active
-                              ? 'bg-amber-600 text-white font-bold shadow-md shadow-amber-500/30 ring-1 ring-amber-400'
-                              : 'bg-[#152244] border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'
-                            }`}
-                        >
-                          {active && <Check size={11} className="text-white" />}
-                          <span>{m}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {/* Add New Mistake Inline Input */}
-                  {showAddMistake && (
-                    <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-150">
-                      <input
-                        type="text"
-                        placeholder="Type new mistake (e.g. FOMO Entry, Chased Price)..."
-                        value={newMistakeInput}
-                        onChange={(e) => setNewMistakeInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleAddNewMistake()
-                          }
-                        }}
-                        className="flex-1 bg-[#152244] border border-amber-500/60 rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-amber-400"
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddNewMistake}
-                        className="px-2.5 py-1 rounded bg-amber-600 text-white text-xs font-bold hover:bg-amber-500 cursor-pointer"
-                      >
-                        Add
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowAddMistake(false)
-                          setNewMistakeInput('')
-                        }}
-                        className="p-1 rounded text-slate-400 hover:text-white cursor-pointer"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {isEditing ? (
-                <textarea
-                  rows="2"
-                  placeholder="Identify execution or discipline mistakes (e.g. FOMO, moved SL, greed, overtrading), or click preset tags above..."
-                  value={mistakes}
-                  onChange={(e) => updateMistakes(e.target.value)}
-                  className="w-full bg-[#152244] border border-slate-600 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-amber-400 leading-relaxed"
-                />
-              ) : (
-                <p className="text-slate-200 leading-relaxed bg-[#091024]/50 p-2.5 rounded-lg border border-slate-800 font-sans">
-                  {mistakes || (
+                  {assumptions || (
                     <span className="text-slate-500 italic">
-                      No mistakes recorded (Flawless Execution).
+                      No pre-trade assumptions recorded.
                     </span>
                   )}
                 </p>
@@ -1393,8 +1877,8 @@ export default function TradeJournalTemplate({
                       type="button"
                       onClick={() => onChange('disciplined', 'Y')}
                       className={`px-3 py-1 rounded font-bold text-xs transition-all ${disciplined === 'Y'
-                          ? 'bg-emerald-600 text-white shadow'
-                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
                         }`}
                     >
                       Y
@@ -1403,8 +1887,8 @@ export default function TradeJournalTemplate({
                       type="button"
                       onClick={() => onChange('disciplined', 'N')}
                       className={`px-3 py-1 rounded font-bold text-xs transition-all ${disciplined === 'N'
-                          ? 'bg-rose-600 text-white shadow'
-                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                        ? 'bg-rose-600 text-white shadow'
+                        : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
                         }`}
                     >
                       N
@@ -1413,8 +1897,8 @@ export default function TradeJournalTemplate({
                 ) : (
                   <span
                     className={`font-black text-sm px-2.5 py-0.5 rounded border ${disciplined === 'Y'
-                        ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
-                        : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
+                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
+                      : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
                       }`}
                   >
                     {disciplined === 'Y' ? 'YES' : 'NO'}
@@ -1433,8 +1917,8 @@ export default function TradeJournalTemplate({
                       type="button"
                       onClick={() => onChange('followedRules', 'Y')}
                       className={`px-3 py-1 rounded font-bold text-xs transition-all ${followedRules === 'Y'
-                          ? 'bg-emerald-600 text-white shadow'
-                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
                         }`}
                     >
                       Y
@@ -1443,19 +1927,22 @@ export default function TradeJournalTemplate({
                       type="button"
                       onClick={() => onChange('followedRules', 'N')}
                       className={`px-3 py-1 rounded font-bold text-xs transition-all ${followedRules === 'N'
-                          ? 'bg-rose-600 text-white shadow'
-                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                        ? 'bg-rose-600 text-white shadow'
+                        : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
                         }`}
                     >
                       N
                     </button>
                   </div>
                 ) : (
+
                   <span
-                    className={`font-black text-sm px-2.5 py-0.5 rounded border ${followedRules === 'Y'
-                        ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
-                        : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
+           
+                  className={`font-black text-sm px-2.5 py-0.5 rounded border ${followedRules === 'Y'
+                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
+                      : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
                       }`}
+                      
                   >
                     {followedRules === 'Y' ? 'YES' : 'NO'}
                   </span>
@@ -1542,6 +2029,21 @@ export default function TradeJournalTemplate({
           </div>
         </div>
       )}
+
+      {/* ─── STRATEGY PERFORMANCE DASHBOARD MODAL ───────────────────────── */}
+      {showStrategyDashboard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in">
+          <div className="relative w-full max-w-5xl my-auto max-h-[92vh] overflow-y-auto rounded-2xl shadow-2xl">
+            <StrategyPerformanceDashboard
+              allTrades={allTrades}
+              initialStrategy={strategy || 'Tiger Breakout'}
+              onClose={() => setShowStrategyDashboard(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+export { StrategyPerformanceDashboard }
