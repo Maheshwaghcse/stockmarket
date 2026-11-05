@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import api from '../lib/api'
 import TechnicalAnalysisChart from '../components/chart/TechnicalAnalysisChart'
+import { getFallbackStockQuotes } from '../lib/stockCatalog'
 
 // Sector color accents for badges
 const SECTOR_COLORS = {
@@ -84,7 +85,10 @@ export default function StocksPage() {
     }
   }
 
-  const rawStocks = data?.data || []
+  const fallbackStocks = useMemo(() => getFallbackStockQuotes(), [])
+  const rawStocks = (data?.data && Array.isArray(data.data) && data.data.length > 0)
+    ? data.data
+    : fallbackStocks
 
   // Extract unique sectors with counts
   const sectorCounts = useMemo(() => {

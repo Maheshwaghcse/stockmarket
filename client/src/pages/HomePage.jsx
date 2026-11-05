@@ -23,6 +23,7 @@ import {
   Compass,
   Calculator,
   Target,
+  Calendar,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -214,20 +215,61 @@ export default function HomePage() {
       .slice(0, 4)
   }, [allStocks])
 
+  // Current live session & date formatting for IST
+  const liveDateFormatted = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat('en-IN', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }).format(new Date())
+    } catch {
+      return new Date().toLocaleDateString('en-IN')
+    }
+  }, [])
+
+  const liveTimeFormatted = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }).format(new Date())
+    } catch {
+      return ''
+    }
+  }, [])
+
   return (
     <div className="space-y-6 sm:space-y-7 fade-in">
       {/* ── Hero Header ────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Market Dashboard</h1>
-          <p className="text-sm muted mt-1">
-            Indian stock market overview · 
-            <span className={`ml-1 font-semibold ${marketStatus === 'OPEN' ? 'gain' : 'loss'}`}>
-              {marketStatus}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-bold tracking-tight text-white">Market Dashboard</h1>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30 shadow-sm">
+              <Calendar size={13} className="text-blue-400" />
+              <span>{liveDateFormatted}</span>
+              {liveTimeFormatted && <span className="text-blue-200/80 font-mono">• {liveTimeFormatted} IST</span>}
+            </div>
+          </div>
+          <p className="text-sm muted mt-1.5 flex items-center gap-2 flex-wrap">
+            <span>Indian stock market live overview</span>
+            <span>·</span>
+            <span className={`font-bold px-2 py-0.5 rounded-md text-xs ${
+              marketStatus === 'OPEN' 
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
+                : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+            }`}>
+              Market {marketStatus}
+            </span>
+            <span className="text-slate-400 text-xs">
+              · Data Date: <strong className="text-slate-200">{liveDateFormatted}</strong>
             </span>
             {lastUpdate && (
-              <span className="ml-2 text-xs">
-                · Updated {formatDistanceToNow(new Date(lastUpdate), { addSuffix: true })}
+              <span className="text-xs text-slate-500">
+                (Synced {formatDistanceToNow(new Date(lastUpdate), { addSuffix: true })})
               </span>
             )}
           </p>

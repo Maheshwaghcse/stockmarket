@@ -9,9 +9,9 @@ import {
   Maximize2,
   Trash2,
   Plus,
-  Sparkles,
   Smile,
   BarChart3,
+  RotateCcw,
 } from 'lucide-react'
 import { formatINR } from '../../lib/journalAnalytics'
 import { searchStockCatalog, DEFAULT_STOCK_LOT_SIZES } from '../../lib/stockCatalog'
@@ -107,7 +107,6 @@ export const AFTER_TRADE_EMOTIONS = [
     marathi: 'निराश',
     desc: 'अपेक्षित Result मिळाला नाही.',
   },
-  
   {
     name: 'Confident',
     marathi: 'आत्मविश्वास',
@@ -170,31 +169,18 @@ export const AFTER_TRADE_EMOTIONS = [
   },
 ]
 
-const DEFAULT_ASSUMPTIONS = [
-  'Market Bullish Sentiment',
-  'High Volume Confirmation',
-  'Sector Strength / Tailwind',
-  'Favorable Risk-to-Reward',
-  'Tight Stop Loss Setup',
-  'RSI Oversold / Divergence',
-  'Higher Timeframe Confluence',
-  'Range-Bound Market',
-  'Pre-Market Gap Fill',
-]
-
-const STRATEGY_OPTIONS = [
-  'Tiger Breakout',
-  'Camarilla Pivot',
-  'First Candle Close Range',
-  'Breakout',
-  'Pullback',
-  'VWAP Reversal',
-  'Support & Resistance',
-  'Trend Following',
-  'CPR / Pivot Bounce',
-  'Chart Pattern',
-  'Scalp Momentum',
-  'Other',
+// Strict 10 Default Strategies requested by user
+export const STRATEGY_OPTIONS = [
+  'Fibonacci Setup',
+  'Inside Candle Strategy',
+  'Parallel Channel Breakout',
+  'Parallel Channel Middle line Entry',
+  'Parallel Channel Upper Line Entry',
+  'Parallel Channel Lower Line Entry',
+  'Cup and Handle',
+  'Head and Shoulder',
+  'V shape Recovery',
+  'No set-up / Random Trade',
 ]
 
 const POSITION_OPTIONS = ['Intraday', 'Swing', 'Positional', 'Scalp']
@@ -216,12 +202,19 @@ export default function TradeJournalTemplate({
   const fileInputRef = useRef(null)
   const symbolWrapperRef = useRef(null)
 
+  // Mobile section navigation tab: 'all' | 'setup' | 'emotions' | 'chart' | 'feedback'
+  const [mobileSectionTab, setMobileSectionTab] = useState('all')
+
   // Symbol suggestion dropdown state
   const [symbolSuggestions, setSymbolSuggestions] = useState([])
   const [showSymbolDropdown, setShowSymbolDropdown] = useState(false)
 
   // Emotion tabs & slicers state
   const [activeEmotionTab, setActiveEmotionTab] = useState('before') // 'before' | 'after'
+  // Slicer collapsible open/close state: when opened, grid shows; when any emotion is clicked, grid closes and only selected is shown
+  const [isBeforePickerOpen, setIsBeforePickerOpen] = useState(false)
+  const [isAfterPickerOpen, setIsAfterPickerOpen] = useState(false)
+
   const [customBeforeEmotions, setCustomBeforeEmotions] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('custom_before_trade_emotions') || '[]')
@@ -241,16 +234,32 @@ export default function TradeJournalTemplate({
   const [newEmotionMarathi, setNewEmotionMarathi] = useState('')
   const [newEmotionDesc, setNewEmotionDesc] = useState('')
 
-  // Custom assumptions state & inline add modal
-  const [customAssumptions, setCustomAssumptions] = useState(() => {
+  // Custom user strategies persisted in localStorage (dynamic add support)
+  const [customStrategies, setCustomStrategies] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('custom_trade_assumptions') || '[]')
+      return JSON.parse(localStorage.getItem('custom_trade_strategies') || '[]')
     } catch {
       return []
     }
   })
-  const [newAssumptionInput, setNewAssumptionInput] = useState('')
-  const [showAddAssumption, setShowAddAssumption] = useState(false)
+  const [showAddStrategy, setShowAddStrategy] = useState(false)
+  const [newStrategyInput, setNewStrategyInput] = useState('')
+
+  const handleAddNewStrategy = () => {
+    const val = newStrategyInput.trim()
+    if (!val) return
+    const allKnown = [...STRATEGY_OPTIONS, ...customStrategies]
+    if (!allKnown.some((s) => s.toLowerCase() === val.toLowerCase())) {
+      const updated = [...customStrategies, val]
+      setCustomStrategies(updated)
+      try {
+        localStorage.setItem('custom_trade_strategies', JSON.stringify(updated))
+      } catch { }
+    }
+    onChange('strategy', val)
+    setNewStrategyInput('')
+    setShowAddStrategy(false)
+  }
 
   // Use either active formData (edit/create) or trade (view)
   const currentData = isEditing ? formData : trade
@@ -282,7 +291,6 @@ export default function TradeJournalTemplate({
   const riskReward = currentData?.riskReward || ''
   const beforeTradeEmotions = currentData?.beforeTradeEmotions || currentData?.beforeEmotions || currentData?.emotionsBefore || ''
   const afterTradeEmotions = currentData?.afterTradeEmotions || currentData?.afterEmotions || currentData?.emotionsAfter || ''
-  const assumptions = currentData?.assumptions || ''
   const disciplined = currentData?.disciplined || 'Y'
   const followedRules = currentData?.followedRules || 'Y'
   const rating = currentData?.rating !== undefined ? Number(currentData?.rating) : 5
@@ -572,20 +580,14 @@ export default function TradeJournalTemplate({
     return beforeEmotionsList.some((e) => e.toLowerCase() === name.toLowerCase())
   }, [beforeEmotionsList])
 
-  const toggleBeforeEmotion = (name) => {
+  // Single-click selection for slicer: selects emotion and immediately closes slicer ("it will gone only show what i click")
+  const handlePickBeforeEmotion = (name) => {
     if (!isEditing) return
-    const current = [...beforeEmotionsList]
-    const idx = current.findIndex((e) => e.toLowerCase() === name.toLowerCase())
-    if (idx >= 0) {
-      current.splice(idx, 1)
-    } else {
-      current.push(name)
-    }
-    const val = current.join(', ')
-    onChange('beforeTradeEmotions', val)
+    onChange('beforeTradeEmotions', name)
     if (currentData?.beforeEmotions !== undefined) {
-      onChange('beforeEmotions', val)
+      onChange('beforeEmotions', name)
     }
+    setIsBeforePickerOpen(false)
   }
 
   // Slicer handlers: After Trade Emotions
@@ -593,20 +595,14 @@ export default function TradeJournalTemplate({
     return afterEmotionsList.some((e) => e.toLowerCase() === name.toLowerCase())
   }, [afterEmotionsList])
 
-  const toggleAfterEmotion = (name) => {
+  // Single-click selection for slicer: selects emotion and immediately closes slicer ("it will gone only show what i click")
+  const handlePickAfterEmotion = (name) => {
     if (!isEditing) return
-    const current = [...afterEmotionsList]
-    const idx = current.findIndex((e) => e.toLowerCase() === name.toLowerCase())
-    if (idx >= 0) {
-      current.splice(idx, 1)
-    } else {
-      current.push(name)
-    }
-    const val = current.join(', ')
-    onChange('afterTradeEmotions', val)
+    onChange('afterTradeEmotions', name)
     if (currentData?.afterEmotions !== undefined) {
-      onChange('afterEmotions', val)
+      onChange('afterEmotions', name)
     }
+    setIsAfterPickerOpen(false)
   }
 
   const clearCurrentTabEmotions = () => {
@@ -638,7 +634,7 @@ export default function TradeJournalTemplate({
           localStorage.setItem('custom_before_trade_emotions', JSON.stringify(updated))
         } catch { }
       }
-      toggleBeforeEmotion(name)
+      handlePickBeforeEmotion(name)
     } else {
       const exists = [...AFTER_TRADE_EMOTIONS, ...customAfterEmotions].some(
         (e) => e.name.toLowerCase() === name.toLowerCase()
@@ -650,7 +646,7 @@ export default function TradeJournalTemplate({
           localStorage.setItem('custom_after_trade_emotions', JSON.stringify(updated))
         } catch { }
       }
-      toggleAfterEmotion(name)
+      handlePickAfterEmotion(name)
     }
 
     setNewEmotionName('')
@@ -667,63 +663,62 @@ export default function TradeJournalTemplate({
     return [...AFTER_TRADE_EMOTIONS, ...customAfterEmotions]
   }, [customAfterEmotions])
 
-  // Slicer handlers: Assumptions before trade
-  const toggleAssumption = (text) => {
-    const current = (assumptions || '').trim()
-    if (!current) {
-      onChange('assumptions', text)
-      return
-    }
-    const parts = current.split(',').map((s) => s.trim()).filter(Boolean)
-    const index = parts.findIndex((p) => p.toLowerCase() === text.toLowerCase())
-    if (index >= 0) {
-      parts.splice(index, 1)
-      onChange('assumptions', parts.join(', '))
-    } else {
-      onChange('assumptions', `${current}, ${text}`)
-    }
-  }
-
-  const isAssumptionActive = (text) => {
-    if (!assumptions) return false
-    return assumptions.toLowerCase().includes(text.toLowerCase())
-  }
-
-  const handleAddNewAssumption = () => {
-    const val = newAssumptionInput.trim()
-    if (!val) return
-    if (
-      !customAssumptions.some((a) => a.toLowerCase() === val.toLowerCase()) &&
-      !DEFAULT_ASSUMPTIONS.some((a) => a.toLowerCase() === val.toLowerCase())
-    ) {
-      const updated = [...customAssumptions, val]
-      setCustomAssumptions(updated)
-      try {
-        localStorage.setItem('custom_trade_assumptions', JSON.stringify(updated))
-      } catch { }
-    }
-    toggleAssumption(val)
-    setNewAssumptionInput('')
-    setShowAddAssumption(false)
-  }
-
   return (
     <div
       onPaste={handlePaste}
       className="w-full max-w-4xl mx-auto font-sans text-slate-100 select-text"
     >
       {/* ─── TEMPLATE CONTAINER ─────────────────────────────────────────── */}
-      <div className="bg-[#0b1329] border-2 border-slate-700/90 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4">
+      <div className="bg-[#090e1a] border border-slate-800/90 rounded-2xl p-3 sm:p-5 shadow-2xl space-y-3.5">
 
-        {/* ─── TOP TOOLBAR: STRATEGY ANALYTICS SHORTCUT ───────────────────── */}
-        <div className="flex items-center justify-between gap-2 pb-1">
-          <div className="flex items-center gap-2">
+        {/* ─── TOP TOOLBAR: QUICK STATS & STRATEGY ANALYTICS SHORTCUT ─────── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-800/80">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
               Trade Journal
             </span>
+            {symbol && (
+              <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/25 px-2 py-0.5 rounded-md">
+                {symbol}
+              </span>
+            )}
+            {tradeType && (
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                  tradeType === 'Long'
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                }`}
+              >
+                {tradeType.toUpperCase()}
+              </span>
+            )}
             {strategy && (
               <span className="text-[11px] font-semibold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-md">
-                Strategy: {strategy}
+                {strategy}
+              </span>
+            )}
+            {computedMetrics.pnl !== null && (
+              <span
+                className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-md shadow-sm ${
+                  computedMetrics.pnl >= 0
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                }`}
+              >
+                {computedMetrics.pnl >= 0 ? '+' : ''}
+                {formatINR(computedMetrics.pnl, { compact: false, showSign: false })}
+                {computedMetrics.pnlPercent !== null && (
+                  <span className="text-[11px] ml-1 opacity-90">
+                    ({computedMetrics.pnlPercent >= 0 ? '+' : ''}
+                    {computedMetrics.pnlPercent.toFixed(1)}%)
+                  </span>
+                )}
+              </span>
+            )}
+            {computedMetrics.rr && computedMetrics.rr !== '—' && (
+              <span className="text-[11px] font-mono font-semibold text-slate-300 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">
+                R:R {computedMetrics.rr}
               </span>
             )}
           </div>
@@ -731,7 +726,7 @@ export default function TradeJournalTemplate({
           <button
             type="button"
             onClick={() => setShowStrategyDashboard(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-md shadow-purple-600/30 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-md shadow-purple-600/30 transition-all cursor-pointer self-start sm:self-auto shrink-0"
             title="Open Independent Strategy Performance & Win Rate Analysis"
           >
             <BarChart3 size={13} />
@@ -739,183 +734,213 @@ export default function TradeJournalTemplate({
           </button>
         </div>
 
-        {/* ─── 1. TOP HEADER BOX: DATE & SYMBOL ───────────────────────────── */}
-        <div className="border-2 border-slate-700/90 rounded-xl p-3 sm:p-4 bg-[#0f1a36]/90 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-          {/* DATE */}
-          <div className="flex items-center gap-3">
-            <span className="font-extrabold tracking-wider text-xs sm:text-sm text-slate-300 uppercase shrink-0">
-              DATE:
-            </span>
-            {isEditing ? (
-              <div className="flex-1 flex items-center gap-2">
-                <input
-                  type="datetime-local"
-                  required
-                  value={entryDate ? entryDate.slice(0, 16) : ''}
-                  onChange={(e) => {
-                    onChange('entryDate', e.target.value)
-                    // Auto-set time field if not set
-                    if (e.target.value) {
-                      const t = e.target.value.split('T')[1]
-                      if (t && (!formData.time || formData.time === '')) {
-                        onChange('time', t)
-                      }
-                    }
-                  }}
-                  className="w-full bg-[#152244] border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 font-mono"
-                />
-              </div>
-            ) : (
-              <span className="font-bold text-sm sm:text-base text-white font-mono">
-                {entryDate
-                  ? new Date(entryDate).toLocaleDateString('en-IN', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  }) + (time ? ` • ${time}` : '')
-                  : '—'}
-              </span>
-            )}
-          </div>
+        {/* ─── MOBILE SECTION NAVIGATION PILLS (NON-LENGTHY, MOBILE FRIENDLY) ── */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+          {[
+            { id: 'all', label: 'All Sections' },
+            { id: 'setup', label: '1. Setup & Details' },
+            { id: 'emotions', label: '2. Emotions' },
+            { id: 'chart', label: '3. Chart & Notes' },
+            { id: 'feedback', label: '4. Feedback' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setMobileSectionTab(tab.id)}
+              className={`px-3 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer ${
+                mobileSectionTab === tab.id
+                  ? 'bg-blue-600 text-white font-bold shadow-sm'
+                  : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800 hover:bg-slate-800'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          {/* SYMBOL WITH AUTOCOMPLETE & STOCK NAME SUGGESTIONS */}
-          <div className="flex items-center gap-3 relative" ref={symbolWrapperRef}>
-            <span className="font-extrabold tracking-wider text-xs sm:text-sm text-slate-300 uppercase shrink-0">
-              SYMBOL:
-            </span>
-            {isEditing ? (
-              <div className="flex-1 space-y-1.5 relative">
-                <div className="relative">
+        {/* ─── 1. TOP HEADER BOX: DATE & SYMBOL ───────────────────────────── */}
+        {(mobileSectionTab === 'all' || mobileSectionTab === 'setup') && (
+          <div className="border border-slate-800 rounded-xl p-3 sm:p-4 bg-[#0e1628]/90 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+            {/* DATE */}
+            <div className="flex items-center gap-3">
+              <span className="font-extrabold tracking-wider text-xs sm:text-sm text-slate-300 uppercase shrink-0">
+                DATE:
+              </span>
+              {isEditing ? (
+                <div className="flex-1 flex items-center gap-2">
                   <input
-                    type="text"
+                    type="datetime-local"
                     required
-                    placeholder="Search stock by symbol or name (e.g. REL, TATA, INFY)..."
-                    value={symbol}
-                    onChange={(e) => handleSymbolChange(e.target.value)}
-                    onFocus={() => {
-                      if (symbol) {
-                        const results = searchStockCatalog(symbol, 8)
-                        setSymbolSuggestions(results)
-                        setShowSymbolDropdown(results.length > 0)
+                    value={entryDate ? entryDate.slice(0, 16) : ''}
+                    onChange={(e) => {
+                      onChange('entryDate', e.target.value)
+                      // Auto-set time field if not set
+                      if (e.target.value) {
+                        const t = e.target.value.split('T')[1]
+                        if (t && (!formData.time || formData.time === '')) {
+                          onChange('time', t)
+                        }
                       }
                     }}
-                    className="w-full bg-[#152244] border border-slate-600 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-white font-bold placeholder:text-slate-500 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 uppercase tracking-wider pr-7"
+                    className="w-full bg-[#152244] border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 font-mono"
                   />
-                  {symbol && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange('symbol', '')
-                        setShowSymbolDropdown(false)
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs p-0.5"
-                      title="Clear"
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
                 </div>
+              ) : (
+                <span className="font-bold text-sm sm:text-base text-white font-mono">
+                  {entryDate
+                    ? new Date(entryDate).toLocaleDateString('en-IN', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    }) + (time ? ` • ${time}` : '')
+                    : '—'}
+                </span>
+              )}
+            </div>
 
-                {/* Autocomplete Dropdown List with Company Names */}
-                {showSymbolDropdown && symbolSuggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-[#091124] border-2 border-blue-500/60 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-800 animate-in fade-in slide-in-from-top-1 duration-150 max-h-60 overflow-y-auto">
-                    {symbolSuggestions.map((item) => {
-                      const itemPrevLot = getPreviousLotSize(item.symbol)
-                      return (
-                        <div
-                          key={item.symbol}
-                          onMouseDown={(e) => {
-                            e.preventDefault()
-                            handleSelectSymbol(item)
-                          }}
-                          className="px-3 py-2 hover:bg-blue-600/20 cursor-pointer flex items-center justify-between transition-colors group"
-                        >
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-bold text-xs text-white group-hover:text-blue-300">
-                                {item.symbol}
-                              </span>
-                              <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-slate-800 text-slate-400 border border-slate-700">
-                                {item.sector || item.type}
+            {/* SYMBOL WITH AUTOCOMPLETE & STOCK NAME SUGGESTIONS */}
+            <div className="flex items-center gap-3 relative" ref={symbolWrapperRef}>
+              <span className="font-extrabold tracking-wider text-xs sm:text-sm text-slate-300 uppercase shrink-0">
+                SYMBOL:
+              </span>
+              {isEditing ? (
+                <div className="flex-1 space-y-1.5 relative">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Search stock by symbol or name (e.g. REL, TATA, INFY)..."
+                      value={symbol}
+                      onChange={(e) => handleSymbolChange(e.target.value)}
+                      onFocus={() => {
+                        if (symbol) {
+                          const results = searchStockCatalog(symbol, 8)
+                          setSymbolSuggestions(results)
+                          setShowSymbolDropdown(results.length > 0)
+                        }
+                      }}
+                      className="w-full bg-[#152244] border border-slate-600 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-white font-bold placeholder:text-slate-500 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 uppercase tracking-wider pr-7"
+                    />
+                    {symbol && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onChange('symbol', '')
+                          setShowSymbolDropdown(false)
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs p-0.5"
+                        title="Clear"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Autocomplete Dropdown List with Company Names */}
+                  {showSymbolDropdown && symbolSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-[#091124] border-2 border-blue-500/60 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-800 animate-in fade-in slide-in-from-top-1 duration-150 max-h-60 overflow-y-auto">
+                      {symbolSuggestions.map((item) => {
+                        const itemPrevLot = getPreviousLotSize(item.symbol)
+                        return (
+                          <div
+                            key={item.symbol}
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              handleSelectSymbol(item)
+                            }}
+                            className="px-3 py-2 hover:bg-blue-600/20 cursor-pointer flex items-center justify-between transition-colors group"
+                          >
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-xs text-white group-hover:text-blue-300">
+                                  {item.symbol}
+                                </span>
+                                <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                                  {item.sector || item.type}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-slate-400 line-clamp-1">
+                                {item.name}
                               </span>
                             </div>
-                            <span className="text-[11px] text-slate-400 line-clamp-1">
-                              {item.name}
-                            </span>
+                            {itemPrevLot && (
+                              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 shrink-0">
+                                Prev Lot: {itemPrevLot}
+                              </span>
+                            )}
                           </div>
-                          {itemPrevLot && (
-                            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 shrink-0">
-                              Prev Lot: {itemPrevLot}
-                            </span>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                        )
+                      })}
+                    </div>
+                  )}
 
-                {/* Quick Symbol Pills: Trader's Most Recent Stocks */}
-                <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                  <span className="text-[10px] text-slate-400 font-semibold mr-0.5 flex items-center gap-1">
-                    <Clock size={10} className="text-blue-400" />
-                    <span>Recent:</span>
-                  </span>
-                  {traderRecentStocks.slice(0, 7).map((s) => (
-                    <button
-                      type="button"
-                      key={s}
-                      onClick={() => handleSelectSymbol({ symbol: s })}
-                      className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all cursor-pointer ${symbol === s
-                        ? 'bg-blue-600 text-white font-bold ring-1 ring-blue-400 shadow-sm'
-                        : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-                        }`}
-                      title={`Select ${s}`}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                  {/* Quick Symbol Pills: Trader's Most Recent Stocks */}
+                  <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                    <span className="text-[10px] text-slate-400 font-semibold mr-0.5 flex items-center gap-1">
+                      <Clock size={10} className="text-blue-400" />
+                      <span>Recent:</span>
+                    </span>
+                    {traderRecentStocks.slice(0, 7).map((s) => (
+                      <button
+                        type="button"
+                        key={s}
+                        onClick={() => handleSelectSymbol({ symbol: s })}
+                        className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all cursor-pointer ${symbol === s
+                          ? 'bg-blue-600 text-white font-bold ring-1 ring-blue-400 shadow-sm'
+                          : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
+                          }`}
+                        title={`Select ${s}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-base sm:text-lg font-black text-white font-mono tracking-wider">
-                  {symbol || '—'}
-                </span>
-                <span
-                  className={`px-2 py-0.5 rounded text-[11px] font-extrabold font-mono uppercase ${tradeType === 'Long'
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                    }`}
-                >
-                  {tradeType}
-                </span>
-                {isOptions && (
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-base sm:text-lg font-black text-white font-mono tracking-wider">
+                    {symbol || '—'}
+                  </span>
                   <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${optionType === 'CALL'
+                    className={`px-2 py-0.5 rounded text-[11px] font-extrabold font-mono uppercase ${tradeType === 'Long'
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                       : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                       }`}
                   >
-                    {optionType}
+                    {tradeType}
                   </span>
-                )}
-                {currentData?.status && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
-                    {currentData.status}
-                  </span>
-                )}
-              </div>
-            )}
+                  {isOptions && (
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${optionType === 'CALL'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                        }`}
+                    >
+                      {optionType}
+                    </span>
+                  )}
+                  {currentData?.status && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                      {currentData.status}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ─── 2. MIDDLE 2-COLUMN SECTION: TRADING SETUP & CHART ANALYSIS ─── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {(mobileSectionTab === 'all' || mobileSectionTab === 'setup' || mobileSectionTab === 'chart') && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-          {/* LEFT BOX: TRADING SETUP */}
-          <div className="border-2 border-slate-700/90 rounded-xl overflow-hidden bg-[#0f1a36]/60 flex flex-col justify-between">
-            {/* Header with lavender highlight underline matching screenshot */}
+            {/* LEFT BOX: TRADING SETUP */}
+            {(mobileSectionTab === 'all' || mobileSectionTab === 'setup') && (
+              <div className={`border border-slate-800 rounded-xl overflow-hidden bg-[#0e1628]/80 flex flex-col justify-between ${
+                mobileSectionTab === 'setup' ? 'md:col-span-2' : ''
+              }`}>
+                {/* Header with lavender highlight underline matching screenshot */}
             <div className="py-2.5 px-4 border-b-2 border-slate-700/90 text-center bg-[#132042]">
               <span className="font-black text-xs sm:text-sm tracking-wider uppercase text-slate-100 border-b-2 border-purple-400 pb-0.5 inline-block">
                 TRADING SETUP
@@ -1127,40 +1152,111 @@ export default function TradeJournalTemplate({
               </div>
 
               {/* STRATEGY */}
-              <div className="grid grid-cols-3 items-center px-3 sm:px-4 py-2">
-                <span className="font-bold text-slate-300 uppercase tracking-wide">
+              <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-center px-3 sm:px-4 py-2 gap-1.5 sm:gap-2">
+                <span className="font-bold text-slate-300 uppercase tracking-wide text-xs">
                   STRATEGY:
                 </span>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1.5">
                   {isEditing ? (
-                    <input
-                      type="text"
-                      list="strategy-list"
-                      placeholder="e.g. Tiger Breakout, Camarilla Pivot"
-                      value={strategy}
-                      onChange={(e) => onChange('strategy', e.target.value)}
-                      className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400"
-                    />
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={strategy}
+                          onChange={(e) => {
+                            if (e.target.value === '__ADD_NEW__') {
+                              setShowAddStrategy(true)
+                            } else {
+                              onChange('strategy', e.target.value)
+                            }
+                          }}
+                          className="flex-1 bg-[#152244] border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-medium"
+                        >
+                          <option value="">Select Strategy...</option>
+                          <optgroup label="Default Strategies (10)">
+                            {STRATEGY_OPTIONS.map((s, idx) => (
+                              <option key={s} value={s}>
+                                {idx + 1}) {s}
+                              </option>
+                            ))}
+                          </optgroup>
+                          {customStrategies.length > 0 && (
+                            <optgroup label="Custom Added Strategies">
+                              {customStrategies.map((cs) => (
+                                <option key={cs} value={cs}>
+                                  ⭐ {cs}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          <option value="__ADD_NEW__">+ Add Custom Strategy...</option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowAddStrategy((v) => !v)}
+                          className="px-2.5 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs font-semibold shrink-0 cursor-pointer flex items-center gap-1"
+                          title="Add new strategy when needed"
+                        >
+                          <Plus size={12} />
+                          <span className="hidden sm:inline">Add</span>
+                        </button>
+                      </div>
+
+                      {/* Inline New Strategy Adder */}
+                      {showAddStrategy && (
+                        <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-[#091124] border border-purple-500/60 animate-in fade-in">
+                          <input
+                            type="text"
+                            placeholder="Type new strategy name (e.g. 5EMA Reversal)..."
+                            value={newStrategyInput}
+                            onChange={(e) => setNewStrategyInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                handleAddNewStrategy()
+                              }
+                            }}
+                            className="flex-1 bg-[#152244] border border-slate-700 rounded px-2 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:border-purple-400"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddNewStrategy}
+                            className="px-2.5 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shrink-0 cursor-pointer"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowAddStrategy(false)
+                              setNewStrategyInput('')
+                            }}
+                            className="p-1 text-slate-400 hover:text-white"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <span className="font-semibold text-slate-100">{strategy || '—'}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-purple-300">
+                        {strategy || '—'}
+                      </span>
+                    </div>
                   )}
-                  {isEditing && (
-                    <datalist id="strategy-list">
-                      {STRATEGY_OPTIONS.map((s) => (
-                        <option key={s} value={s} />
-                      ))}
-                    </datalist>
-                  )}
+
                   {strategy && (
                     <div className="pt-0.5">
                       <button
                         type="button"
                         onClick={() => setShowStrategyDashboard(true)}
-                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-300 hover:text-white bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 px-2 py-0.5 rounded transition-all cursor-pointer"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-300 hover:text-white bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 px-2 py-0.5 rounded-md transition-all cursor-pointer"
                         title={`View independent win rate and performance for ${strategy}`}
                       >
-                        <BarChart3 size={10} />
-                        <span>View Win Rate & Analytics ({strategy})</span>
+                        <BarChart3 size={11} />
+                        <span>Win Rate & Analytics ({strategy})</span>
                       </button>
                     </div>
                   )}
@@ -1168,11 +1264,15 @@ export default function TradeJournalTemplate({
               </div>
             </div>
           </div>
+        )}
 
-          {/* RIGHT BOX: CHART ANALYSIS */}
-          <div className="border-2 border-slate-700/90 rounded-xl overflow-hidden bg-[#0f1a36]/60 flex flex-col justify-between">
+        {/* RIGHT BOX: CHART ANALYSIS */}
+        {(mobileSectionTab === 'all' || mobileSectionTab === 'chart') && (
+          <div className={`border border-slate-800 rounded-xl overflow-hidden bg-[#0e1628]/80 flex flex-col justify-between ${
+            mobileSectionTab === 'chart' ? 'md:col-span-2' : ''
+          }`}>
             {/* Header with lavender highlight underline */}
-            <div className="py-2.5 px-4 border-b-2 border-slate-700/90 text-center bg-[#132042]">
+            <div className="py-2.5 px-4 border-b border-slate-800 text-center bg-[#132042]/90">
               <span className="font-black text-xs sm:text-sm tracking-wider uppercase text-slate-100 border-b-2 border-purple-400 pb-0.5 inline-block">
                 CHART ANALYSIS
               </span>
@@ -1248,20 +1348,37 @@ export default function TradeJournalTemplate({
                     onChange={(e) => onChange('imageUrl', e.target.value)}
                     className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-400"
                   />
+                  <textarea
+                    rows="2"
+                    placeholder="Technical chart notes (e.g. 15m breakout retest, high volume)..."
+                    value={chartNotes}
+                    onChange={(e) => onChange('chartNotes', e.target.value)}
+                    className="w-full bg-[#152244] border border-slate-600 rounded p-2 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-400"
+                  />
+                </div>
+              )}
+
+              {!isEditing && chartNotes && (
+                <div className="w-full text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 mt-2">
+                  <span className="font-semibold text-slate-400 block mb-0.5">Chart Notes:</span>
+                  {chartNotes}
                 </div>
               )}
             </div>
           </div>
-        </div>
+        )}
+      </div>
+    )}
 
-        {/* ─── 3. TRADE MANAGEMENT SECTION ───────────────────────────────── */}
-        <div className="border-2 border-slate-700/90 rounded-xl overflow-hidden bg-[#0f1a36]/60">
-          {/* Header with lavender highlight */}
-          <div className="py-2.5 px-4 border-b-2 border-slate-700/90 text-center bg-[#132042]">
-            <span className="font-black text-xs sm:text-sm tracking-wider uppercase text-slate-100 border-b-2 border-purple-400 pb-0.5 inline-block">
-              TRADE MANAGEMENT
-            </span>
-          </div>
+    {/* ─── 3. TRADE MANAGEMENT SECTION ───────────────────────────────── */}
+    {(mobileSectionTab === 'all' || mobileSectionTab === 'setup') && (
+      <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#0e1628]/80">
+        {/* Header with lavender highlight */}
+        <div className="py-2.5 px-4 border-b border-slate-800 text-center bg-[#132042]/90">
+          <span className="font-black text-xs sm:text-sm tracking-wider uppercase text-slate-100 border-b-2 border-purple-400 pb-0.5 inline-block">
+            TRADE MANAGEMENT
+          </span>
+        </div>
 
           {/* 2x3 Grid Table with dividing lines */}
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x-2 divide-slate-700/80 text-xs sm:text-sm">
@@ -1420,46 +1537,48 @@ export default function TradeJournalTemplate({
             </div>
           </div>
         </div>
+      )}
 
-        {/* ─── 4. TRADE ANALYSIS SECTION ─────────────────────────────────── */}
-        <div className="border-2 border-slate-700/90 rounded-xl overflow-hidden bg-[#0f1a36]/60">
-          {/* Header */}
-          <div className="py-2.5 px-4 border-b-2 border-slate-700/90 text-center bg-[#132042]">
-            <span className="font-black text-xs sm:text-sm tracking-wider uppercase text-slate-100 border-b-2 border-purple-400 pb-0.5 inline-block">
-              TRADE ANALYSIS
-            </span>
-          </div>
+      {/* ─── 4. TRADE ANALYSIS: EMOTIONS SECTION ───────────────────────── */}
+        {(mobileSectionTab === 'all' || mobileSectionTab === 'emotions') && (
+          <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#0e1628]/80">
+            {/* Header */}
+            <div className="py-2.5 px-4 border-b border-slate-800 text-center bg-[#132042]/90 flex items-center justify-between">
+              <span className="font-extrabold text-xs sm:text-sm tracking-wider uppercase text-slate-100 flex items-center gap-1.5 mx-auto">
+                <Smile size={16} className="text-purple-400" />
+                <span>TRADE ANALYSIS: EMOTIONS</span>
+              </span>
+            </div>
 
-          <div className="divide-y divide-slate-700/80 text-xs sm:text-sm">
-            {/* ─── EMOTIONS SECTION WITH BEFORE & AFTER TRADE SLICERS ─── */}
             <div className="p-3 sm:p-5 space-y-4">
               {/* Header with Title, Tab Slicers, and Add New */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-700/70">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-800/80">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-extrabold text-slate-200 uppercase tracking-wider text-xs sm:text-sm flex items-center gap-1.5">
-                    <Smile size={16} className="text-purple-400" />
-                    <span>EMOTIONS:</span>
+                  <span className="font-bold text-slate-300 uppercase tracking-wider text-xs">
+                    Choose Category:
                   </span>
-
                   {/* Badges showing counts */}
                   {beforeEmotionsList.length > 0 && (
                     <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                      Before: {beforeEmotionsList.length}
+                      Before: {beforeEmotionsList[0]}
                     </span>
                   )}
                   {afterEmotionsList.length > 0 && (
                     <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                      After: {afterEmotionsList.length}
+                      After: {afterEmotionsList[0]}
                     </span>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
                   {/* Segmented Slicer Tabs */}
-                  <div className="inline-flex p-1 rounded-xl bg-[#070d1e] border border-slate-700/80 shadow-inner">
+                  <div className="inline-flex p-1 rounded-xl bg-[#070d1e] border border-slate-800 shadow-inner">
                     <button
                       type="button"
-                      onClick={() => setActiveEmotionTab('before')}
+                      onClick={() => {
+                        setActiveEmotionTab('before')
+                        setIsAfterPickerOpen(false)
+                      }}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         activeEmotionTab === 'before'
                           ? 'bg-blue-600 text-white shadow-md shadow-blue-600/40'
@@ -1468,15 +1587,16 @@ export default function TradeJournalTemplate({
                     >
                       <span>1) Before Trade Emotions</span>
                       {beforeEmotionsList.length > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-mono">
-                          {beforeEmotionsList.length}
-                        </span>
+                        <Check size={11} className="text-blue-200" />
                       )}
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => setActiveEmotionTab('after')}
+                      onClick={() => {
+                        setActiveEmotionTab('after')
+                        setIsBeforePickerOpen(false)
+                      }}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         activeEmotionTab === 'after'
                           ? 'bg-purple-600 text-white shadow-md shadow-purple-600/40'
@@ -1485,9 +1605,7 @@ export default function TradeJournalTemplate({
                     >
                       <span>2) After Trade Emotions</span>
                       {afterEmotionsList.length > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-mono">
-                          {afterEmotionsList.length}
-                        </span>
+                        <Check size={11} className="text-purple-200" />
                       )}
                     </button>
                   </div>
@@ -1579,120 +1697,328 @@ export default function TradeJournalTemplate({
 
               {/* ─── OPTION 1: BEFORE TRADE EMOTIONS SLICER ─── */}
               {activeEmotionTab === 'before' && (
-                <div className="bg-[#050811] border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
-                  {/* Header matching Picture 1 */}
-                  <div className="space-y-1">
-                    <h3 className="font-serif italic text-xl sm:text-2xl text-white font-medium tracking-wide">
-                      Before Trade Emotions
-                    </h3>
-                    <p className="font-serif italic text-xs sm:text-sm text-slate-400">
-                      Trade घेण्यापूर्वी तुझी मानसिक स्थिती निवड.
-                    </p>
-                  </div>
-
-                  {/* Slicer Cards 2-column Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {allBeforeEmotions.map((item) => {
-                      const active = isBeforeEmotionActive(item.name)
-                      return (
-                        <div
-                          key={item.name}
-                          onClick={() => isEditing && toggleBeforeEmotion(item.name)}
-                          className={`rounded-2xl p-3.5 sm:p-4 border transition-all select-none relative ${
-                            isEditing ? 'cursor-pointer' : 'cursor-default'
-                          } ${
-                            active
-                              ? 'bg-[#0f1d38] border-blue-400 shadow-lg shadow-blue-950/70 ring-1 ring-blue-400/80'
-                              : isEditing
-                              ? 'bg-[#070b14] border-slate-800/90 hover:border-slate-700 hover:bg-[#0c1222]'
-                              : 'bg-[#070b14]/60 border-slate-800/60 opacity-60'
-                          }`}
+                <div className="space-y-3">
+                  {/* When Picker is Open: Show full slicer grid; clicking any card closes it and shows only that card */}
+                  {isBeforePickerOpen ? (
+                    <div className="bg-[#050811] border border-blue-500/40 rounded-2xl p-4 sm:p-5 space-y-4 animate-in fade-in duration-150 shadow-2xl">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div>
+                          <h3 className="font-serif italic text-xl sm:text-2xl text-white font-medium tracking-wide">
+                            Before Trade Emotions
+                          </h3>
+                          <p className="font-serif italic text-xs sm:text-sm text-slate-400">
+                            Trade घेण्यापूर्वी तुझी मानसिक स्थिती निवड (Click on any emotion to select & collapse).
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsBeforePickerOpen(false)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                         >
-                          {/* Active checkmark */}
-                          {active && (
-                            <div className="absolute top-3.5 right-3.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow">
-                              <Check size={12} strokeWidth={3} />
+                          Close ✕
+                        </button>
+                      </div>
+
+                      {/* Slicer Cards 2-column Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {allBeforeEmotions.map((item) => {
+                          const active = isBeforeEmotionActive(item.name)
+                          return (
+                            <div
+                              key={item.name}
+                              onClick={() => handlePickBeforeEmotion(item.name)}
+                              className={`rounded-2xl p-3.5 sm:p-4 border transition-all select-none relative cursor-pointer ${
+                                active
+                                  ? 'bg-[#0f1d38] border-blue-400 shadow-lg shadow-blue-950/70 ring-1 ring-blue-400/80'
+                                  : 'bg-[#070b14] border-slate-800/90 hover:border-blue-400/70 hover:bg-[#0c1222]'
+                              }`}
+                            >
+                              {active && (
+                                <div className="absolute top-3.5 right-3.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow">
+                                  <Check size={12} strokeWidth={3} />
+                                </div>
+                              )}
+                              <div className="font-serif italic font-bold text-lg sm:text-xl text-white tracking-wide pr-6">
+                                {item.name}
+                              </div>
+                              <div className="font-sans font-bold text-sm sm:text-base text-slate-100 mt-1">
+                                {item.marathi}
+                              </div>
+                              <div className="font-sans text-xs sm:text-[13px] text-slate-400 font-normal mt-1 leading-snug">
+                                {item.desc}
+                              </div>
                             </div>
-                          )}
-
-                          {/* 1. English Emotion Name: Large, bold, italic serif */}
-                          <div className="font-serif italic font-bold text-lg sm:text-xl text-white tracking-wide pr-6">
-                            {item.name}
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    /* When Picker is Closed: ONLY show what was clicked (or prompt to choose) */
+                    <div>
+                      {beforeEmotionsList.length > 0 ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs pb-1">
+                            <span className="font-serif italic text-slate-300 font-medium">
+                              Selected Before Trade Emotion:
+                            </span>
+                            {isEditing && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsBeforePickerOpen(true)}
+                                  className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 transition-all cursor-pointer"
+                                >
+                                  <RotateCcw size={11} />
+                                  <span>Change Emotion</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onChange('beforeTradeEmotions', '')
+                                    if (currentData?.beforeEmotions !== undefined) onChange('beforeEmotions', '')
+                                  }}
+                                  className="text-xs text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
+                                  title="Remove selection"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            )}
                           </div>
 
-                          {/* 2. Marathi Meaning: Directly below, bold */}
-                          <div className="font-sans font-bold text-sm sm:text-base text-slate-100 mt-1">
-                            {item.marathi}
-                          </div>
-
-                          {/* 3. Description: Muted */}
-                          <div className="font-sans text-xs sm:text-[13px] text-slate-400 font-normal mt-1 leading-snug">
-                            {item.desc}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {beforeEmotionsList.map((emName) => {
+                              const item = allBeforeEmotions.find(
+                                (b) => b.name.toLowerCase() === emName.toLowerCase()
+                              ) || { name: emName, marathi: emName, desc: '' }
+                              return (
+                                <div
+                                  key={item.name}
+                                  onClick={() => isEditing && setIsBeforePickerOpen(true)}
+                                  className={`rounded-2xl p-4 border bg-[#0f1d38] border-blue-400 shadow-xl shadow-blue-950/70 ring-1 ring-blue-400/80 transition-all select-none relative ${
+                                    isEditing ? 'cursor-pointer hover:border-blue-300' : 'cursor-default'
+                                  }`}
+                                >
+                                  <div className="absolute top-3.5 right-3.5 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center shadow">
+                                    <Check size={14} strokeWidth={3} />
+                                  </div>
+                                  <div className="font-serif italic font-bold text-xl text-white tracking-wide pr-7">
+                                    {item.name}
+                                  </div>
+                                  <div className="font-sans font-bold text-base text-slate-100 mt-1">
+                                    {item.marathi}
+                                  </div>
+                                  {item.desc && (
+                                    <div className="font-sans text-xs sm:text-[13px] text-slate-300 font-normal mt-1 leading-snug">
+                                      {item.desc}
+                                    </div>
+                                  )}
+                                  {isEditing && (
+                                    <div className="text-[10px] text-blue-300/80 mt-2 italic">
+                                      Click to change emotion
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
+                      ) : (
+                        /* Empty State: Sleek Clickable Box */
+                        <div
+                          onClick={() => isEditing && setIsBeforePickerOpen(true)}
+                          className={`border-2 border-dashed border-slate-700/80 hover:border-blue-500/70 bg-[#070c18] rounded-2xl p-6 text-center transition-all ${
+                            isEditing ? 'cursor-pointer hover:bg-[#0c1428]' : ''
+                          }`}
+                        >
+                          <Smile size={28} className="text-blue-400 mx-auto mb-2 opacity-80" />
+                          <div className="font-serif italic text-lg text-white font-medium">
+                            Before Trade Emotions
+                          </div>
+                          <div className="text-xs text-slate-400 mt-0.5">
+                            Trade घेण्यापूर्वी तुझी मानसिक स्थिती निवड.
+                          </div>
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setIsBeforePickerOpen(true)
+                              }}
+                              className="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-md shadow-blue-600/30 hover:bg-blue-500 cursor-pointer inline-flex items-center gap-1.5"
+                            >
+                              <Plus size={12} />
+                              <span>Select Emotion (क्लिक करा)</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* ─── OPTION 2: AFTER TRADE EMOTIONS SLICER ─── */}
               {activeEmotionTab === 'after' && (
-                <div className="bg-[#050811] border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
-                  {/* Header matching Picture 2 */}
-                  <div className="space-y-1">
-                    <div className="text-xs text-slate-400 font-serif italic">2. After Trade Emotions</div>
-                    <h3 className="font-serif italic text-xl sm:text-2xl text-white font-medium tracking-wide">
-                      After Trade Emotions
-                    </h3>
-                    <p className="font-serif italic text-xs sm:text-sm text-slate-400">
-                      Trade संपल्यानंतर तुला काय जाणवले ते निवड.
-                    </p>
-                  </div>
-
-                  {/* Slicer Cards 2-column Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {allAfterEmotions.map((item) => {
-                      const active = isAfterEmotionActive(item.name)
-                      return (
-                        <div
-                          key={item.name}
-                          onClick={() => isEditing && toggleAfterEmotion(item.name)}
-                          className={`rounded-2xl p-3.5 sm:p-4 border transition-all select-none relative ${
-                            isEditing ? 'cursor-pointer' : 'cursor-default'
-                          } ${
-                            active
-                              ? 'bg-[#1b1236] border-purple-400 shadow-lg shadow-purple-950/70 ring-1 ring-purple-400/80'
-                              : isEditing
-                              ? 'bg-[#070b14] border-slate-800/90 hover:border-slate-700 hover:bg-[#0c1222]'
-                              : 'bg-[#070b14]/60 border-slate-800/60 opacity-60'
-                          }`}
+                <div className="space-y-3">
+                  {/* When Picker is Open: Show full slicer grid; clicking any card closes it and shows only that card */}
+                  {isAfterPickerOpen ? (
+                    <div className="bg-[#050811] border border-purple-500/40 rounded-2xl p-4 sm:p-5 space-y-4 animate-in fade-in duration-150 shadow-2xl">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div>
+                          <div className="text-xs text-slate-400 font-serif italic">2. After Trade Emotions</div>
+                          <h3 className="font-serif italic text-xl sm:text-2xl text-white font-medium tracking-wide">
+                            After Trade Emotions
+                          </h3>
+                          <p className="font-serif italic text-xs sm:text-sm text-slate-400">
+                            Trade संपल्यानंतर तुला काय जाणवले ते निवड (Click on any emotion to select & collapse).
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsAfterPickerOpen(false)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                         >
-                          {/* Active checkmark */}
-                          {active && (
-                            <div className="absolute top-3.5 right-3.5 w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shadow">
-                              <Check size={12} strokeWidth={3} />
+                          Close ✕
+                        </button>
+                      </div>
+
+                      {/* Slicer Cards 2-column Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {allAfterEmotions.map((item) => {
+                          const active = isAfterEmotionActive(item.name)
+                          return (
+                            <div
+                              key={item.name}
+                              onClick={() => handlePickAfterEmotion(item.name)}
+                              className={`rounded-2xl p-3.5 sm:p-4 border transition-all select-none relative cursor-pointer ${
+                                active
+                                  ? 'bg-[#1b1236] border-purple-400 shadow-lg shadow-purple-950/70 ring-1 ring-purple-400/80'
+                                  : 'bg-[#070b14] border-slate-800/90 hover:border-purple-400/70 hover:bg-[#0c1222]'
+                              }`}
+                            >
+                              {active && (
+                                <div className="absolute top-3.5 right-3.5 w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shadow">
+                                  <Check size={12} strokeWidth={3} />
+                                </div>
+                              )}
+                              <div className="font-serif italic font-bold text-lg sm:text-xl text-white tracking-wide pr-6">
+                                {item.name}
+                              </div>
+                              <div className="font-sans font-bold text-sm sm:text-base text-slate-100 mt-1">
+                                {item.marathi}
+                              </div>
+                              <div className="font-sans text-xs sm:text-[13px] text-slate-400 font-normal mt-1 leading-snug">
+                                {item.desc}
+                              </div>
                             </div>
-                          )}
-
-                          {/* 1. English Emotion Name: Large, bold, italic serif */}
-                          <div className="font-serif italic font-bold text-lg sm:text-xl text-white tracking-wide pr-6">
-                            {item.name}
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    /* When Picker is Closed: ONLY show what was clicked (or prompt to choose) */
+                    <div>
+                      {afterEmotionsList.length > 0 ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs pb-1">
+                            <span className="font-serif italic text-slate-300 font-medium">
+                              Selected After Trade Emotion:
+                            </span>
+                            {isEditing && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsAfterPickerOpen(true)}
+                                  className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 transition-all cursor-pointer"
+                                >
+                                  <RotateCcw size={11} />
+                                  <span>Change Emotion</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onChange('afterTradeEmotions', '')
+                                    if (currentData?.afterEmotions !== undefined) onChange('afterEmotions', '')
+                                  }}
+                                  className="text-xs text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
+                                  title="Remove selection"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            )}
                           </div>
 
-                          {/* 2. Marathi Meaning: Directly below, bold */}
-                          <div className="font-sans font-bold text-sm sm:text-base text-slate-100 mt-1">
-                            {item.marathi}
-                          </div>
-
-                          {/* 3. Description: Muted */}
-                          <div className="font-sans text-xs sm:text-[13px] text-slate-400 font-normal mt-1 leading-snug">
-                            {item.desc}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {afterEmotionsList.map((emName) => {
+                              const item = allAfterEmotions.find(
+                                (a) => a.name.toLowerCase() === emName.toLowerCase()
+                              ) || { name: emName, marathi: emName, desc: '' }
+                              return (
+                                <div
+                                  key={item.name}
+                                  onClick={() => isEditing && setIsAfterPickerOpen(true)}
+                                  className={`rounded-2xl p-4 border bg-[#1b1236] border-purple-400 shadow-xl shadow-purple-950/70 ring-1 ring-purple-400/80 transition-all select-none relative ${
+                                    isEditing ? 'cursor-pointer hover:border-purple-300' : 'cursor-default'
+                                  }`}
+                                >
+                                  <div className="absolute top-3.5 right-3.5 w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center shadow">
+                                    <Check size={14} strokeWidth={3} />
+                                  </div>
+                                  <div className="font-serif italic font-bold text-xl text-white tracking-wide pr-7">
+                                    {item.name}
+                                  </div>
+                                  <div className="font-sans font-bold text-base text-slate-100 mt-1">
+                                    {item.marathi}
+                                  </div>
+                                  {item.desc && (
+                                    <div className="font-sans text-xs sm:text-[13px] text-slate-300 font-normal mt-1 leading-snug">
+                                      {item.desc}
+                                    </div>
+                                  )}
+                                  {isEditing && (
+                                    <div className="text-[10px] text-purple-300/80 mt-2 italic">
+                                      Click to change emotion
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
+                      ) : (
+                        /* Empty State: Sleek Clickable Box */
+                        <div
+                          onClick={() => isEditing && setIsAfterPickerOpen(true)}
+                          className={`border-2 border-dashed border-slate-700/80 hover:border-purple-500/70 bg-[#070c18] rounded-2xl p-6 text-center transition-all ${
+                            isEditing ? 'cursor-pointer hover:bg-[#120b22]' : ''
+                          }`}
+                        >
+                          <Smile size={28} className="text-purple-400 mx-auto mb-2 opacity-80" />
+                          <div className="font-serif italic text-lg text-white font-medium">
+                            After Trade Emotions
+                          </div>
+                          <div className="text-xs text-slate-400 mt-0.5">
+                            Trade संपल्यानंतर तुला काय जाणवले ते निवड.
+                          </div>
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setIsAfterPickerOpen(true)
+                              }}
+                              className="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold bg-purple-600 text-white shadow-md shadow-purple-600/30 hover:bg-purple-500 cursor-pointer inline-flex items-center gap-1.5"
+                            >
+                              <Plus size={12} />
+                              <span>Select Emotion (क्लिक करा)</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1700,8 +2026,8 @@ export default function TradeJournalTemplate({
               <div className="bg-[#091124]/70 border border-slate-800/90 rounded-xl p-3 space-y-2 text-xs">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-400 uppercase tracking-wide">
-                      Before Trade:
+                    <span className="font-bold text-slate-400 uppercase tracking-wide text-[11px]">
+                      Before Trade Emotion:
                     </span>
                     {beforeEmotionsList.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
@@ -1726,8 +2052,8 @@ export default function TradeJournalTemplate({
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-400 uppercase tracking-wide">
-                      After Trade:
+                    <span className="font-bold text-slate-400 uppercase tracking-wide text-[11px]">
+                      After Trade Emotion:
                     </span>
                     {afterEmotionsList.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
@@ -1751,242 +2077,141 @@ export default function TradeJournalTemplate({
                 </div>
               </div>
             </div>
-
-            {/* ASSUMPTIONS BEFORE TRADE WITH PRESET SLICERS & ADD NEW */}
-            <div className="p-3 sm:p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-extrabold text-slate-300 uppercase tracking-wider text-xs sm:text-sm flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-purple-400" />
-                  <span>ASSUMPTIONS BEFORE TRADE:</span>
-                </span>
-                {isEditing && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddAssumption((v) => !v)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 rounded transition-all cursor-pointer"
-                  >
-                    <Plus size={11} />
-                    <span>Add New</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Slicers Pills */}
-              {isEditing && (
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {[...DEFAULT_ASSUMPTIONS, ...customAssumptions].map((a) => {
-                      const active = isAssumptionActive(a)
-                      return (
-                        <button
-                          type="button"
-                          key={a}
-                          onClick={() => toggleAssumption(a)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${active
-                            ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-500/30 ring-1 ring-purple-400'
-                            : 'bg-[#152244] border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'
-                            }`}
-                        >
-                          {active && <Check size={11} className="text-white" />}
-                          <span>{a}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {/* Add New Assumption Inline Input */}
-                  {showAddAssumption && (
-                    <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-150">
-                      <input
-                        type="text"
-                        placeholder="Type new assumption (e.g. Earnings Momentum Continuation)..."
-                        value={newAssumptionInput}
-                        onChange={(e) => setNewAssumptionInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleAddNewAssumption()
-                          }
-                        }}
-                        className="flex-1 bg-[#152244] border border-purple-500/60 rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-purple-400"
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddNewAssumption}
-                        className="px-2.5 py-1 rounded bg-purple-600 text-white text-xs font-bold hover:bg-purple-500 cursor-pointer"
-                      >
-                        Add
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowAddAssumption(false)
-                          setNewAssumptionInput('')
-                        }}
-                        className="p-1 rounded text-slate-400 hover:text-white cursor-pointer"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {isEditing ? (
-                <textarea
-                  rows="2"
-                  placeholder="Market conditions, macro sentiment, risk factors, or click preset slicers above..."
-                  value={assumptions}
-                  onChange={(e) => onChange('assumptions', e.target.value)}
-                  className="w-full bg-[#152244] border border-slate-600 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-400 leading-relaxed"
-                />
-              ) : (
-                <p className="text-slate-200 leading-relaxed bg-[#091024]/50 p-2.5 rounded-lg border border-slate-800 font-sans">
-                  {assumptions || (
-                    <span className="text-slate-500 italic">
-                      No pre-trade assumptions recorded.
-                    </span>
-                  )}
-                </p>
-              )}
-            </div>
           </div>
-        </div>
+        )}
 
         {/* ─── 5. FEEDBACK SECTION ───────────────────────────────────────── */}
-        <div className="border-2 border-slate-700/90 rounded-xl overflow-hidden bg-[#0f1a36]/60">
-          {/* Header */}
-          <div className="py-2.5 px-4 border-b-2 border-slate-700/90 text-center bg-[#132042]">
-            <span className="font-black text-xs sm:text-sm tracking-wider uppercase text-slate-100 border-b-2 border-purple-400 pb-0.5 inline-block">
-              FEEDBACK
-            </span>
-          </div>
-
-          <div className="divide-y divide-slate-700/80 text-xs sm:text-sm">
-            {/* Row 1: DISCIPLINED (Y/N) | FOLLOWED RULES (Y/N) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x-2 divide-slate-700/80">
-              {/* DISCIPLINED */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="font-extrabold text-slate-300 uppercase tracking-wider">
-                  DISCIPLINED
-                </span>
-                {isEditing ? (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onChange('disciplined', 'Y')}
-                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${disciplined === 'Y'
-                        ? 'bg-emerald-600 text-white shadow'
-                        : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                        }`}
-                    >
-                      Y
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onChange('disciplined', 'N')}
-                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${disciplined === 'N'
-                        ? 'bg-rose-600 text-white shadow'
-                        : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                        }`}
-                    >
-                      N
-                    </button>
-                  </div>
-                ) : (
-                  <span
-                    className={`font-black text-sm px-2.5 py-0.5 rounded border ${disciplined === 'Y'
-                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
-                      : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
-                      }`}
-                  >
-                    {disciplined === 'Y' ? 'YES' : 'NO'}
-                  </span>
-                )}
-              </div>
-
-              {/* FOLLOWED RULES */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="font-extrabold text-slate-300 uppercase tracking-wider">
-                  FOLLOWED RULES
-                </span>
-                {isEditing ? (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onChange('followedRules', 'Y')}
-                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${followedRules === 'Y'
-                        ? 'bg-emerald-600 text-white shadow'
-                        : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                        }`}
-                    >
-                      Y
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onChange('followedRules', 'N')}
-                      className={`px-3 py-1 rounded font-bold text-xs transition-all ${followedRules === 'N'
-                        ? 'bg-rose-600 text-white shadow'
-                        : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
-                        }`}
-                    >
-                      N
-                    </button>
-                  </div>
-                ) : (
-
-                  <span
-           
-                  className={`font-black text-sm px-2.5 py-0.5 rounded border ${followedRules === 'Y'
-                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
-                      : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
-                      }`}
-                      
-                  >
-                    {followedRules === 'Y' ? 'YES' : 'NO'}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Row 2: RATING (Interactive 5 Stars) */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="font-extrabold text-slate-300 uppercase tracking-wider">
-                RATING
+        {(mobileSectionTab === 'all' || mobileSectionTab === 'feedback') && (
+          <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#0e1628]/80">
+            {/* Header */}
+            <div className="py-2.5 px-4 border-b border-slate-800 text-center bg-[#132042]/90">
+              <span className="font-black text-xs sm:text-sm tracking-wider uppercase text-slate-100 border-b-2 border-purple-400 pb-0.5 inline-block">
+                FEEDBACK
               </span>
-              <div className="flex items-center gap-1.5">
-                {[1, 2, 3, 4, 5].map((starIdx) => {
-                  const isActive = starIdx <= rating
-                  return (
-                    <button
-                      type="button"
-                      key={starIdx}
-                      disabled={!isEditing}
-                      onClick={() => isEditing && onChange('rating', starIdx)}
-                      className={`p-1 rounded transition-transform ${isEditing ? 'cursor-pointer hover:scale-125' : 'cursor-default'
+            </div>
+
+            <div className="divide-y divide-slate-800/80 text-xs sm:text-sm">
+              {/* Row 1: DISCIPLINED (Y/N) | FOLLOWED RULES (Y/N) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800/80">
+                {/* DISCIPLINED */}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="font-extrabold text-slate-300 uppercase tracking-wider">
+                    DISCIPLINED
+                  </span>
+                  {isEditing ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onChange('disciplined', 'Y')}
+                        className={`px-3 py-1 rounded font-bold text-xs transition-all ${disciplined === 'Y'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                          }`}
+                      >
+                        Y
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onChange('disciplined', 'N')}
+                        className={`px-3 py-1 rounded font-bold text-xs transition-all ${disciplined === 'N'
+                          ? 'bg-rose-600 text-white shadow'
+                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                          }`}
+                      >
+                        N
+                      </button>
+                    </div>
+                  ) : (
+                    <span
+                      className={`font-black text-sm px-2.5 py-0.5 rounded border ${disciplined === 'Y'
+                        ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
+                        : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
                         }`}
-                      title={`${starIdx} Star${starIdx > 1 ? 's' : ''}`}
                     >
-                      <Star
-                        size={22}
-                        className={
-                          isActive
-                            ? 'text-amber-400 fill-amber-400 drop-shadow-md'
-                            : 'text-slate-600 fill-slate-800'
-                        }
-                      />
-                    </button>
-                  )
-                })}
+                      {disciplined === 'Y' ? 'YES' : 'NO'}
+                    </span>
+                  )}
+                </div>
+
+                {/* FOLLOWED RULES */}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="font-extrabold text-slate-300 uppercase tracking-wider">
+                    FOLLOWED RULES
+                  </span>
+                  {isEditing ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onChange('followedRules', 'Y')}
+                        className={`px-3 py-1 rounded font-bold text-xs transition-all ${followedRules === 'Y'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                          }`}
+                      >
+                        Y
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onChange('followedRules', 'N')}
+                        className={`px-3 py-1 rounded font-bold text-xs transition-all ${followedRules === 'N'
+                          ? 'bg-rose-600 text-white shadow'
+                          : 'bg-[#152244] border border-slate-600 text-slate-400 hover:text-white'
+                          }`}
+                      >
+                        N
+                      </button>
+                    </div>
+                  ) : (
+                    <span
+                      className={`font-black text-sm px-2.5 py-0.5 rounded border ${followedRules === 'Y'
+                        ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
+                        : 'bg-rose-950/40 text-rose-400 border-rose-500/40'
+                        }`}
+                    >
+                      {followedRules === 'Y' ? 'YES' : 'NO'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 2: RATING (Interactive 5 Stars) */}
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="font-extrabold text-slate-300 uppercase tracking-wider">
+                  RATING
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map((starIdx) => {
+                    const isActive = starIdx <= rating
+                    return (
+                      <button
+                        type="button"
+                        key={starIdx}
+                        disabled={!isEditing}
+                        onClick={() => isEditing && onChange('rating', starIdx)}
+                        className={`p-1 rounded transition-transform ${isEditing ? 'cursor-pointer hover:scale-125' : 'cursor-default'
+                          }`}
+                        title={`${starIdx} Star${starIdx > 1 ? 's' : ''}`}
+                      >
+                        <Star
+                          size={22}
+                          className={
+                            isActive
+                              ? 'text-amber-400 fill-amber-400 drop-shadow-md'
+                              : 'text-slate-600 fill-slate-800'
+                          }
+                        />
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* ─── ACTION BUTTONS (IN EDIT/CREATE MODE) ───────────────────────── */}
+        {/* ─── ACTION BUTTONS (DESKTOP & STANDARD IN EDIT/CREATE MODE) ─────── */}
         {isEditing && (
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-700/80">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
             {onCancel && (
               <button
                 type="button"
@@ -2004,6 +2229,43 @@ export default function TradeJournalTemplate({
             >
               {isSubmitting ? 'Saving Trade...' : mode === 'edit' ? 'Update Trade' : 'Save Trade'}
             </button>
+          </div>
+        )}
+
+        {/* ─── STICKY BOTTOM ACTION BAR FOR MOBILE (EDIT MODE) ────────────── */}
+        {isEditing && (
+          <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#090e1a]/95 backdrop-blur-md border-t border-slate-800 p-3 flex items-center justify-between gap-2 shadow-2xl">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-slate-300 font-mono line-clamp-1">
+                {symbol || 'Trade'} {strategy ? `• ${strategy}` : ''}
+              </span>
+              {computedMetrics.pnl !== null ? (
+                <span className={`text-xs font-mono font-bold ${computedMetrics.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {computedMetrics.pnl >= 0 ? '+' : ''}{formatINR(computedMetrics.pnl)}
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-500 font-mono">P&L Pending</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 bg-slate-800 border border-slate-700 active:scale-95 cursor-pointer"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSubmitting}
+                className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-600/30 active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? 'Saving...' : 'Save Trade'}
+              </button>
+            </div>
           </div>
         )}
       </div>

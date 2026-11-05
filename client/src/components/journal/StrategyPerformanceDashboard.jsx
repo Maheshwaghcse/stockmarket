@@ -29,19 +29,18 @@ import {
   calculateTradePnl,
 } from '../../lib/journalAnalytics'
 
-// Default trading strategies
+// Default trading strategies (Strict 10 Requested Default Strategies)
 export const PREDEFINED_STRATEGIES = [
-  'Tiger Breakout',
-  'Camarilla Pivot',
-  'First Candle Close Range',
-  'Breakout',
-  'Pullback',
-  'VWAP Reversal',
-  'Support & Resistance',
-  'Trend Following',
-  'CPR / Pivot Bounce',
-  'Chart Pattern',
-  'Scalp Momentum',
+  'Fibonacci Setup',
+  'Inside Candle Strategy',
+  'Parallel Channel Breakout',
+  'Parallel Channel Middle line Entry',
+  'Parallel Channel Upper Line Entry',
+  'Parallel Channel Lower Line Entry',
+  'Cup and Handle',
+  'Head and Shoulder',
+  'V shape Recovery',
+  'No set-up / Random Trade',
 ]
 
 export default function StrategyPerformanceDashboard({
@@ -54,8 +53,18 @@ export default function StrategyPerformanceDashboard({
   const availableStrategies = useMemo(() => {
     const set = new Set()
 
-    // Add predefined strategies first
+    // Add 10 predefined strategies first
     PREDEFINED_STRATEGIES.forEach((s) => set.add(s))
+
+    // Add custom strategies from localStorage
+    try {
+      const stored = JSON.parse(localStorage.getItem('custom_trade_strategies') || '[]')
+      if (Array.isArray(stored)) {
+        stored.forEach((s) => {
+          if (typeof s === 'string' && s.trim()) set.add(s.trim())
+        })
+      }
+    } catch { }
 
     // Add any custom strategies from trades
     if (Array.isArray(allTrades)) {
@@ -70,12 +79,11 @@ export default function StrategyPerformanceDashboard({
   }, [allTrades])
 
   // Current selected strategy
-
   const [selectedStrategy, setSelectedStrategy] = useState(() => {
     if (initialStrategy && availableStrategies.includes(initialStrategy)) {
       return initialStrategy
     }
-    return availableStrategies[0] || 'Tiger Breakout'
+    return PREDEFINED_STRATEGIES[0] || 'Fibonacci Setup'
   })
 
   // Strategy search filter
