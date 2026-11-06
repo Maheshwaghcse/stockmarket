@@ -24,6 +24,12 @@ const SUGGESTED_SYMBOLS = [
   'NIFTY50', 'BANKNIFTY'
 ]
 
+// Helper to get local date time formatted as YYYY-MM-DDTHH:mm
+const getLocalDateTimeString = (d = new Date()) => {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export default function TradingJournalPage() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
@@ -52,7 +58,7 @@ export default function TradingJournalPage() {
   const [form, setForm] = useState({
     symbol: '',
     tradeType: 'Long',
-    entryDate: new Date().toISOString().slice(0, 16),
+    entryDate: getLocalDateTimeString(),
     exitDate: '',
     entryPrice: '',
     exitPrice: '',
@@ -68,8 +74,10 @@ export default function TradingJournalPage() {
     riskReward: '',
     imageUrl: '',
     entryReason: '',
+    exitReason: '',
     mistakes: '',
     assumptions: '',
+    customSections: [],
     disciplined: 'Y',
     followedRules: 'Y',
     rating: 5,
@@ -143,7 +151,7 @@ export default function TradingJournalPage() {
     setForm({
       symbol: '',
       tradeType: 'Long',
-      entryDate: new Date().toISOString().slice(0, 16),
+      entryDate: getLocalDateTimeString(),
       exitDate: '',
       entryPrice: '',
       exitPrice: '',
@@ -159,8 +167,10 @@ export default function TradingJournalPage() {
       riskReward: '',
       imageUrl: '',
       entryReason: '',
+      exitReason: '',
       mistakes: '',
       assumptions: '',
+      customSections: [],
       disciplined: 'Y',
       followedRules: 'Y',
       rating: 5,

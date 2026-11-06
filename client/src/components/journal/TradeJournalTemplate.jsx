@@ -12,6 +12,16 @@ import {
   Smile,
   BarChart3,
   RotateCcw,
+  Calendar,
+  ChevronRight,
+  ChevronLeft,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  LogOut,
+  FolderPlus,
+  Layers,
+  Sparkles,
 } from 'lucide-react'
 import { formatINR } from '../../lib/journalAnalytics'
 import { searchStockCatalog, DEFAULT_STOCK_LOT_SIZES } from '../../lib/stockCatalog'
@@ -186,6 +196,93 @@ export const STRATEGY_OPTIONS = [
 const POSITION_OPTIONS = ['Intraday', 'Swing', 'Positional', 'Scalp']
 const INSTRUMENT_OPTIONS = ['Equity', 'Futures', 'Options', 'Forex', 'Crypto']
 
+export const DEFAULT_EXIT_REASONS = [
+  'Target Hit (TP)',
+  'Stop Loss Hit (SL)',
+  'Trailing SL Hit',
+  'Break-Even Exit',
+  'Market Closing / 3:15 PM Exit',
+  'Manual Exit (Fear / Panic)',
+  'Technical Reversal Signal',
+  'Risk Management / Rule Exit',
+  'Partial Profit Booking',
+  'System / Network Glitch',
+]
+
+export const DEFAULT_MISTAKES = [
+  'FOMO / Chased Candle',
+  'Overleveraging / Large Lot Size',
+  'No Clear Setup / Random Trade',
+  'Moved Stop Loss Further Away',
+  'Early Exit Due to Fear',
+  'Held Losing Trade Too Long (Hope)',
+  'Traded Against Trend',
+  'Overtrading / Revenge Trade',
+  'Ignored Volatility / News Spike',
+  'Failed to Follow Trading Plan',
+]
+
+export const SECTION_TABS = [
+  { id: 'all', label: 'All Sections' },
+  { id: 'setup', label: '1. Setup & Details' },
+  { id: 'emotions', label: '2. Emotions' },
+  { id: 'exit_mistakes', label: '3. Exit & Mistakes' },
+  { id: 'chart', label: '4. Chart & Notes' },
+  { id: 'feedback', label: '5. Feedback' },
+  { id: 'custom', label: '6. Custom Sections' },
+]
+
+function SectionNavFooter({ currentTab, onSelectTab, onSave, isSubmitting, mode }) {
+  const tabs = SECTION_TABS.filter((t) => t.id !== 'all')
+  const currentIndex = tabs.findIndex((t) => t.id === currentTab)
+  if (currentIndex === -1) return null
+
+  const prevTab = currentIndex > 0 ? tabs[currentIndex - 1] : null
+  const nextTab = currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : null
+
+  return (
+    <div className="flex items-center justify-between gap-3 pt-3.5 mt-4 border-t border-slate-800/80">
+      {prevTab ? (
+        <button
+          type="button"
+          onClick={() => {
+            onSelectTab(prevTab.id)
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 transition-all cursor-pointer active:scale-95"
+        >
+          <ChevronLeft size={14} />
+          <span>Prev: {prevTab.label}</span>
+        </button>
+      ) : <div />}
+
+      {nextTab ? (
+        <button
+          type="button"
+          onClick={() => {
+            onSelectTab(nextTab.id)
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all cursor-pointer ml-auto active:scale-95"
+        >
+          <span>Next: {nextTab.label}</span>
+          <ChevronRight size={14} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={isSubmitting}
+          className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 transition-all cursor-pointer ml-auto active:scale-95 disabled:opacity-50"
+        >
+          <Check size={14} />
+          <span>{isSubmitting ? 'Saving...' : mode === 'edit' ? 'Update Trade' : 'Save Trade'}</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function TradeJournalTemplate({
   mode = 'view', // 'view' | 'create' | 'edit'
   trade = {},
@@ -261,6 +358,31 @@ export default function TradeJournalTemplate({
     setShowAddStrategy(false)
   }
 
+  // Exit Reason & Mistakes states
+  const [isExitReasonPickerOpen, setIsExitReasonPickerOpen] = useState(false)
+  const [isMistakesPickerOpen, setIsMistakesPickerOpen] = useState(false)
+  const [customExitReasons, setCustomExitReasons] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('custom_exit_reasons') || '[]')
+    } catch {
+      return []
+    }
+  })
+  const [customMistakes, setCustomMistakes] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('custom_trade_mistakes') || '[]')
+    } catch {
+      return []
+    }
+  })
+  const [newExitReasonSubpoint, setNewExitReasonSubpoint] = useState('')
+  const [newMistakeSubpoint, setNewMistakeSubpoint] = useState('')
+
+  // Custom Sections state
+  const [showAddSectionForm, setShowAddSectionForm] = useState(false)
+  const [newSectionTitle, setNewSectionTitle] = useState('')
+  const [newSectionContent, setNewSectionContent] = useState('')
+
   // Use either active formData (edit/create) or trade (view)
   const currentData = isEditing ? formData : trade
 
@@ -291,9 +413,93 @@ export default function TradeJournalTemplate({
   const riskReward = currentData?.riskReward || ''
   const beforeTradeEmotions = currentData?.beforeTradeEmotions || currentData?.beforeEmotions || currentData?.emotionsBefore || ''
   const afterTradeEmotions = currentData?.afterTradeEmotions || currentData?.afterEmotions || currentData?.emotionsAfter || ''
+  const exitReason = currentData?.exitReason || ''
+  const mistakes = currentData?.mistakes || currentData?.assumptions || ''
+  const customSections = Array.isArray(currentData?.customSections) ? currentData.customSections : []
   const disciplined = currentData?.disciplined || 'Y'
   const followedRules = currentData?.followedRules || 'Y'
   const rating = currentData?.rating !== undefined ? Number(currentData?.rating) : 5
+
+  const allExitReasons = useMemo(() => {
+    return Array.from(new Set([...DEFAULT_EXIT_REASONS, ...customExitReasons]))
+  }, [customExitReasons])
+
+  const allMistakes = useMemo(() => {
+    return Array.from(new Set([...DEFAULT_MISTAKES, ...customMistakes]))
+  }, [customMistakes])
+
+  const exitReasonList = useMemo(() => {
+    return exitReason ? exitReason.split(',').map((s) => s.trim()).filter(Boolean) : []
+  }, [exitReason])
+
+  const mistakesList = useMemo(() => {
+    return mistakes ? mistakes.split(',').map((s) => s.trim()).filter(Boolean) : []
+  }, [mistakes])
+
+  const toggleExitReason = (reason) => {
+    if (!isEditing) return
+    const current = exitReasonList
+    const exists = current.includes(reason)
+    const updated = exists ? current.filter((r) => r !== reason) : [...current, reason]
+    onChange('exitReason', updated.join(', '))
+  }
+
+  const toggleMistake = (mistake) => {
+    if (!isEditing) return
+    const current = mistakesList
+    const exists = current.includes(mistake)
+    const updated = exists ? current.filter((m) => m !== mistake) : [...current, mistake]
+    onChange('mistakes', updated.join(', '))
+  }
+
+  const handleAddCustomExitReason = () => {
+    const val = newExitReasonSubpoint.trim()
+    if (!val) return
+    if (!allExitReasons.includes(val)) {
+      const updated = [...customExitReasons, val]
+      setCustomExitReasons(updated)
+      try {
+        localStorage.setItem('custom_exit_reasons', JSON.stringify(updated))
+      } catch {}
+    }
+    toggleExitReason(val)
+    setNewExitReasonSubpoint('')
+  }
+
+  const handleAddCustomMistake = () => {
+    const val = newMistakeSubpoint.trim()
+    if (!val) return
+    if (!allMistakes.includes(val)) {
+      const updated = [...customMistakes, val]
+      setCustomMistakes(updated)
+      try {
+        localStorage.setItem('custom_trade_mistakes', JSON.stringify(updated))
+      } catch {}
+    }
+    toggleMistake(val)
+    setNewMistakeSubpoint('')
+  }
+
+  const handleAddCustomSection = (title, content = '') => {
+    if (!title.trim()) return
+    const newSec = {
+      id: 'sec_' + Date.now(),
+      title: title.trim(),
+      content: content.trim(),
+    }
+    const updated = [...customSections, newSec]
+    onChange('customSections', updated)
+  }
+
+  const handleUpdateCustomSection = (id, field, value) => {
+    const updated = customSections.map((sec) => (sec.id === id ? { ...sec, [field]: value } : sec))
+    onChange('customSections', updated)
+  }
+
+  const handleRemoveCustomSection = (id) => {
+    const updated = customSections.filter((sec) => sec.id !== id)
+    onChange('customSections', updated)
+  }
 
   // Real-time computed R/R and P&L in edit mode
   const computedMetrics = useMemo(() => {
@@ -736,13 +942,7 @@ export default function TradeJournalTemplate({
 
         {/* ─── MOBILE SECTION NAVIGATION PILLS (NON-LENGTHY, MOBILE FRIENDLY) ── */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
-          {[
-            { id: 'all', label: 'All Sections' },
-            { id: 'setup', label: '1. Setup & Details' },
-            { id: 'emotions', label: '2. Emotions' },
-            { id: 'chart', label: '3. Chart & Notes' },
-            { id: 'feedback', label: '4. Feedback' },
-          ].map((tab) => (
+          {SECTION_TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -767,35 +967,60 @@ export default function TradeJournalTemplate({
                 DATE:
               </span>
               {isEditing ? (
-                <div className="flex-1 flex items-center gap-2">
+                <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2">
                   <input
                     type="datetime-local"
                     required
                     value={entryDate ? entryDate.slice(0, 16) : ''}
                     onChange={(e) => {
                       onChange('entryDate', e.target.value)
-                      // Auto-set time field if not set
                       if (e.target.value) {
                         const t = e.target.value.split('T')[1]
-                        if (t && (!formData.time || formData.time === '')) {
-                          onChange('time', t)
-                        }
+                        if (t) onChange('time', t)
                       }
                     }}
                     className="w-full bg-[#152244] border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 font-mono"
                   />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-blue-950/70 border border-blue-500/30 text-[11px] font-mono text-blue-300 shrink-0">
+                    <Clock size={12} className="text-blue-400" />
+                    <span>
+                      {entryDate
+                        ? new Date(entryDate).toLocaleString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true,
+                          })
+                        : new Date().toLocaleString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true,
+                          })}
+                    </span>
+                  </div>
                 </div>
               ) : (
-                <span className="font-bold text-sm sm:text-base text-white font-mono">
-                  {entryDate
-                    ? new Date(entryDate).toLocaleDateString('en-IN', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    }) + (time ? ` • ${time}` : '')
-                    : '—'}
-                </span>
+                <div className="inline-flex items-center gap-2 font-bold text-sm sm:text-base text-white font-mono">
+                  <Calendar size={14} className="text-blue-400" />
+                  <span>
+                    {entryDate
+                      ? new Date(entryDate).toLocaleString('en-IN', {
+                          weekday: 'short',
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                        })
+                      : '—'}
+                  </span>
+                </div>
               )}
             </div>
 
@@ -973,25 +1198,6 @@ export default function TradeJournalTemplate({
                 </div>
               </div>
 
-              {/* TIME */}
-              <div className="grid grid-cols-3 items-center px-3 sm:px-4 py-2">
-                <span className="font-bold text-slate-300 uppercase tracking-wide">
-                  TIME:
-                </span>
-                <div className="col-span-2">
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      placeholder="e.g. 09:30 AM"
-                      value={time}
-                      onChange={(e) => onChange('time', e.target.value)}
-                      className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400 font-mono"
-                    />
-                  ) : (
-                    <span className="font-mono text-slate-100">{time || '—'}</span>
-                  )}
-                </div>
-              </div>
 
               {/* LOT SIZE (with lavender highlight from screenshot) */}
               <div className="grid grid-cols-3 items-center px-3 sm:px-4 py-2">
@@ -1364,6 +1570,19 @@ export default function TradeJournalTemplate({
                   {chartNotes}
                 </div>
               )}
+
+              {/* Next Navigation Footer for Chart Tab */}
+              {mobileSectionTab === 'chart' && (
+                <div className="pt-2">
+                  <SectionNavFooter
+                    currentTab="chart"
+                    onSelectTab={setMobileSectionTab}
+                    onSave={onSave}
+                    isSubmitting={isSubmitting}
+                    mode={mode}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1536,6 +1755,19 @@ export default function TradeJournalTemplate({
               </div>
             </div>
           </div>
+
+          {/* Next Navigation Footer for Setup Tab */}
+          {mobileSectionTab === 'setup' && (
+            <div className="p-3 bg-[#0a1120] border-t border-slate-800">
+              <SectionNavFooter
+                currentTab="setup"
+                onSelectTab={setMobileSectionTab}
+                onSave={onSave}
+                isSubmitting={isSubmitting}
+                mode={mode}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -2075,8 +2307,245 @@ export default function TradeJournalTemplate({
                     )}
                   </div>
                 </div>
+
+                {/* Next Navigation Footer for Emotions Tab */}
+                {mobileSectionTab === 'emotions' && (
+                  <SectionNavFooter
+                    currentTab="emotions"
+                    onSelectTab={setMobileSectionTab}
+                    onSave={onSave}
+                    isSubmitting={isSubmitting}
+                    mode={mode}
+                  />
+                )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ─── 3. TRADE EXIT REASON & MISTAKES SECTION ───────────────────── */}
+        {(mobileSectionTab === 'all' || mobileSectionTab === 'exit_mistakes') && (
+          <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#0e1628]/80">
+            {/* Header */}
+            <div className="py-2.5 px-4 border-b border-slate-800 text-center bg-[#132042]/90 flex items-center justify-between">
+              <span className="font-extrabold text-xs sm:text-sm tracking-wider uppercase text-slate-100 flex items-center gap-1.5 mx-auto">
+                <LogOut size={16} className="text-amber-400" />
+                <span>TRADE EXIT REASON & MISTAKES</span>
+              </span>
+            </div>
+
+            <div className="p-3 sm:p-5 space-y-6">
+              {/* ── SUB-SECTION A: EXIT REASON ── */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                      1. Exit Reason:
+                    </span>
+                    {exitReason ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {exitReasonList.map((reason) => (
+                          <span
+                            key={reason}
+                            className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                          >
+                            {reason}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-500 italic">None selected</span>
+                    )}
+                  </div>
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setIsExitReasonPickerOpen((prev) => !prev)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{isExitReasonPickerOpen ? 'Collapse Slicer' : 'Select Exit Subpoints'}</span>
+                      {isExitReasonPickerOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    </button>
+                  )}
+                </div>
+
+                {/* Exit Reason Slicer Grid */}
+                {isEditing && isExitReasonPickerOpen && (
+                  <div className="p-3 bg-[#0a1120] rounded-xl border border-slate-800 space-y-3">
+                    <p className="text-[11px] text-slate-400">
+                      Click any exit subpoint below to apply it to your trade:
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {allExitReasons.map((reason) => {
+                        const isSelected = exitReasonList.includes(reason)
+                        return (
+                          <button
+                            key={reason}
+                            type="button"
+                            onClick={() => toggleExitReason(reason)}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
+                              isSelected
+                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-200 font-bold shadow-md shadow-amber-500/10'
+                                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
+                            }`}
+                          >
+                            <span>{reason}</span>
+                            {isSelected && <Check size={14} className="text-amber-400 shrink-0" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Add Custom Exit Reason Subpoint */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+                      <input
+                        type="text"
+                        placeholder="Add custom exit reason subpoint..."
+                        value={newExitReasonSubpoint}
+                        onChange={(e) => setNewExitReasonSubpoint(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomExitReason())}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-amber-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomExitReason}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white shadow transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus size={13} />
+                        <span>Add Subpoint</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Exit Reason Text input / Notes */}
+                {isEditing ? (
+                  <textarea
+                    rows="2"
+                    placeholder="Describe exit reason or specific notes (e.g., Trail stopped after reaching 1:2)..."
+                    value={exitReason}
+                    onChange={(e) => onChange('exitReason', e.target.value)}
+                    className="w-full bg-[#152244] border border-slate-600 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-amber-400"
+                  />
+                ) : (
+                  <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800 text-xs text-slate-200">
+                    {exitReason ? exitReason : <span className="text-slate-500 italic">No exit reason specified</span>}
+                  </div>
+                )}
+              </div>
+
+              {/* ── SUB-SECTION B: MISTAKES ── */}
+              <div className="space-y-3 pt-4 border-t border-slate-800/80">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                      2. Trading Mistakes:
+                    </span>
+                    {mistakes ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {mistakesList.map((mistake) => (
+                          <span
+                            key={mistake}
+                            className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                          >
+                            {mistake}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-500 italic">No mistakes identified</span>
+                    )}
+                  </div>
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setIsMistakesPickerOpen((prev) => !prev)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{isMistakesPickerOpen ? 'Collapse Slicer' : 'Select Mistakes Subpoints'}</span>
+                      {isMistakesPickerOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    </button>
+                  )}
+                </div>
+
+                {/* Mistakes Slicer Grid */}
+                {isEditing && isMistakesPickerOpen && (
+                  <div className="p-3 bg-[#0a1120] rounded-xl border border-slate-800 space-y-3">
+                    <p className="text-[11px] text-slate-400">
+                      Select any trading mistakes made in this trade:
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {allMistakes.map((mistake) => {
+                        const isSelected = mistakesList.includes(mistake)
+                        return (
+                          <button
+                            key={mistake}
+                            type="button"
+                            onClick={() => toggleMistake(mistake)}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
+                              isSelected
+                                ? 'bg-rose-500/20 border-rose-500/50 text-rose-200 font-bold shadow-md shadow-rose-500/10'
+                                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
+                            }`}
+                          >
+                            <span>{mistake}</span>
+                            {isSelected && <Check size={14} className="text-rose-400 shrink-0" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Add Custom Mistake Subpoint */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+                      <input
+                        type="text"
+                        placeholder="Add custom mistake subpoint..."
+                        value={newMistakeSubpoint}
+                        onChange={(e) => setNewMistakeSubpoint(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomMistake())}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-rose-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomMistake}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus size={13} />
+                        <span>Add Subpoint</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Mistakes Text input / Notes */}
+                {isEditing ? (
+                  <textarea
+                    rows="2"
+                    placeholder="Detail the mistake or what was learned (e.g., entered before 15m candle close)..."
+                    value={mistakes}
+                    onChange={(e) => onChange('mistakes', e.target.value)}
+                    className="w-full bg-[#152244] border border-slate-600 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-rose-400"
+                  />
+                ) : (
+                  <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800 text-xs text-slate-200">
+                    {mistakes ? mistakes : <span className="text-slate-500 italic">No mistakes reported</span>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Next Navigation Footer for Exit & Mistakes Tab */}
+            {mobileSectionTab === 'exit_mistakes' && (
+              <div className="p-3 bg-[#0a1120] border-t border-slate-800">
+                <SectionNavFooter
+                  currentTab="exit_mistakes"
+                  onSelectTab={setMobileSectionTab}
+                  onSave={onSave}
+                  isSubmitting={isSubmitting}
+                  mode={mode}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -2205,13 +2674,185 @@ export default function TradeJournalTemplate({
                   })}
                 </div>
               </div>
+
+              {/* Next Navigation Footer for Feedback Tab */}
+              {mobileSectionTab === 'feedback' && (
+                <div className="p-3 bg-[#0a1120] border-t border-slate-800">
+                  <SectionNavFooter
+                    currentTab="feedback"
+                    onSelectTab={setMobileSectionTab}
+                    onSave={onSave}
+                    isSubmitting={isSubmitting}
+                    mode={mode}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* ─── ACTION BUTTONS (DESKTOP & STANDARD IN EDIT/CREATE MODE) ─────── */}
+        {/* ─── 6. CUSTOM SECTIONS (+ ADD SECTION THAT I WANT) ────────────── */}
+        {(mobileSectionTab === 'all' || mobileSectionTab === 'custom') && (
+          <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#0e1628]/80">
+            {/* Header */}
+            <div className="py-2.5 px-4 border-b border-slate-800 text-center bg-[#132042]/90 flex items-center justify-between">
+              <span className="font-extrabold text-xs sm:text-sm tracking-wider uppercase text-slate-100 flex items-center gap-1.5 mx-auto">
+                <FolderPlus size={16} className="text-indigo-400" />
+                <span>CUSTOM SECTIONS ({customSections.length})</span>
+              </span>
+            </div>
+
+            <div className="p-3 sm:p-5 space-y-4">
+              {/* Existing Custom Sections */}
+              {customSections.length > 0 ? (
+                <div className="space-y-4">
+                  {customSections.map((sec, idx) => (
+                    <div
+                      key={sec.id || idx}
+                      className="border border-slate-800/90 rounded-xl bg-[#0a1120] p-3 sm:p-4 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
+                        <span className="font-bold text-xs sm:text-sm uppercase tracking-wider text-indigo-300">
+                          {sec.title}
+                        </span>
+                        {isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomSection(sec.id)}
+                            className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Delete this custom section"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Content / Notes */}
+                      {isEditing ? (
+                        <textarea
+                          rows="2"
+                          placeholder={`Enter notes for ${sec.title}...`}
+                          value={sec.content || ''}
+                          onChange={(e) => handleUpdateCustomSection(sec.id, 'content', e.target.value)}
+                          className="w-full bg-[#152244] border border-slate-600 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-indigo-400"
+                        />
+                      ) : (
+                        <p className="text-xs text-slate-300 whitespace-pre-wrap">
+                          {sec.content || <span className="text-slate-500 italic">No notes added</span>}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-xs text-slate-400">
+                  No custom sections added yet. Click the button below to add any custom section you want.
+                </div>
+              )}
+
+              {/* Add Custom Section Form / Trigger */}
+              {isEditing && (
+                <div>
+                  {!showAddSectionForm ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddSectionForm(true)}
+                      className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-98"
+                    >
+                      <Plus size={15} />
+                      <span>+ Add Section That I Want</span>
+                    </button>
+                  ) : (
+                    <div className="p-4 rounded-xl border border-indigo-500/30 bg-[#0c1428] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase text-indigo-300 flex items-center gap-1.5">
+                          <Plus size={14} /> Add New Section
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddSectionForm(false)
+                            setNewSectionTitle('')
+                            setNewSectionContent('')
+                          }}
+                          className="text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                          Section Title
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Pre-Market Checklist, Support & Resistance, Lessons..."
+                          value={newSectionTitle}
+                          onChange={(e) => setNewSectionTitle(e.target.value)}
+                          className="w-full bg-[#152244] border border-slate-600 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-500 outline-none focus:border-indigo-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                          Initial Content / Notes (Optional)
+                        </label>
+                        <textarea
+                          rows="2"
+                          placeholder="Write any initial notes or guidelines for this section..."
+                          value={newSectionContent}
+                          onChange={(e) => setNewSectionContent(e.target.value)}
+                          className="w-full bg-[#152244] border border-slate-600 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-indigo-400"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddSectionForm(false)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!newSectionTitle.trim()) return
+                            handleAddCustomSection(newSectionTitle, newSectionContent)
+                            setNewSectionTitle('')
+                            setNewSectionContent('')
+                            setShowAddSectionForm(false)
+                          }}
+                          className="px-4 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow cursor-pointer"
+                        >
+                          Save Section
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Next Navigation Footer for Custom Sections Tab */}
+            {mobileSectionTab === 'custom' && (
+              <div className="p-3 bg-[#0a1120] border-t border-slate-800">
+                <SectionNavFooter
+                  currentTab="custom"
+                  onSelectTab={setMobileSectionTab}
+                  onSave={onSave}
+                  isSubmitting={isSubmitting}
+                  mode={mode}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── ACTION BUTTONS (DESKTOP ONLY IN EDIT/CREATE MODE) ───────────── */}
         {isEditing && (
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
+          <div className="hidden sm:flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
             {onCancel && (
               <button
                 type="button"

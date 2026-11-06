@@ -165,6 +165,7 @@ router.post('/', protect, async (req, res, next) => {
       followedRules,
       rating,
       chartNotes,
+      customSections,
     } = req.body;
 
     const parsedQty = parseInt(quantity || lotSize || 1, 10);
@@ -205,6 +206,7 @@ router.post('/', protect, async (req, res, next) => {
       followedRules: followedRules || 'Y',
       rating: rating ? parseInt(rating, 10) : 5,
       chartNotes: chartNotes || '',
+      customSections: Array.isArray(customSections) ? customSections : [],
     });
 
     await trade.save();
@@ -246,7 +248,7 @@ router.put('/:id', protect, async (req, res, next) => {
       'entryReason', 'exitReason', 'lessonLearned', 'tags',
       'position', 'time', 'instrumentType', 'optionType', 'strategy',
       'stopLoss', 'takeProfit', 'riskReward', 'assumptions', 'mistakes',
-      'disciplined', 'followedRules', 'rating', 'chartNotes',
+      'disciplined', 'followedRules', 'rating', 'chartNotes', 'customSections',
     ];
 
     updatable.forEach((field) => {

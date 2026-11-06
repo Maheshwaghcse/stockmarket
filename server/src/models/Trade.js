@@ -152,6 +152,10 @@ const tradeSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    customSections: {
+      type: mongoose.Schema.Types.Mixed,
+      default: [],
+    },
   },
   { timestamps: true }
 );
