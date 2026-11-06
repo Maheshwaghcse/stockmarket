@@ -64,8 +64,20 @@ export default function TradeViewerModal({
         instrumentType: currentTrade.instrumentType || 'Equity',
         optionType: currentTrade.optionType || 'CALL',
         strategy: currentTrade.strategy || '',
-        beforeTradeEmotions: currentTrade.beforeTradeEmotions || currentTrade.beforeEmotions || '',
-        afterTradeEmotions: currentTrade.afterTradeEmotions || currentTrade.afterEmotions || '',
+        beforeTradeEmotions:
+          currentTrade.beforeTradeEmotions ||
+          currentTrade.beforeEmotions ||
+          currentTrade.beforeTradeEmotion ||
+          currentTrade.beforeEmotion ||
+          currentTrade.emotionsBefore ||
+          '',
+        afterTradeEmotions:
+          currentTrade.afterTradeEmotions ||
+          currentTrade.afterEmotions ||
+          currentTrade.afterTradeEmotion ||
+          currentTrade.afterEmotion ||
+          currentTrade.emotionsAfter ||
+          '',
         stopLoss: currentTrade.stopLoss ?? '',
         takeProfit: currentTrade.takeProfit ?? '',
         riskReward: currentTrade.riskReward || '',
@@ -269,13 +281,25 @@ export default function TradeViewerModal({
             )}
 
             {isEditing && (
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 transition-all"
-              >
-                Cancel Edit
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={isSubmitting}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Save trade edits"
+                >
+                  <Check size={13} />
+                  <span>{isSubmitting ? 'Saving...' : 'Save Trade'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 transition-all cursor-pointer"
+                >
+                  Cancel Edit
+                </button>
+              </div>
             )}
 
             <button

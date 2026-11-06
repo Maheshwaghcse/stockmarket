@@ -256,29 +256,34 @@ function SectionNavFooter({ currentTab, onSelectTab, onSave, isSubmitting, mode 
         </button>
       ) : <div />}
 
-      {nextTab ? (
-        <button
-          type="button"
-          onClick={() => {
-            onSelectTab(nextTab.id)
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all cursor-pointer ml-auto active:scale-95"
-        >
-          <span>Next: {nextTab.label}</span>
-          <ChevronRight size={14} />
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={isSubmitting}
-          className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 transition-all cursor-pointer ml-auto active:scale-95 disabled:opacity-50"
-        >
-          <Check size={14} />
-          <span>{isSubmitting ? 'Saving...' : mode === 'edit' ? 'Update Trade' : 'Save Trade'}</span>
-        </button>
-      )}
+      <div className="flex items-center gap-2 ml-auto">
+        {onSave && (
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isSubmitting}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            title="Save trade changes now"
+          >
+            <Check size={14} />
+            <span>{isSubmitting ? 'Saving...' : mode === 'edit' ? 'Update Trade' : 'Save Trade'}</span>
+          </button>
+        )}
+
+        {nextTab && (
+          <button
+            type="button"
+            onClick={() => {
+              onSelectTab(nextTab.id)
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all cursor-pointer active:scale-95"
+          >
+            <span>Next: {nextTab.label}</span>
+            <ChevronRight size={14} />
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -790,9 +795,9 @@ export default function TradeJournalTemplate({
   const handlePickBeforeEmotion = (name) => {
     if (!isEditing) return
     onChange('beforeTradeEmotions', name)
-    if (currentData?.beforeEmotions !== undefined) {
-      onChange('beforeEmotions', name)
-    }
+    onChange('beforeEmotions', name)
+    onChange('beforeTradeEmotion', name)
+    onChange('beforeEmotion', name)
     setIsBeforePickerOpen(false)
   }
 
@@ -805,9 +810,9 @@ export default function TradeJournalTemplate({
   const handlePickAfterEmotion = (name) => {
     if (!isEditing) return
     onChange('afterTradeEmotions', name)
-    if (currentData?.afterEmotions !== undefined) {
-      onChange('afterEmotions', name)
-    }
+    onChange('afterEmotions', name)
+    onChange('afterTradeEmotion', name)
+    onChange('afterEmotion', name)
     setIsAfterPickerOpen(false)
   }
 
@@ -815,10 +820,14 @@ export default function TradeJournalTemplate({
     if (!isEditing) return
     if (activeEmotionTab === 'before') {
       onChange('beforeTradeEmotions', '')
-      if (currentData?.beforeEmotions !== undefined) onChange('beforeEmotions', '')
+      onChange('beforeEmotions', '')
+      onChange('beforeTradeEmotion', '')
+      onChange('beforeEmotion', '')
     } else {
       onChange('afterTradeEmotions', '')
-      if (currentData?.afterEmotions !== undefined) onChange('afterEmotions', '')
+      onChange('afterEmotions', '')
+      onChange('afterTradeEmotion', '')
+      onChange('afterEmotion', '')
     }
   }
 
