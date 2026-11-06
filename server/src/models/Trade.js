@@ -108,6 +108,26 @@ const tradeSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    beforeTradeEmotions: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    afterTradeEmotions: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    beforeEmotions: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    afterEmotions: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     stopLoss: {
       type: Number,
       default: null,

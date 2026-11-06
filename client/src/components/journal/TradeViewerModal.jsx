@@ -64,6 +64,8 @@ export default function TradeViewerModal({
         instrumentType: currentTrade.instrumentType || 'Equity',
         optionType: currentTrade.optionType || 'CALL',
         strategy: currentTrade.strategy || '',
+        beforeTradeEmotions: currentTrade.beforeTradeEmotions || currentTrade.beforeEmotions || '',
+        afterTradeEmotions: currentTrade.afterTradeEmotions || currentTrade.afterEmotions || '',
         stopLoss: currentTrade.stopLoss ?? '',
         takeProfit: currentTrade.takeProfit ?? '',
         riskReward: currentTrade.riskReward || '',

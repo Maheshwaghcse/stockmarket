@@ -5,7 +5,8 @@ import {
   Trash2, X, ChevronLeft, ChevronRight, Info, CheckCircle2,
   Clock, ArrowUpRight, ArrowDownRight, Filter, AlertCircle,
   Target, LogOut, Lightbulb, Image, ChevronDown, ChevronUp,
-  Eye, FileText, Download, LayoutGrid, CalendarDays, Tag, Sparkles
+  Eye, FileText, Download, LayoutGrid, CalendarDays, Tag, Sparkles,
+  Smile, Layers, ShieldAlert, Check
 } from 'lucide-react'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
@@ -13,9 +14,22 @@ import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import JournalAnalyticsCharts from '../components/journal/JournalAnalyticsCharts'
 import JournalExportModal from '../components/journal/JournalExportModal'
-import TradeJournalTemplate from '../components/journal/TradeJournalTemplate'
+import TradeJournalTemplate, {
+  BEFORE_TRADE_EMOTIONS,
+  AFTER_TRADE_EMOTIONS,
+  STRATEGY_OPTIONS
+} from '../components/journal/TradeJournalTemplate'
 import TradeViewerModal from '../components/journal/TradeViewerModal'
 import { formatINR } from '../lib/journalAnalytics'
+
+// Helper to look up Marathi name & description for an emotion
+const getEmotionMeta = (emotionName, type = 'before') => {
+  if (!emotionName) return null
+  const list = type === 'before' ? BEFORE_TRADE_EMOTIONS : AFTER_TRADE_EMOTIONS
+  const found = list.find((e) => e.name.toLowerCase() === emotionName.toLowerCase().trim())
+  if (found) return found
+  return { name: emotionName, marathi: '', desc: '' }
+}
 
 // Quick suggested symbols
 const SUGGESTED_SYMBOLS = [
@@ -49,6 +63,8 @@ export default function TradingJournalPage() {
   const [heatmapTimeSlicer, setHeatmapTimeSlicer] = useState('1Y') // '7D' | '1M' | '6M' | '1Y' | 'ALL'
   const [desktopHeatmapView, setDesktopHeatmapView] = useState('matrix') // 'matrix' | 'cards'
   const [tradeOutcomeFilter, setTradeOutcomeFilter] = useState('ALL') // 'ALL' | 'WIN' | 'LOSS' | 'OPEN'
+  const [tradeStrategyFilter, setTradeStrategyFilter] = useState('ALL')
+  const [tradeEmotionFilter, setTradeEmotionFilter] = useState('ALL')
   const [tradeReasonFilter, setTradeReasonFilter] = useState('ALL')
 
   // Current calendar month navigation (defaults to today's date)
@@ -69,6 +85,8 @@ export default function TradingJournalPage() {
     instrumentType: 'Equity',
     optionType: 'CALL',
     strategy: '',
+    beforeTradeEmotions: '',
+    afterTradeEmotions: '',
     stopLoss: '',
     takeProfit: '',
     riskReward: '',
@@ -162,6 +180,8 @@ export default function TradingJournalPage() {
       instrumentType: 'Equity',
       optionType: 'CALL',
       strategy: '',
+      beforeTradeEmotions: '',
+      afterTradeEmotions: '',
       stopLoss: '',
       takeProfit: '',
       riskReward: '',
@@ -251,7 +271,31 @@ export default function TradingJournalPage() {
     })
   }, [trades, selectedDayKey])
 
-  // Filter trades by selected calendar day and slicer filters (Outcome & Reason)
+  // Available strategies for slicer (10 default strategies + any custom logged in trades)
+  const availableStrategies = useMemo(() => {
+    const set = new Set(STRATEGY_OPTIONS)
+    trades.forEach((t) => {
+      if (t.strategy?.trim()) set.add(t.strategy.trim())
+    })
+    return ['ALL', ...Array.from(set)]
+  }, [trades])
+
+  // Available emotions for slicer (from trades or default popular emotions)
+  const availableEmotions = useMemo(() => {
+    const set = new Set()
+    trades.forEach((t) => {
+      const b = t.beforeTradeEmotions || t.beforeEmotions
+      const a = t.afterTradeEmotions || t.afterEmotions
+      if (b) b.split(',').forEach((s) => s.trim() && set.add(s.trim()))
+      if (a) a.split(',').forEach((s) => s.trim() && set.add(s.trim()))
+    })
+    if (set.size === 0) {
+      ;['Calm', 'Confident', 'FOMO', 'Satisfied', 'Regret', 'Frustrated'].forEach((e) => set.add(e))
+    }
+    return ['ALL', ...Array.from(set)]
+  }, [trades])
+
+  // Filter trades by selected calendar day and slicer filters (Outcome, Strategy, Emotion)
   const displayedTrades = useMemo(() => {
     let list = selectedDayKey ? selectedDayTrades : trades
     if (tradeOutcomeFilter === 'WIN') {
@@ -261,17 +305,32 @@ export default function TradingJournalPage() {
     } else if (tradeOutcomeFilter === 'OPEN') {
       list = list.filter((t) => t.status === 'OPEN')
     }
+
+    if (tradeStrategyFilter && tradeStrategyFilter !== 'ALL') {
+      list = list.filter((t) => t.strategy && t.strategy.toLowerCase() === tradeStrategyFilter.toLowerCase())
+    }
+
+    if (tradeEmotionFilter && tradeEmotionFilter !== 'ALL') {
+      const lower = tradeEmotionFilter.toLowerCase()
+      list = list.filter((t) => {
+        const b = (t.beforeTradeEmotions || t.beforeEmotions || '').toLowerCase()
+        const a = (t.afterTradeEmotions || t.afterEmotions || '').toLowerCase()
+        return b.includes(lower) || a.includes(lower)
+      })
+    }
+
     if (tradeReasonFilter && tradeReasonFilter !== 'ALL') {
       const lower = tradeReasonFilter.toLowerCase()
       list = list.filter((t) =>
         t.entryReason?.toLowerCase().includes(lower) ||
         t.mistakes?.toLowerCase().includes(lower) ||
         t.assumptions?.toLowerCase().includes(lower) ||
-        t.strategy?.toLowerCase().includes(lower)
+        t.strategy?.toLowerCase().includes(lower) ||
+        t.exitReason?.toLowerCase().includes(lower)
       )
     }
     return list
-  }, [trades, selectedDayKey, selectedDayTrades, tradeOutcomeFilter, tradeReasonFilter])
+  }, [trades, selectedDayKey, selectedDayTrades, tradeOutcomeFilter, tradeStrategyFilter, tradeEmotionFilter, tradeReasonFilter])
 
   // Month Calendar Calculations (Matches Screenshot 2)
   const currentMonthYear = useMemo(() => {
@@ -927,7 +986,7 @@ export default function TradingJournalPage() {
 
                 {/* Heatmap Legend */}
                 <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2.5 pt-2 border-t border-slate-800/60">
-                  <span className="text-[10px] text-slate-500">Tap any colored square to inspect daily trades &amp; 3 setup reasons</span>
+                  <span className="text-[10px] text-slate-500">Tap any colored square to inspect daily trades &amp; journal details</span>
                   <div className="flex items-center gap-1.5">
                     <span>Max Loss</span>
                     <div className="w-2.5 h-2.5 rounded-xs" style={{ background: '#b91c1c' }} />
@@ -1325,9 +1384,9 @@ export default function TradingJournalPage() {
           </div>
         </div>
 
-        {/* Trade History Slicers: Outcome & Reason (Desktop & Mobile) */}
+        {/* Trade History Slicers: Outcome, Strategy & Emotions (Desktop & Mobile) */}
         <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2.5">
-          {/* Row 1: Outcome Slicers */}
+          {/* Row 1: Outcome Slicers & Reset */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-1.5 text-xs">
               <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1">
@@ -1361,59 +1420,81 @@ export default function TradingJournalPage() {
                   key={filter.id}
                   type="button"
                   onClick={() => setTradeOutcomeFilter(filter.id)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${tradeOutcomeFilter === filter.id
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    tradeOutcomeFilter === filter.id
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                      : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
                 >
                   {filter.label} ({filter.count})
                 </button>
               ))}
             </div>
 
-            {(tradeOutcomeFilter !== 'ALL' || tradeReasonFilter !== 'ALL') && (
+            {(tradeOutcomeFilter !== 'ALL' ||
+              tradeStrategyFilter !== 'ALL' ||
+              tradeEmotionFilter !== 'ALL' ||
+              tradeReasonFilter !== 'ALL') && (
               <button
                 type="button"
                 onClick={() => {
                   setTradeOutcomeFilter('ALL')
+                  setTradeStrategyFilter('ALL')
+                  setTradeEmotionFilter('ALL')
                   setTradeReasonFilter('ALL')
                 }}
-                className="text-xs text-rose-400 hover:text-rose-300 font-semibold cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20"
+                className="text-xs text-rose-400 hover:text-rose-300 font-semibold cursor-pointer flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 transition-all hover:bg-rose-500/20"
               >
-                <span>Reset Slicers ✕</span>
+                <span>Reset All Slicers ✕</span>
               </button>
             )}
           </div>
 
-          {/* Row 2: Preset Reason / Setup Slicers */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1.5 border-t border-slate-800/60">
+          {/* Row 2: Strategy Slicers (Latest Journal Strategies) */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs pt-2 border-t border-slate-800/60">
             <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1 flex items-center gap-1">
-              <Tag size={12} className="text-blue-400" />
-              Reason:
+              <Sparkles size={12} className="text-amber-400" />
+              Strategy:
             </span>
-            {[
-              'ALL',
-              'Breakout',
-              'Support Bounce',
-              'Resistance Rejection',
-              'Pullback to EMA',
-              'VWAP Reversal',
-              'Trend Following',
-              'Chart Pattern',
-              'Scalp Momentum',
-            ].map((reason) => {
-              const active = tradeReasonFilter === reason
+            {availableStrategies.map((strat) => {
+              const active = tradeStrategyFilter === strat
               return (
                 <button
-                  key={reason}
+                  key={strat}
                   type="button"
-                  onClick={() => setTradeReasonFilter(reason)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer ${active
-                    ? 'bg-purple-600 text-white font-bold shadow-sm shadow-purple-500/30 ring-1 ring-purple-400'
-                    : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
+                  onClick={() => setTradeStrategyFilter(strat)}
+                  className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                    active
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-sm shadow-amber-500/30 ring-1 ring-amber-400'
+                      : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
                 >
-                  {reason === 'ALL' ? 'All Reasons' : reason}
+                  {strat === 'ALL' ? 'All Strategies' : strat}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Row 3: Emotion Slicers (Latest Journal Emotions: Before / After) */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1.5 border-t border-slate-800/60">
+            <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1 flex items-center gap-1">
+              <Smile size={12} className="text-cyan-400" />
+              Emotions:
+            </span>
+            {availableEmotions.map((em) => {
+              const active = tradeEmotionFilter === em
+              return (
+                <button
+                  key={em}
+                  type="button"
+                  onClick={() => setTradeEmotionFilter(em)}
+                  className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                    active
+                      ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm shadow-cyan-500/30 ring-1 ring-cyan-400'
+                      : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  {em === 'ALL' ? 'All Emotions' : em}
                 </button>
               )
             })}
@@ -1434,12 +1515,14 @@ export default function TradingJournalPage() {
                   <tr>
                     <th className="py-3.5 px-4 font-bold text-left">Symbol</th>
                     <th className="py-3.5 px-3 font-semibold text-center">Type</th>
+                    <th className="py-3.5 px-3 font-semibold text-left">Strategy</th>
                     <th className="py-3.5 px-3 font-semibold text-left">Entry Date</th>
                     <th className="py-3.5 px-3 font-semibold text-right">Entry Price</th>
                     <th className="py-3.5 px-3 font-semibold text-right">Exit Price</th>
                     <th className="py-3.5 px-3 font-semibold text-center">Qty</th>
                     <th className="py-3.5 px-4 font-semibold text-right">Net P&amp;L</th>
-                    <th className="py-3.5 px-3 font-semibold text-center">3 Setup Reasons</th>
+                    <th className="py-3.5 px-3 font-semibold text-left">Emotions (B / A)</th>
+                    <th className="py-3.5 px-3 font-semibold text-center">Journal Details</th>
                     <th className="py-3.5 px-3 font-semibold text-center">Status</th>
                     <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
                   </tr>
@@ -1450,7 +1533,22 @@ export default function TradingJournalPage() {
                     const pnl = trade.pnl || 0
                     const isProfitable = pnl >= 0
                     const isExpanded = expandedTradeId === trade._id
-                    const hasReasons = !!(trade.entryReason?.trim() || trade.exitReason?.trim() || trade.lessonLearned?.trim())
+
+                    const beforeEmotion = trade.beforeTradeEmotions || trade.beforeEmotions || ''
+                    const afterEmotion = trade.afterTradeEmotions || trade.afterEmotions || ''
+                    const beforeMeta = getEmotionMeta(beforeEmotion, 'before')
+                    const afterMeta = getEmotionMeta(afterEmotion, 'after')
+
+                    const hasJournalDetails = !!(
+                      trade.strategy?.trim() ||
+                      beforeEmotion.trim() ||
+                      afterEmotion.trim() ||
+                      trade.exitReason?.trim() ||
+                      trade.mistakes?.trim() ||
+                      trade.lessonLearned?.trim() ||
+                      (Array.isArray(trade.customSections) && trade.customSections.length > 0) ||
+                      trade.imageUrl?.trim()
+                    )
 
                     return (
                       <Fragment key={trade._id}>
@@ -1473,13 +1571,24 @@ export default function TradingJournalPage() {
                           </td>
                           <td className="py-3.5 px-3 text-center">
                             <span
-                              className={`px-2.5 py-0.5 rounded text-[11px] font-semibold ${trade.tradeType === 'Long'
-                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                }`}
+                              className={`px-2.5 py-0.5 rounded text-[11px] font-semibold ${
+                                trade.tradeType === 'Long'
+                                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                              }`}
                             >
                               {trade.tradeType}
                             </span>
+                          </td>
+                          <td className="py-3.5 px-3 text-left">
+                            {trade.strategy ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                                <Sparkles size={10} className="text-amber-400" />
+                                <span className="truncate max-w-[130px]">{trade.strategy}</span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-600 text-[11px]">—</span>
+                            )}
                           </td>
                           <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px] text-left">
                             {new Date(trade.entryDate).toLocaleDateString('en-IN', {
@@ -1509,24 +1618,54 @@ export default function TradingJournalPage() {
                               <span className="text-slate-500">Open</span>
                             )}
                           </td>
+                          <td className="py-3.5 px-3 text-left">
+                            <div className="flex flex-col gap-1 items-start">
+                              {beforeEmotion ? (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/15 border border-blue-500/30 text-blue-300"
+                                  title={`Before Trade: ${beforeEmotion}${beforeMeta?.marathi ? ` (${beforeMeta.marathi})` : ''}`}
+                                >
+                                  <span className="text-[9px] font-bold text-blue-400 uppercase">B:</span>
+                                  <span className="font-semibold">{beforeEmotion}</span>
+                                </span>
+                              ) : null}
+                              {afterEmotion ? (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 border border-purple-500/30 text-purple-300"
+                                  title={`After Trade: ${afterEmotion}${afterMeta?.marathi ? ` (${afterMeta.marathi})` : ''}`}
+                                >
+                                  <span className="text-[9px] font-bold text-purple-400 uppercase">A:</span>
+                                  <span className="font-semibold">{afterEmotion}</span>
+                                </span>
+                              ) : null}
+                              {!beforeEmotion && !afterEmotion && (
+                                <span className="text-slate-600 text-[11px]">—</span>
+                              )}
+                            </div>
+                          </td>
                           <td className="py-3.5 px-3 text-center">
                             <button
                               onClick={() => setExpandedTradeId(isExpanded ? null : trade._id)}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${isExpanded
-                                ? 'bg-blue-600 text-white'
-                                : hasReasons
-                                  ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30'
-                                  : 'bg-slate-800 text-slate-500 hover:text-slate-400'
-                                }`}
-                              title="Click to view Entry Reason, Exit Reason, and Lesson Learned"
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                                isExpanded
+                                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30 ring-1 ring-blue-400'
+                                  : hasJournalDetails
+                                  ? 'bg-slate-800 text-slate-200 hover:text-white hover:bg-slate-700 border border-slate-700'
+                                  : 'bg-slate-800/60 text-slate-500 hover:text-slate-400'
+                              }`}
+                              title="Click to view Strategy, Emotions, Exit Reason, Mistakes, and Custom Sections"
                             >
-                              <span>3 Reasons</span>
+                              <Layers size={12} />
+                              <span>Details</span>
                               {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                             </button>
                           </td>
                           <td className="py-3.5 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                              }`}>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                              }`}
+                            >
                               {trade.status}
                             </span>
                           </td>
@@ -1560,57 +1699,200 @@ export default function TradingJournalPage() {
                           </td>
                         </tr>
 
-                        {/* Expandable 3 Reasons Row */}
+                        {/* Expandable Latest Journal Details Drawer */}
                         {isExpanded && (
-                          <tr className="bg-slate-900/90 border-b border-slate-800">
-                            <td colSpan="10" className="p-4 space-y-3">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                {/* 1. Entry Reason */}
-                                <div className="p-3 rounded-lg bg-slate-950/80 border border-blue-500/20 space-y-1">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                                    <Target size={12} /> 1. Entry Reason / Setup
-                                  </span>
-                                  <p className="text-xs text-slate-200 leading-relaxed">
-                                    {trade.entryReason?.trim() || <span className="text-slate-500 italic">No entry reason specified</span>}
-                                  </p>
+                          <tr className="bg-[#070b16] border-b border-slate-800">
+                            <td colSpan="12" className="p-4 sm:p-5">
+                              <div className="rounded-xl bg-[#0b1224] border border-blue-500/25 p-4 sm:p-5 space-y-4 shadow-xl">
+                                {/* Drawer Top Status Bar */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse" />
+                                    <span className="font-bold text-sm text-white">{trade.symbol}</span>
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                        trade.tradeType === 'Long'
+                                          ? 'bg-green-500/15 text-green-400 border border-green-500/25'
+                                          : 'bg-red-500/15 text-red-400 border border-red-500/25'
+                                      }`}
+                                    >
+                                      {trade.tradeType}
+                                    </span>
+                                    {trade.strategy && (
+                                      <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                        <Sparkles size={10} className="text-amber-400" />
+                                        {trade.strategy}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 font-mono text-xs text-slate-400">
+                                    <span>
+                                      {new Date(trade.entryDate).toLocaleDateString('en-IN', {
+                                        weekday: 'short',
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                      })}
+                                    </span>
+                                    {isClosed && (
+                                      <span className={`font-bold px-2 py-0.5 rounded ${isProfitable ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}`}>
+                                        {isProfitable ? '+' : ''}₹{pnl.toLocaleString('en-IN')} ({trade.pnlPercent > 0 ? '+' : ''}{trade.pnlPercent}%)
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
 
-                                {/* 2. Exit Reason */}
-                                <div className="p-3 rounded-lg bg-slate-950/80 border border-amber-500/20 space-y-1">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                                    <LogOut size={12} /> 2. Exit Reason / Trigger
-                                  </span>
-                                  <p className="text-xs text-slate-200 leading-relaxed">
-                                    {trade.exitReason?.trim() || <span className="text-slate-500 italic">No exit reason specified</span>}
-                                  </p>
+                                {/* Current Journal Details Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                                  {/* 1. Trading Strategy & Risk Setup */}
+                                  <div className="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/25 space-y-2">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                      <Sparkles size={13} className="text-amber-400" />
+                                      1. Trading Strategy & Setup
+                                    </span>
+                                    <div className="space-y-1 text-xs">
+                                      <div className="font-semibold text-slate-100 flex items-center justify-between">
+                                        <span>Strategy:</span>
+                                        <span className="text-amber-300 font-mono">{trade.strategy || 'No Strategy Set'}</span>
+                                      </div>
+                                      <div className="text-slate-400 flex items-center justify-between font-mono text-[11px]">
+                                        <span>Position / Type:</span>
+                                        <span className="text-slate-200">{trade.position || 'Intraday'} • {trade.instrumentType || 'Equity'}</span>
+                                      </div>
+                                      <div className="text-slate-400 flex items-center justify-between font-mono text-[11px] pt-1 border-t border-slate-800">
+                                        <span>Stop Loss / Target:</span>
+                                        <span className="text-slate-200">
+                                          SL: ₹{trade.stopLoss ?? '—'} | TP: ₹{trade.takeProfit ?? '—'}
+                                        </span>
+                                      </div>
+                                      <div className="text-slate-400 flex items-center justify-between font-mono text-[11px]">
+                                        <span>Risk-Reward:</span>
+                                        <span className="text-slate-200">{trade.riskReward || '—'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* 2. Before Trade Emotion */}
+                                  <div className="p-3.5 rounded-xl bg-slate-950/70 border border-blue-500/25 space-y-2">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                                      <Smile size={13} className="text-blue-400" />
+                                      2. Before Trade Emotion
+                                    </span>
+                                    {beforeEmotion ? (
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm font-bold text-white">{beforeEmotion}</span>
+                                          {beforeMeta?.marathi && (
+                                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                              {beforeMeta.marathi}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {beforeMeta?.desc && (
+                                          <p className="text-xs text-slate-300 italic">
+                                            "{beforeMeta.desc}"
+                                          </p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-slate-500 italic">No before-trade emotion recorded</span>
+                                    )}
+                                  </div>
+
+                                  {/* 3. After Trade Emotion */}
+                                  <div className="p-3.5 rounded-xl bg-slate-950/70 border border-purple-500/25 space-y-2">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                                      <Smile size={13} className="text-purple-400" />
+                                      3. After Trade Emotion
+                                    </span>
+                                    {afterEmotion ? (
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm font-bold text-white">{afterEmotion}</span>
+                                          {afterMeta?.marathi && (
+                                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                              {afterMeta.marathi}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {afterMeta?.desc && (
+                                          <p className="text-xs text-slate-300 italic">
+                                            "{afterMeta.desc}"
+                                          </p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-slate-500 italic">No after-trade emotion recorded</span>
+                                    )}
+                                  </div>
+
+                                  {/* 4. Exit Reason */}
+                                  <div className="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/25 space-y-2">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                      <LogOut size={13} className="text-amber-400" />
+                                      4. Exit Reason
+                                    </span>
+                                    <p className="text-xs text-slate-200 leading-relaxed font-sans">
+                                      {trade.exitReason?.trim() || (
+                                        <span className="text-slate-500 italic">No exit reason specified</span>
+                                      )}
+                                    </p>
+                                  </div>
+
+                                  {/* 5. Mistakes / Lessons */}
+                                  <div className="p-3.5 rounded-xl bg-slate-950/70 border border-rose-500/25 space-y-2">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                                      <ShieldAlert size={13} className="text-rose-400" />
+                                      5. Trading Mistakes / Discipline
+                                    </span>
+                                    <p className="text-xs text-slate-200 leading-relaxed font-sans">
+                                      {trade.mistakes?.trim() || trade.lessonLearned?.trim() || (
+                                        <span className="text-slate-500 italic">No mistakes logged — clean discipline</span>
+                                      )}
+                                    </p>
+                                  </div>
+
+                                  {/* 6. Custom Sections (if user created any) */}
+                                  {Array.isArray(trade.customSections) && trade.customSections.length > 0 && (
+                                    <div className="p-3.5 rounded-xl bg-slate-950/70 border border-emerald-500/25 space-y-2">
+                                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                        <Layers size={13} className="text-emerald-400" />
+                                        6. Custom Sections
+                                      </span>
+                                      <div className="space-y-1.5 text-xs text-slate-200">
+                                        {trade.customSections.map((sec, sIdx) => (
+                                          <div key={sIdx} className="p-2 rounded bg-slate-900 border border-slate-800">
+                                            <div className="font-bold text-[11px] text-emerald-300">{sec.title}</div>
+                                            {sec.content && <p className="text-slate-300 text-[11px] mt-0.5">{sec.content}</p>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
 
-                                {/* 3. Lesson Learned */}
-                                <div className="p-3 rounded-lg bg-slate-950/80 border border-emerald-500/20 space-y-1">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                                    <Lightbulb size={12} /> 3. Mistake / Lesson Learned
-                                  </span>
-                                  <p className="text-xs text-slate-200 leading-relaxed">
-                                    {trade.lessonLearned?.trim() || <span className="text-slate-500 italic">No lesson recorded</span>}
-                                  </p>
-                                </div>
+                                {/* Attached Chart Screenshot / Notes if present */}
+                                {(trade.imageUrl || trade.chartNotes) && (
+                                  <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                                    {trade.imageUrl ? (
+                                      <a
+                                        href={trade.imageUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1.5 text-blue-400 hover:text-blue-300 hover:underline font-semibold"
+                                      >
+                                        <Image size={13} />
+                                        <span>View Attached Chart Screenshot ↗</span>
+                                      </a>
+                                    ) : <div />}
+                                    {trade.chartNotes && (
+                                      <div className="text-slate-400 italic text-[11px]">
+                                        Chart Note: {trade.chartNotes}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-
-                              {trade.imageUrl && (
-                                <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2">
-                                  <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
-                                    <Image size={12} className="text-indigo-400" /> Chart Screenshot:
-                                  </span>
-                                  <a
-                                    href={trade.imageUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-xs text-blue-400 hover:underline flex items-center gap-1"
-                                  >
-                                    View attached chart image ↗
-                                  </a>
-                                </div>
-                              )}
                             </td>
                           </tr>
                         )}
@@ -1621,19 +1903,24 @@ export default function TradingJournalPage() {
               </table>
             </div>
 
-            {/* Mobile Cards View */}
+            {/* Mobile Cards View - Updated with Latest Journal Version */}
             <div className="md:hidden flex flex-col gap-3">
               {displayedTrades.map((trade) => {
                 const isClosed = trade.status === 'CLOSED'
                 const pnl = trade.pnl || 0
                 const isProfitable = pnl >= 0
                 const isExpanded = expandedTradeId === trade._id
-                const hasReasons = !!(trade.entryReason?.trim() || trade.exitReason?.trim() || trade.lessonLearned?.trim())
+
+                const beforeEmotion = trade.beforeTradeEmotions || trade.beforeEmotions || ''
+                const afterEmotion = trade.afterTradeEmotions || trade.afterEmotions || ''
+                const beforeMeta = getEmotionMeta(beforeEmotion, 'before')
+                const afterMeta = getEmotionMeta(afterEmotion, 'after')
 
                 return (
                   <div key={trade._id} className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
+                    {/* Top Row: Symbol, Call/Put, Long/Short, Status & Actions */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-sm text-slate-100">{trade.symbol}</span>
                         {(trade.instrumentType === 'Options' || trade.instrumentType === 'Option') && (
                           <span
@@ -1647,15 +1934,19 @@ export default function TradingJournalPage() {
                           </span>
                         )}
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${trade.tradeType === 'Long'
-                            ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                            }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            trade.tradeType === 'Long'
+                              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          }`}
                         >
                           {trade.tradeType}
                         </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                          }`}>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                            isClosed ? 'bg-slate-800 text-slate-300' : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                          }`}
+                        >
                           {trade.status}
                         </span>
                       </div>
@@ -1667,7 +1958,7 @@ export default function TradingJournalPage() {
                             setViewerTradeIndex(idx !== -1 ? idx : 0)
                             setViewerModalOpen(true)
                           }}
-                          className="px-2 py-0.5 rounded text-[10px] font-bold text-blue-300 bg-blue-600/20 hover:bg-blue-600/35 border border-blue-500/30 transition-all flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-300 bg-blue-600/20 hover:bg-blue-600/35 border border-blue-500/30 transition-all flex items-center gap-1 cursor-pointer"
                           title="Open Template"
                         >
                           <Eye size={11} />
@@ -1687,6 +1978,15 @@ export default function TradingJournalPage() {
                       </div>
                     </div>
 
+                    {/* Strategy Pill (Latest Journal) */}
+                    {trade.strategy && (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                        <Sparkles size={11} className="text-amber-400" />
+                        <span>Strategy: {trade.strategy}</span>
+                      </div>
+                    )}
+
+                    {/* Financial Stats Grid */}
                     <div className="grid grid-cols-2 gap-2 text-xs bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/60 font-mono">
                       <div>
                         <span className="text-[10px] text-slate-500 block font-sans">Entry</span>
@@ -1715,42 +2015,121 @@ export default function TradingJournalPage() {
                       </div>
                     </div>
 
+                    {/* Emotions Summary Row on Card */}
+                    {(beforeEmotion || afterEmotion) && (
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] pt-1 border-t border-slate-800/60">
+                        {beforeEmotion && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/15 border border-blue-500/30 text-blue-300 font-medium">
+                            <span className="text-[9px] font-bold uppercase text-blue-400">Before:</span>
+                            <span>{beforeEmotion}{beforeMeta?.marathi ? ` (${beforeMeta.marathi})` : ''}</span>
+                          </span>
+                        )}
+                        {afterEmotion && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-purple-300 font-medium">
+                            <span className="text-[9px] font-bold uppercase text-purple-400">After:</span>
+                            <span>{afterEmotion}{afterMeta?.marathi ? ` (${afterMeta.marathi})` : ''}</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Card Footer: Date & Details Toggle Button */}
                     <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
                       <span>{new Date(trade.entryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                       <button
                         onClick={() => setExpandedTradeId(isExpanded ? null : trade._id)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${isExpanded
-                          ? 'bg-blue-600 text-white'
-                          : hasReasons
-                            ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30'
-                            : 'bg-slate-800 text-slate-500 hover:text-slate-400'
-                          }`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                          isExpanded
+                            ? 'bg-blue-600 text-white ring-1 ring-blue-400'
+                            : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700'
+                        }`}
                       >
-                        <span>3 Reasons</span>
+                        <Layers size={11} />
+                        <span>Journal Details</span>
                         {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                       </button>
                     </div>
 
+                    {/* Mobile Expanded Drawer with Full Current Journal Details */}
                     {isExpanded && (
-                      <div className="space-y-2 pt-2 border-t border-slate-800 text-xs">
-                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-blue-500/20 space-y-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1">
-                            <Target size={11} /> 1. Entry Reason
-                          </span>
-                          <p className="text-slate-200">{trade.entryReason?.trim() || <span className="text-slate-500 italic">None</span>}</p>
-                        </div>
-                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-amber-500/20 space-y-1">
+                      <div className="space-y-2.5 pt-2.5 border-t border-slate-800 text-xs">
+                        {/* Strategy Card */}
+                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-amber-500/25 space-y-1">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
-                            <LogOut size={11} /> 2. Exit Reason
+                            <Sparkles size={11} /> 1. Strategy & Setup
+                          </span>
+                          <div className="font-semibold text-slate-100">{trade.strategy || 'No Strategy Set'}</div>
+                          <div className="text-[11px] text-slate-400 font-mono">
+                            SL: ₹{trade.stopLoss ?? '—'} | TP: ₹{trade.takeProfit ?? '—'} | R:R: {trade.riskReward || '—'}
+                          </div>
+                        </div>
+
+                        {/* Before Trade Emotion */}
+                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-blue-500/25 space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1">
+                            <Smile size={11} /> 2. Before Trade Emotion
+                          </span>
+                          {beforeEmotion ? (
+                            <div>
+                              <div className="font-semibold text-white">
+                                {beforeEmotion}{beforeMeta?.marathi ? ` (${beforeMeta.marathi})` : ''}
+                              </div>
+                              {beforeMeta?.desc && <p className="text-[11px] text-slate-300 italic mt-0.5">"{beforeMeta.desc}"</p>}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 italic">None</span>
+                          )}
+                        </div>
+
+                        {/* After Trade Emotion */}
+                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-purple-500/25 space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1">
+                            <Smile size={11} /> 3. After Trade Emotion
+                          </span>
+                          {afterEmotion ? (
+                            <div>
+                              <div className="font-semibold text-white">
+                                {afterEmotion}{afterMeta?.marathi ? ` (${afterMeta.marathi})` : ''}
+                              </div>
+                              {afterMeta?.desc && <p className="text-[11px] text-slate-300 italic mt-0.5">"{afterMeta.desc}"</p>}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 italic">None</span>
+                          )}
+                        </div>
+
+                        {/* Exit Reason */}
+                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-amber-500/25 space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                            <LogOut size={11} /> 4. Exit Reason
                           </span>
                           <p className="text-slate-200">{trade.exitReason?.trim() || <span className="text-slate-500 italic">None</span>}</p>
                         </div>
-                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-emerald-500/20 space-y-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                            <Lightbulb size={11} /> 3. Mistake / Lesson
+
+                        {/* Mistakes */}
+                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-rose-500/25 space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1">
+                            <ShieldAlert size={11} /> 5. Mistakes / Discipline
                           </span>
-                          <p className="text-slate-200">{trade.lessonLearned?.trim() || <span className="text-slate-500 italic">None</span>}</p>
+                          <p className="text-slate-200">{trade.mistakes?.trim() || trade.lessonLearned?.trim() || <span className="text-slate-500 italic">None</span>}</p>
                         </div>
+
+                        {/* Custom Sections */}
+                        {Array.isArray(trade.customSections) && trade.customSections.length > 0 && (
+                          <div className="p-2.5 rounded-lg bg-slate-950/80 border border-emerald-500/25 space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                              <Layers size={11} /> 6. Custom Sections
+                            </span>
+                            {trade.customSections.map((sec, idx) => (
+                              <div key={idx} className="p-1.5 rounded bg-slate-900 border border-slate-800 text-[11px]">
+                                <div className="font-semibold text-emerald-300">{sec.title}</div>
+                                {sec.content && <p className="text-slate-300 mt-0.5">{sec.content}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Chart Screenshot */}
                         {trade.imageUrl && (
                           <div className="pt-1">
                             <a href={trade.imageUrl} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline flex items-center gap-1 text-[11px]">
