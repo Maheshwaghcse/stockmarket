@@ -967,7 +967,7 @@ export default function TradeJournalTemplate({
                 DATE:
               </span>
               {isEditing ? (
-                <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1 flex items-center gap-2">
                   <input
                     type="datetime-local"
                     required
@@ -981,42 +981,16 @@ export default function TradeJournalTemplate({
                     }}
                     className="w-full bg-[#152244] border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 font-mono"
                   />
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-blue-950/70 border border-blue-500/30 text-[11px] font-mono text-blue-300 shrink-0">
-                    <Clock size={12} className="text-blue-400" />
-                    <span>
-                      {entryDate
-                        ? new Date(entryDate).toLocaleString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true,
-                          })
-                        : new Date().toLocaleString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true,
-                          })}
-                    </span>
-                  </div>
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-2 font-bold text-sm sm:text-base text-white font-mono">
-                  <Calendar size={14} className="text-blue-400" />
                   <span>
                     {entryDate
-                      ? new Date(entryDate).toLocaleString('en-IN', {
+                      ? new Date(entryDate).toLocaleDateString('en-IN', {
                           weekday: 'short',
-                          day: '2-digit',
+                          day: 'numeric',
                           month: 'short',
                           year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true,
                         })
                       : '—'}
                   </span>
