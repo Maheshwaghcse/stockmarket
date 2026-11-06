@@ -10,7 +10,13 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      retry: 2,
+      retry: (failureCount, error) => {
+        // Do not retry 401 (Unauthorized) or 403 (Forbidden)
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+          return false
+        }
+        return failureCount < 2
+      },
       refetchOnWindowFocus: false,
     },
   },

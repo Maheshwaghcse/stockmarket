@@ -9,11 +9,14 @@ const Audit = require('../models/Audit');
 const { protect } = require('../middleware/auth');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const JWT_SECRET = process.env.JWT_SECRET || 'stocksense_jwt_fallback_secret_key_2026';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'stocksense_refresh_jwt_fallback_secret_key_2026';
+
 const generateAccessToken  = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '15m' });
+  jwt.sign({ userId }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '1d' });
 
 const generateRefreshToken = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' });
+  jwt.sign({ userId }, JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d' });
 
 const setCookies = (res, accessToken, refreshToken) => {
   const isProd = process.env.NODE_ENV === 'production';
@@ -21,13 +24,13 @@ const setCookies = (res, accessToken, refreshToken) => {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
-    maxAge: 15 * 60 * 1000,
+    maxAge: 24 * 60 * 60 * 1000,
   });
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
     path: '/',
   });
 };
@@ -149,21 +152,30 @@ router.post(
 router.post('/refresh', async (req, res, next) => {
   try {
     const token = req.cookies?.refreshToken || req.body?.refreshToken;
-    if (!token) return res.status(401).json({ success: false, message: 'Refresh token missing.' });
+    if (!token) return res.status(401).json({ success: false, message: 'Refresh token missing.', code: 'REFRESH_TOKEN_MISSING' });
 
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_REFRESH_SECRET);
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Refresh token invalid or expired.', code: 'REFRESH_TOKEN_EXPIRED' });
+    }
+
     const user = await User.findById(decoded.userId).select('+refreshTokens');
 
-    if (!user || !user.refreshTokens?.includes(token)) {
-      return res.status(401).json({ success: false, message: 'Invalid refresh token.' });
+    if (!user || !user.isActive) {
+      return res.status(401).json({ success: false, message: 'User not found or deactivated.', code: 'USER_INACTIVE' });
+    }
+
+    if (!user.refreshTokens?.includes(token)) {
+      return res.status(401).json({ success: false, message: 'Invalid refresh token.', code: 'INVALID_REFRESH_TOKEN' });
     }
 
     const newAccessToken  = generateAccessToken(user._id);
     const newRefreshToken = generateRefreshToken(user._id);
 
-    // Rotate
-    user.refreshTokens = user.refreshTokens.filter((t) => t !== token);
-    user.refreshTokens.push(newRefreshToken);
+    // Keep last 5 valid tokens to prevent concurrent request race conditions
+    user.refreshTokens = [...(user.refreshTokens || []).filter((t) => t !== token).slice(-4), newRefreshToken];
     await user.save({ validateBeforeSave: false });
 
     setCookies(res, newAccessToken, newRefreshToken);
@@ -171,7 +183,7 @@ router.post('/refresh', async (req, res, next) => {
     res.json({ success: true, accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-      return res.status(401).json({ success: false, message: 'Refresh token invalid or expired.' });
+      return res.status(401).json({ success: false, message: 'Refresh token invalid or expired.', code: 'REFRESH_TOKEN_EXPIRED' });
     }
     next(err);
   }

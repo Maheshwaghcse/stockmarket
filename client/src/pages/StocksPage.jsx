@@ -448,21 +448,39 @@ export default function StocksPage() {
           ))}
         </div>
       ) : processedStocks.length === 0 ? (
-        <div className="card p-12 text-center space-y-3">
-          <p className="text-base font-semibold text-slate-200">No matching stocks found</p>
-          <p className="text-xs muted max-w-md mx-auto">
-            Try adjusting your search query or selecting a different sector filter from the list above.
+        <div className="card p-10 text-center space-y-3 bg-[#0d1424] border border-slate-800 rounded-2xl">
+          <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto text-blue-400">
+            <Search size={22} />
+          </div>
+          <p className="text-base font-semibold text-slate-100">No matching stocks found</p>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            {q.trim() && selectedSector !== 'All'
+              ? `No stocks matching "${q}" found in the "${selectedSector}" sector.`
+              : q.trim()
+              ? `No predefined stock matching "${q}" found in the current list.`
+              : 'No stocks available for the selected sector filter.'}
           </p>
-          <button
-            onClick={() => {
-              setQ('')
-              setSelectedSector('All')
-              setSortBy('all')
-            }}
-            className="mt-2 px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
-          >
-            Clear Filters
-          </button>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => {
+                setQ('')
+                setSelectedSector('All')
+                setSortBy('all')
+                setPage(1)
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-md transition-colors"
+            >
+              Reset Filters
+            </button>
+            {q.trim() && (
+              <Link
+                to={`/stocks/${q.trim().toUpperCase()}`}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+              >
+                Inspect "{q.trim().toUpperCase()}"
+              </Link>
+            )}
+          </div>
         </div>
       ) : viewMode === 'table' ? (
         /* ── TABLE VIEW ────────────────────────────────────────── */

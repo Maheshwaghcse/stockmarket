@@ -45,8 +45,8 @@ export default function TradingJournalPage() {
   const [tradeOutcomeFilter, setTradeOutcomeFilter] = useState('ALL') // 'ALL' | 'WIN' | 'LOSS' | 'OPEN'
   const [tradeReasonFilter, setTradeReasonFilter] = useState('ALL')
 
-  // Current calendar month navigation (default to October 2026 / current date)
-  const [viewDate, setViewDate] = useState(new Date('2026-10-15'))
+  // Current calendar month navigation (defaults to today's date)
+  const [viewDate, setViewDate] = useState(new Date())
 
   // Form State for New Trade Modal (default lotSize & quantity blank)
   const [form, setForm] = useState({

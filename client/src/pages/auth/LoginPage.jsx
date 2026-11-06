@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { TrendingUp, Eye, EyeOff } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { TrendingUp, Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import toast from 'react-hot-toast'
 
@@ -9,12 +9,21 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false)
   const { login, isLoading } = useAuthStore()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const isExpired = searchParams.get('expired') === 'true'
+  const redirectTarget = searchParams.get('redirect')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     const result = await login(form.email, form.password)
     if (result.success) {
       toast.success('Welcome back!')
+      if (redirectTarget) {
+        try {
+          navigate(decodeURIComponent(redirectTarget))
+          return
+        } catch {}
+      }
       navigate('/')
     } else {
       toast.error(result.message)
@@ -33,6 +42,13 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold">Sign In</h1>
           <p className="text-sm muted mt-1">Welcome back to StockSense</p>
         </div>
+
+        {isExpired && (
+          <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2.5 text-xs text-amber-300">
+            <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+            <span>Your session has expired. Please sign in again to continue.</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -99,3 +99,16 @@ export const useAuthStore = create(
     }
   )
 )
+
+// Auto-reset state when session expires
+if (typeof window !== 'undefined') {
+  window.addEventListener('stocksense:auth-expired', () => {
+    useAuthStore.setState({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      subscription: null,
+      isLoading: false,
+    })
+  })
+}

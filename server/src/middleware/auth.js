@@ -24,7 +24,8 @@ const protect = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const JWT_SECRET = process.env.JWT_SECRET || 'stocksense_jwt_fallback_secret_key_2026';
+    const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.userId).select('+refreshTokens');
 
     if (!user || !user.isActive) {
