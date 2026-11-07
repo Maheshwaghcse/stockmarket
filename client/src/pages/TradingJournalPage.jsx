@@ -1907,47 +1907,7 @@ export default function TradingJournalPage() {
                                         )}
                                       </div>
                                     ) : (
-                                      <div className="space-y-2">
-                                        <span className="text-xs text-slate-400 italic block">No before-trade emotion recorded</span>
-                                        <div className="text-[10px] font-bold text-blue-300 uppercase tracking-wide">
-                                          Quick 1-Click Set Emotion:
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                          {BEFORE_TRADE_EMOTIONS.slice(0, 6).map((em) => (
-                                            <button
-                                              key={em.name}
-                                              type="button"
-                                              onClick={() =>
-                                                updateTradeMutation.mutate({
-                                                  id: trade._id,
-                                                  data: {
-                                                    ...trade,
-                                                    beforeTradeEmotions: em.name,
-                                                    beforeEmotions: em.name,
-                                                    beforeTradeEmotion: em.name,
-                                                    beforeEmotion: em.name,
-                                                    emotions: {
-                                                      before: em.name,
-                                                      after: afterEmotion,
-                                                    },
-                                                    tradeAnalysis: {
-                                                      emotions: {
-                                                        before: em.name,
-                                                        after: afterEmotion,
-                                                      },
-                                                    },
-                                                  },
-                                                })
-                                              }
-                                              className="px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95 flex items-center gap-1"
-                                              title={em.desc}
-                                            >
-                                              <span>+ {em.name}</span>
-                                              {em.marathi && <span className="text-blue-400/80 font-normal">({em.marathi})</span>}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
+                                      <span className="text-xs text-slate-500 italic block">No before-trade emotion recorded</span>
                                     )}
                                   </div>
 
@@ -1979,47 +1939,7 @@ export default function TradingJournalPage() {
                                         )}
                                       </div>
                                     ) : (
-                                      <div className="space-y-2">
-                                        <span className="text-xs text-slate-400 italic block">No after-trade emotion recorded</span>
-                                        <div className="text-[10px] font-bold text-purple-300 uppercase tracking-wide">
-                                          Quick 1-Click Set Emotion:
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                          {AFTER_TRADE_EMOTIONS.slice(0, 6).map((em) => (
-                                            <button
-                                              key={em.name}
-                                              type="button"
-                                              onClick={() =>
-                                                updateTradeMutation.mutate({
-                                                  id: trade._id,
-                                                  data: {
-                                                    ...trade,
-                                                    afterTradeEmotions: em.name,
-                                                    afterEmotions: em.name,
-                                                    afterTradeEmotion: em.name,
-                                                    afterEmotion: em.name,
-                                                    emotions: {
-                                                      before: beforeEmotion,
-                                                      after: em.name,
-                                                    },
-                                                    tradeAnalysis: {
-                                                      emotions: {
-                                                        before: beforeEmotion,
-                                                        after: em.name,
-                                                      },
-                                                    },
-                                                  },
-                                                })
-                                              }
-                                              className="px-2 py-1 rounded-md text-[10px] font-semibold bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 transition-all cursor-pointer active:scale-95 flex items-center gap-1"
-                                              title={em.desc}
-                                            >
-                                              <span>+ {em.name}</span>
-                                              {em.marathi && <span className="text-purple-400/80 font-normal">({em.marathi})</span>}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
+                                      <span className="text-xs text-slate-500 italic block">No after-trade emotion recorded</span>
                                     )}
                                   </div>
 
@@ -2262,7 +2182,7 @@ export default function TradingJournalPage() {
                         </div>
 
                         {/* Before Trade Emotion */}
-                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-blue-500/25 space-y-1.5">
+                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-blue-500/25 space-y-1">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1">
                             <Smile size={11} /> 2. Before Trade Emotion
                           </span>
@@ -2274,48 +2194,12 @@ export default function TradingJournalPage() {
                               {beforeMeta?.desc && <p className="text-[11px] text-slate-300 italic mt-0.5">"{beforeMeta.desc}"</p>}
                             </div>
                           ) : (
-                            <div className="space-y-1.5">
-                              <span className="text-slate-400 italic block text-[11px]">No before emotion recorded</span>
-                              <div className="text-[9px] font-bold text-blue-300 uppercase">1-Click Set:</div>
-                              <div className="flex flex-wrap gap-1">
-                                {BEFORE_TRADE_EMOTIONS.slice(0, 5).map((em) => (
-                                  <button
-                                    key={em.name}
-                                    type="button"
-                                    onClick={() =>
-                                      updateTradeMutation.mutate({
-                                        id: trade._id,
-                                        data: {
-                                          ...trade,
-                                          beforeTradeEmotions: em.name,
-                                          beforeEmotions: em.name,
-                                          beforeTradeEmotion: em.name,
-                                          beforeEmotion: em.name,
-                                          emotions: {
-                                            before: em.name,
-                                            after: afterEmotion,
-                                          },
-                                          tradeAnalysis: {
-                                            emotions: {
-                                              before: em.name,
-                                              after: afterEmotion,
-                                            },
-                                          },
-                                        },
-                                      })
-                                    }
-                                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 cursor-pointer active:scale-95"
-                                  >
-                                    +{em.name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                            <span className="text-slate-500 italic text-xs block">No before-trade emotion recorded</span>
                           )}
                         </div>
 
                         {/* After Trade Emotion */}
-                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-purple-500/25 space-y-1.5">
+                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-purple-500/25 space-y-1">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1">
                             <Smile size={11} /> 3. After Trade Emotion
                           </span>
@@ -2327,43 +2211,7 @@ export default function TradingJournalPage() {
                               {afterMeta?.desc && <p className="text-[11px] text-slate-300 italic mt-0.5">"{afterMeta.desc}"</p>}
                             </div>
                           ) : (
-                            <div className="space-y-1.5">
-                              <span className="text-slate-400 italic block text-[11px]">No after emotion recorded</span>
-                              <div className="text-[9px] font-bold text-purple-300 uppercase">1-Click Set:</div>
-                              <div className="flex flex-wrap gap-1">
-                                {AFTER_TRADE_EMOTIONS.slice(0, 5).map((em) => (
-                                  <button
-                                    key={em.name}
-                                    type="button"
-                                    onClick={() =>
-                                      updateTradeMutation.mutate({
-                                        id: trade._id,
-                                        data: {
-                                          ...trade,
-                                          afterTradeEmotions: em.name,
-                                          afterEmotions: em.name,
-                                          afterTradeEmotion: em.name,
-                                          afterEmotion: em.name,
-                                          emotions: {
-                                            before: beforeEmotion,
-                                            after: em.name,
-                                          },
-                                          tradeAnalysis: {
-                                            emotions: {
-                                              before: beforeEmotion,
-                                              after: em.name,
-                                            },
-                                          },
-                                        },
-                                      })
-                                    }
-                                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 cursor-pointer active:scale-95"
-                                  >
-                                    +{em.name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                            <span className="text-slate-500 italic text-xs block">No after-trade emotion recorded</span>
                           )}
                         </div>
 
@@ -2474,6 +2322,9 @@ export default function TradingJournalPage() {
         user={user}
         initialFromDate={fromDate}
         initialToDate={toDate}
+        initialStrategy={tradeStrategyFilter}
+        initialEmotion={tradeEmotionFilter}
+        availableStrategies={availableStrategies}
       />
     </div>
   )
