@@ -208,6 +208,7 @@ export default function TradeViewerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
       <div className="bg-[#080d1c] border-2 border-slate-700/80 rounded-2xl w-full max-w-4xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden my-auto">
 
+
         {/* ─── MODAL TOP CONTROL BAR: PREV / NEXT & STATUS ───────────── */}
         <div className="p-3 sm:p-4 bg-[#0d162d] border-b-2 border-slate-700/80 flex flex-wrap items-center justify-between gap-3 shrink-0">
 
@@ -396,6 +397,7 @@ export default function TradeViewerModal({
               allTrades={trades}
               onQuickUpdateTrade={async (fields) => {
                 if (!currentTrade || !onUpdateTrade) return
+                setEditFormData((prev) => ({ ...prev, ...fields }))
                 await onUpdateTrade(currentTrade._id, {
                   ...currentTrade,
                   ...editFormData,

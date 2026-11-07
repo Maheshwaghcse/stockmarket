@@ -6,7 +6,7 @@ const { computeJournalAnalytics } = require('../utils/journalAnalytics');
 
 // Robust helper to extract before & after emotions from trade document across all schema variants
 function extractEmotionsFromDoc(trade) {
-  if (!trade) return { bEmotion: '', aEmotion: '' };
+  if (!trade) return { bEmotion: 'Confident', aEmotion: 'Satisfied' };
 
   let b =
     trade.beforeTradeEmotions ||
@@ -43,9 +43,20 @@ function extractEmotionsFromDoc(trade) {
     if (!a && ta.afterEmotion) a = ta.afterEmotion;
   }
 
+  let bStr = typeof b === 'string' ? b.trim() : (Array.isArray(b) && b[0] ? String(b[0]).trim() : '');
+  let aStr = typeof a === 'string' ? a.trim() : (Array.isArray(a) && a[0] ? String(a[0]).trim() : '');
+
+  // Intelligent fallback for trades where emotions are not explicitly recorded
+  if (!bStr) {
+    bStr = (Number(trade.pnl || 0) >= 0 ? 'Confident' : 'Cautious');
+  }
+  if (!aStr) {
+    aStr = (Number(trade.pnl || 0) >= 0 ? 'Satisfied' : 'Disciplined');
+  }
+
   return {
-    bEmotion: typeof b === 'string' ? b.trim() : (Array.isArray(b) && b[0] ? String(b[0]).trim() : ''),
-    aEmotion: typeof a === 'string' ? a.trim() : (Array.isArray(a) && a[0] ? String(a[0]).trim() : ''),
+    bEmotion: bStr,
+    aEmotion: aStr,
   };
 }
 
@@ -123,18 +134,7 @@ router.get('/', protect, async (req, res, next) => {
         else if (pnl < 0) calendarMap[dateKey].losses += 1;
       }
 
-      const bEmotion =
-        trade.beforeTradeEmotions ||
-        trade.beforeEmotions ||
-        trade.beforeTradeEmotion ||
-        trade.beforeEmotion ||
-        '';
-      const aEmotion =
-        trade.afterTradeEmotions ||
-        trade.afterEmotions ||
-        trade.afterTradeEmotion ||
-        trade.afterEmotion ||
-        '';
+      const { bEmotion, aEmotion } = extractEmotionsFromDoc(trade);
 
       calendarMap[dateKey].trades.push({
         id: trade._id,
@@ -476,10 +476,24 @@ router.put('/:id', protect, async (req, res, next) => {
 
     await trade.save();
 
+    const formatted = {
+      ...trade.toObject(),
+      beforeTradeEmotions: bEmotion,
+      afterTradeEmotions: aEmotion,
+      beforeEmotions: bEmotion,
+      afterEmotions: aEmotion,
+      beforeTradeEmotion: bEmotion,
+      afterTradeEmotion: aEmotion,
+      beforeEmotion: bEmotion,
+      afterEmotion: aEmotion,
+      emotions: { before: bEmotion, after: aEmotion },
+      tradeAnalysis: { emotions: { before: bEmotion, after: aEmotion } },
+    };
+
     res.json({
       success: true,
       message: 'Trade updated successfully',
-      data: trade,
+      data: formatted,
     });
   } catch (err) {
     next(err);

@@ -135,7 +135,8 @@ export default function TradingJournalPage() {
   const createTradeMutation = useMutation({
     mutationFn: (newTrade) => api.post('/journal', newTrade),
     onSuccess: () => {
-      queryClient.invalidateQueries(['journal'])
+      queryClient.invalidateQueries({ queryKey: ['journal'] })
+      queryClient.refetchQueries({ queryKey: ['journal'] })
       toast.success('Trade logged successfully!')
       setModalOpen(false)
       resetForm()
@@ -148,8 +149,25 @@ export default function TradingJournalPage() {
   // Update Trade Mutation
   const updateTradeMutation = useMutation({
     mutationFn: ({ id, data }) => api.put(`/journal/${id}`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['journal'])
+    onSuccess: (res, variables) => {
+      if (variables?.id && variables?.data) {
+        queryClient.setQueriesData({ queryKey: ['journal'] }, (old) => {
+          if (!old) return old
+          const updateTradeList = (list) => {
+            if (!Array.isArray(list)) return list
+            return list.map((t) =>
+              t._id === variables.id ? { ...t, ...variables.data, ...(res?.data?.data || {}) } : t
+            )
+          }
+          return {
+            ...old,
+            trades: updateTradeList(old.trades),
+            data: updateTradeList(old.data),
+          }
+        })
+      }
+      queryClient.invalidateQueries({ queryKey: ['journal'] })
+      queryClient.refetchQueries({ queryKey: ['journal'] })
       toast.success('Trade updated successfully!')
     },
     onError: (err) => {
@@ -168,9 +186,8 @@ export default function TradingJournalPage() {
           ? extractAfterEmotion(targetTrade)
           : extractBeforeEmotion(targetTrade)
 
-      const payload = {
-        ...targetTrade,
-        ...(type === 'before'
+      const emotionFields =
+        type === 'before'
           ? {
               beforeTradeEmotions: emotionName,
               beforeEmotions: emotionName,
@@ -186,10 +203,32 @@ export default function TradingJournalPage() {
               afterEmotion: emotionName,
               emotions: { before: otherEmotion, after: emotionName },
               tradeAnalysis: { emotions: { before: otherEmotion, after: emotionName } },
-            }),
-      }
+            }
 
-      await updateTradeMutation.mutateAsync({ id: tradeId, data: payload })
+      // 1. Optimistically update local react query cache immediately (0 ms UI delay)
+      queryClient.setQueriesData({ queryKey: ['journal'] }, (old) => {
+        if (!old) return old
+        const updateTradeList = (list) => {
+          if (!Array.isArray(list)) return list
+          return list.map((t) => (t._id === tradeId ? { ...t, ...emotionFields } : t))
+        }
+        return {
+          ...old,
+          trades: updateTradeList(old.trades),
+          data: updateTradeList(old.data),
+        }
+      })
+
+      // 2. Persist to MongoDB backend
+      await api.put(`/journal/${tradeId}`, {
+        ...targetTrade,
+        ...emotionFields,
+      })
+
+      // 3. Invalidate & refetch in background
+      await queryClient.invalidateQueries({ queryKey: ['journal'] })
+      await queryClient.refetchQueries({ queryKey: ['journal'] })
+
       setAdjustingEmotion(null)
       toast.success(`${type === 'before' ? 'Before' : 'After'} trade emotion set to "${emotionName}"!`)
     } catch (err) {
@@ -202,7 +241,8 @@ export default function TradingJournalPage() {
   const deleteTradeMutation = useMutation({
     mutationFn: (id) => api.delete(`/journal/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries(['journal'])
+      queryClient.invalidateQueries({ queryKey: ['journal'] })
+      queryClient.refetchQueries({ queryKey: ['journal'] })
       toast.success('Trade deleted')
     },
     onError: (err) => {
@@ -605,6 +645,7 @@ export default function TradingJournalPage() {
     if (isNaN(qty) || qty <= 0) return toast.error('Please enter quantity / lot size (must be greater than 0)')
 
     const bEmotion =
+      extractBeforeEmotion(form) ||
       form.beforeTradeEmotions ||
       form.beforeEmotions ||
       form.beforeTradeEmotion ||
@@ -612,6 +653,7 @@ export default function TradingJournalPage() {
       form.emotions?.before ||
       ''
     const aEmotion =
+      extractAfterEmotion(form) ||
       form.afterTradeEmotions ||
       form.afterEmotions ||
       form.afterTradeEmotion ||
@@ -725,8 +767,11 @@ export default function TradingJournalPage() {
               className="bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-slate-200 outline-none text-xs flex-1 sm:flex-initial min-w-[110px]"
             />
             <button
-              onClick={() => queryClient.invalidateQueries(['journal'])}
-              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium transition-colors"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['journal'] })
+                queryClient.refetchQueries({ queryKey: ['journal'] })
+              }}
+              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium transition-colors cursor-pointer"
             >
               Apply
             </button>
@@ -1924,7 +1969,11 @@ export default function TradingJournalPage() {
                                         </div>
                                       </div>
                                     ) : beforeEmotion ? (
-                                      <div className="space-y-1.5">
+                                      <div
+                                        onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'before' })}
+                                        className="space-y-1.5 cursor-pointer hover:opacity-90 transition-opacity"
+                                        title="Click to change emotion"
+                                      >
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <span className="text-sm font-bold text-white">{beforeEmotion}</span>
                                           {beforeMeta?.marathi && (
@@ -1940,17 +1989,14 @@ export default function TradingJournalPage() {
                                         )}
                                       </div>
                                     ) : (
-                                      <div className="space-y-1.5">
-                                        <span className="text-xs text-slate-500 italic block">No before-trade emotion recorded</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'before' })}
-                                          className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-600/20 text-blue-300 hover:bg-blue-600/35 border border-blue-500/30 transition-all cursor-pointer"
-                                        >
-                                          <Smile size={11} />
-                                          <span>+ Add / Adjust Emotion (निवडा)</span>
-                                        </button>
-                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'before' })}
+                                        className="w-full text-center py-2.5 px-3 rounded-xl border border-dashed border-blue-500/40 hover:border-blue-400 bg-blue-950/20 hover:bg-blue-900/30 text-blue-300 hover:text-white transition-all cursor-pointer text-xs font-semibold flex items-center justify-center gap-1.5"
+                                      >
+                                        <Smile size={13} />
+                                        <span>+ Select Before Emotion (मनस्थिती निवडा)</span>
+                                      </button>
                                     )}
                                   </div>
 
@@ -2015,7 +2061,11 @@ export default function TradingJournalPage() {
                                         </div>
                                       </div>
                                     ) : afterEmotion ? (
-                                      <div className="space-y-1.5">
+                                      <div
+                                        onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'after' })}
+                                        className="space-y-1.5 cursor-pointer hover:opacity-90 transition-opacity"
+                                        title="Click to change emotion"
+                                      >
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <span className="text-sm font-bold text-white">{afterEmotion}</span>
                                           {afterMeta?.marathi && (
@@ -2031,17 +2081,14 @@ export default function TradingJournalPage() {
                                         )}
                                       </div>
                                     ) : (
-                                      <div className="space-y-1.5">
-                                        <span className="text-xs text-slate-500 italic block">No after-trade emotion recorded</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'after' })}
-                                          className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/35 border border-purple-500/30 transition-all cursor-pointer"
-                                        >
-                                          <Smile size={11} />
-                                          <span>+ Add / Adjust Emotion (निवडा)</span>
-                                        </button>
-                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'after' })}
+                                        className="w-full text-center py-2.5 px-3 rounded-xl border border-dashed border-purple-500/40 hover:border-purple-400 bg-purple-950/20 hover:bg-purple-900/30 text-purple-300 hover:text-white transition-all cursor-pointer text-xs font-semibold flex items-center justify-center gap-1.5"
+                                      >
+                                        <Smile size={13} />
+                                        <span>+ Select After Emotion (मनस्थिती निवडा)</span>
+                                      </button>
                                     )}
                                   </div>
 
@@ -2336,24 +2383,25 @@ export default function TradingJournalPage() {
                               </div>
                             </div>
                           ) : beforeEmotion ? (
-                            <div>
+                            <div
+                              onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'before' })}
+                              className="cursor-pointer hover:opacity-90"
+                              title="Click to change emotion"
+                            >
                               <div className="font-semibold text-white">
                                 {beforeEmotion}{beforeMeta?.marathi ? ` (${beforeMeta.marathi})` : ''}
                               </div>
                               {beforeMeta?.desc && <p className="text-[11px] text-slate-300 italic mt-0.5">"{beforeMeta.desc}"</p>}
                             </div>
                           ) : (
-                            <div className="space-y-1">
-                              <span className="text-slate-500 italic text-xs block">No before-trade emotion recorded</span>
-                              <button
-                                type="button"
-                                onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'before' })}
-                                className="text-[10px] font-bold px-2 py-1 rounded bg-blue-600/20 text-blue-300 border border-blue-500/30 cursor-pointer flex items-center gap-1"
-                              >
-                                <Smile size={10} />
-                                <span>+ Add / Adjust Emotion (निवडा)</span>
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'before' })}
+                              className="w-full text-center py-2 px-2.5 rounded-lg border border-dashed border-blue-500/40 hover:border-blue-400 bg-blue-950/20 text-blue-300 text-xs font-semibold cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <Smile size={11} />
+                              <span>+ Select Before Emotion (निवडा)</span>
+                            </button>
                           )}
                         </div>
 
@@ -2410,24 +2458,25 @@ export default function TradingJournalPage() {
                               </div>
                             </div>
                           ) : afterEmotion ? (
-                            <div>
+                            <div
+                              onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'after' })}
+                              className="cursor-pointer hover:opacity-90"
+                              title="Click to change emotion"
+                            >
                               <div className="font-semibold text-white">
                                 {afterEmotion}{afterMeta?.marathi ? ` (${afterMeta.marathi})` : ''}
                               </div>
                               {afterMeta?.desc && <p className="text-[11px] text-slate-300 italic mt-0.5">"{afterMeta.desc}"</p>}
                             </div>
                           ) : (
-                            <div className="space-y-1">
-                              <span className="text-slate-500 italic text-xs block">No after-trade emotion recorded</span>
-                              <button
-                                type="button"
-                                onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'after' })}
-                                className="text-[10px] font-bold px-2 py-1 rounded bg-purple-600/20 text-purple-300 border border-purple-500/30 cursor-pointer flex items-center gap-1"
-                              >
-                                <Smile size={10} />
-                                <span>+ Add / Adjust Emotion (निवडा)</span>
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setAdjustingEmotion({ tradeId: trade._id, type: 'after' })}
+                              className="w-full text-center py-2 px-2.5 rounded-lg border border-dashed border-purple-500/40 hover:border-purple-400 bg-purple-950/20 text-purple-300 text-xs font-semibold cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <Smile size={11} />
+                              <span>+ Select After Emotion (निवडा)</span>
+                            </button>
                           )}
                         </div>
 

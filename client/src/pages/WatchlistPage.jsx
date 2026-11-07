@@ -23,13 +23,13 @@ export default function WatchlistPage() {
 
   const createList = useMutation({
     mutationFn: (name) => api.post('/watchlist', { name }),
-    onSuccess: () => { qc.invalidateQueries(['watchlists']); setNewListName(''); toast.success('Watchlist created') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['watchlists'] }); setNewListName(''); toast.success('Watchlist created') },
     onError: (e) => toast.error(e.response?.data?.message || 'Failed'),
   })
 
   const deleteList = useMutation({
     mutationFn: (id) => api.delete(`/watchlist/${id}`),
-    onSuccess: () => { qc.invalidateQueries(['watchlists']); toast.success('Deleted') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['watchlists'] }); toast.success('Deleted') },
   })
 
   const addItem = useMutation({
@@ -39,13 +39,13 @@ export default function WatchlistPage() {
       type: 'index',
       exchange: 'NSE',
     }),
-    onSuccess: () => { qc.invalidateQueries(['watchlists']); setAddSymbol(''); toast.success('Added to watchlist') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['watchlists'] }); setAddSymbol(''); toast.success('Added to watchlist') },
     onError: (e) => toast.error(e.response?.data?.message || 'Failed'),
   })
 
   const removeItem = useMutation({
     mutationFn: ({ listId, symbol }) => api.delete(`/watchlist/${listId}/items/${symbol}`),
-    onSuccess: () => { qc.invalidateQueries(['watchlists']); toast.success('Removed') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['watchlists'] }); toast.success('Removed') },
   })
 
   const activeList = lists.find((l) => l._id === selectedList) || lists[0]

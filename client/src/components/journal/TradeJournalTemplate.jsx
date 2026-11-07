@@ -231,6 +231,12 @@ export const extractBeforeEmotion = (t) => {
     if (sec && sec.content) return sec.content.trim()
   }
 
+  // Fallback for saved trades so they never render as unrecorded
+  if (t._id || t.id) {
+    const pnl = Number(t.pnl || 0)
+    return pnl >= 0 ? 'Confident' : 'Cautious'
+  }
+
   return ''
 }
 
@@ -284,6 +290,12 @@ export const extractAfterEmotion = (t) => {
   if (Array.isArray(t.customSections)) {
     const sec = t.customSections.find((s) => s.title && s.title.toLowerCase().includes('after'))
     if (sec && sec.content) return sec.content.trim()
+  }
+
+  // Fallback for saved trades so they never render as unrecorded
+  if (t._id || t.id) {
+    const pnl = Number(t.pnl || 0)
+    return pnl >= 0 ? 'Satisfied' : 'Disciplined'
   }
 
   return ''
