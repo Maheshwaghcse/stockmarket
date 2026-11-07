@@ -179,6 +179,116 @@ export const AFTER_TRADE_EMOTIONS = [
   },
 ]
 
+// Robust helper to extract before trade emotion from any trade object / form data across all schema variants
+export const extractBeforeEmotion = (t) => {
+  if (!t) return ''
+  let val =
+    t.beforeTradeEmotions ||
+    t.beforeEmotions ||
+    t.beforeTradeEmotion ||
+    t.beforeEmotion ||
+    t.emotionsBefore ||
+    ''
+
+  if (!val && t.emotions) {
+    if (typeof t.emotions === 'string') {
+      try {
+        const parsed = JSON.parse(t.emotions)
+        val = parsed.before || parsed.beforeTradeEmotions || ''
+      } catch {
+        val = t.emotions
+      }
+    } else if (typeof t.emotions === 'object') {
+      val = t.emotions.before || t.emotions.beforeTradeEmotions || ''
+    }
+  }
+
+  if (!val && t.tradeAnalysis) {
+    let ta = t.tradeAnalysis
+    if (typeof ta === 'string') {
+      try { ta = JSON.parse(ta) } catch {}
+    }
+    if (ta && typeof ta === 'object') {
+      if (ta.emotions && typeof ta.emotions === 'object') {
+        val = ta.emotions.before || ta.emotions.beforeTradeEmotions || ''
+      }
+      if (!val && ta.beforeEmotion) val = ta.beforeEmotion
+    }
+  }
+
+  if (val && typeof val === 'string' && val.trim()) return val.trim()
+  if (Array.isArray(val) && val.length > 0) return String(val[0]).trim()
+
+  if (t.entryReason && typeof t.entryReason === 'string') {
+    const match = BEFORE_TRADE_EMOTIONS.find((e) =>
+      t.entryReason.toLowerCase().includes(e.name.toLowerCase())
+    )
+    if (match) return match.name
+  }
+
+  if (Array.isArray(t.customSections)) {
+    const sec = t.customSections.find((s) => s.title && s.title.toLowerCase().includes('before'))
+    if (sec && sec.content) return sec.content.trim()
+  }
+
+  return ''
+}
+
+// Robust helper to extract after trade emotion from any trade object / form data across all schema variants
+export const extractAfterEmotion = (t) => {
+  if (!t) return ''
+  let val =
+    t.afterTradeEmotions ||
+    t.afterEmotions ||
+    t.afterTradeEmotion ||
+    t.afterEmotion ||
+    t.emotionsAfter ||
+    ''
+
+  if (!val && t.emotions) {
+    if (typeof t.emotions === 'string') {
+      try {
+        const parsed = JSON.parse(t.emotions)
+        val = parsed.after || parsed.afterTradeEmotions || ''
+      } catch {
+        val = t.emotions
+      }
+    } else if (typeof t.emotions === 'object') {
+      val = t.emotions.after || t.emotions.afterTradeEmotions || ''
+    }
+  }
+
+  if (!val && t.tradeAnalysis) {
+    let ta = t.tradeAnalysis
+    if (typeof ta === 'string') {
+      try { ta = JSON.parse(ta) } catch {}
+    }
+    if (ta && typeof ta === 'object') {
+      if (ta.emotions && typeof ta.emotions === 'object') {
+        val = ta.emotions.after || ta.emotions.afterTradeEmotions || ''
+      }
+      if (!val && ta.afterEmotion) val = ta.afterEmotion
+    }
+  }
+
+  if (val && typeof val === 'string' && val.trim()) return val.trim()
+  if (Array.isArray(val) && val.length > 0) return String(val[0]).trim()
+
+  if (t.exitReason && typeof t.exitReason === 'string') {
+    const match = AFTER_TRADE_EMOTIONS.find((e) =>
+      t.exitReason.toLowerCase().includes(e.name.toLowerCase())
+    )
+    if (match) return match.name
+  }
+
+  if (Array.isArray(t.customSections)) {
+    const sec = t.customSections.find((s) => s.title && s.title.toLowerCase().includes('after'))
+    if (sec && sec.content) return sec.content.trim()
+  }
+
+  return ''
+}
+
 // Strict 10 Default Strategies requested by user
 export const STRATEGY_OPTIONS = [
   'Fibonacci Setup',
@@ -417,8 +527,8 @@ export default function TradeJournalTemplate({
   const exitPrice = currentData?.exitPrice !== undefined && currentData?.exitPrice !== null ? currentData?.exitPrice : ''
   const takeProfit = currentData?.takeProfit !== undefined && currentData?.takeProfit !== null ? currentData?.takeProfit : ''
   const riskReward = currentData?.riskReward || ''
-  const beforeTradeEmotions = currentData?.beforeTradeEmotions || currentData?.beforeEmotions || currentData?.emotionsBefore || ''
-  const afterTradeEmotions = currentData?.afterTradeEmotions || currentData?.afterEmotions || currentData?.emotionsAfter || ''
+  const beforeTradeEmotions = extractBeforeEmotion(currentData)
+  const afterTradeEmotions = extractAfterEmotion(currentData)
   const exitReason = currentData?.exitReason || ''
   const mistakes = currentData?.mistakes || currentData?.assumptions || ''
   const customSections = Array.isArray(currentData?.customSections) ? currentData.customSections : []

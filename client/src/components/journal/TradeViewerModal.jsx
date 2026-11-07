@@ -12,7 +12,10 @@ import {
   ArrowRight,
   CheckCircle,
 } from 'lucide-react'
-import TradeJournalTemplate from './TradeJournalTemplate'
+import TradeJournalTemplate, {
+  extractBeforeEmotion,
+  extractAfterEmotion,
+} from './TradeJournalTemplate'
 import toast from 'react-hot-toast'
 
 export default function TradeViewerModal({
@@ -64,20 +67,8 @@ export default function TradeViewerModal({
         instrumentType: currentTrade.instrumentType || 'Equity',
         optionType: currentTrade.optionType || 'CALL',
         strategy: currentTrade.strategy || '',
-        beforeTradeEmotions:
-          currentTrade.beforeTradeEmotions ||
-          currentTrade.beforeEmotions ||
-          currentTrade.beforeTradeEmotion ||
-          currentTrade.beforeEmotion ||
-          currentTrade.emotionsBefore ||
-          '',
-        afterTradeEmotions:
-          currentTrade.afterTradeEmotions ||
-          currentTrade.afterEmotions ||
-          currentTrade.afterTradeEmotion ||
-          currentTrade.afterEmotion ||
-          currentTrade.emotionsAfter ||
-          '',
+        beforeTradeEmotions: extractBeforeEmotion(currentTrade),
+        afterTradeEmotions: extractAfterEmotion(currentTrade),
         stopLoss: currentTrade.stopLoss ?? '',
         takeProfit: currentTrade.takeProfit ?? '',
         riskReward: currentTrade.riskReward || '',
@@ -148,20 +139,8 @@ export default function TradeViewerModal({
     if (isNaN(qty) || qty <= 0) return toast.error('Please enter quantity / lot size (must be greater than 0)')
     setIsSubmitting(true)
     try {
-      const bEmotion =
-        editFormData.beforeTradeEmotions ||
-        editFormData.beforeEmotions ||
-        editFormData.beforeTradeEmotion ||
-        editFormData.beforeEmotion ||
-        editFormData.emotions?.before ||
-        ''
-      const aEmotion =
-        editFormData.afterTradeEmotions ||
-        editFormData.afterEmotions ||
-        editFormData.afterTradeEmotion ||
-        editFormData.afterEmotion ||
-        editFormData.emotions?.after ||
-        ''
+      const bEmotion = extractBeforeEmotion(editFormData)
+      const aEmotion = extractAfterEmotion(editFormData)
       await onUpdateTrade(currentTrade._id, {
         ...editFormData,
         quantity: qty,

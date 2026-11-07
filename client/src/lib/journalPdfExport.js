@@ -1,5 +1,11 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import {
+  extractBeforeEmotion,
+  extractAfterEmotion,
+} from '../components/journal/TradeJournalTemplate'
+
+export { extractBeforeEmotion, extractAfterEmotion }
 
 /**
  * Formats a currency amount into clean INR text suitable for standard PDF fonts.
@@ -15,38 +21,6 @@ export function formatPdfINR(val, showSign = false) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`
-}
-
-// Robust helper to extract before trade emotion from trade
-export const extractBeforeEmotion = (t) => {
-  if (!t) return ''
-  const val =
-    t.beforeTradeEmotions ||
-    t.beforeEmotions ||
-    t.beforeTradeEmotion ||
-    t.beforeEmotion ||
-    t.emotionsBefore ||
-    t.emotions?.before ||
-    ''
-  if (val && typeof val === 'string' && val.trim()) return val.trim()
-  if (Array.isArray(val) && val.length > 0) return String(val[0]).trim()
-  return ''
-}
-
-// Robust helper to extract after trade emotion from trade
-export const extractAfterEmotion = (t) => {
-  if (!t) return ''
-  const val =
-    t.afterTradeEmotions ||
-    t.afterEmotions ||
-    t.afterTradeEmotion ||
-    t.afterEmotion ||
-    t.emotionsAfter ||
-    t.emotions?.after ||
-    ''
-  if (val && typeof val === 'string' && val.trim()) return val.trim()
-  if (Array.isArray(val) && val.length > 0) return String(val[0]).trim()
-  return ''
 }
 
 /**

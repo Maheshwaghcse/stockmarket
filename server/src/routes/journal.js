@@ -4,6 +4,51 @@ const Trade = require('../models/Trade');
 const { protect } = require('../middleware/auth');
 const { computeJournalAnalytics } = require('../utils/journalAnalytics');
 
+// Robust helper to extract before & after emotions from trade document across all schema variants
+function extractEmotionsFromDoc(trade) {
+  if (!trade) return { bEmotion: '', aEmotion: '' };
+
+  let b =
+    trade.beforeTradeEmotions ||
+    trade.beforeEmotions ||
+    trade.beforeTradeEmotion ||
+    trade.beforeEmotion ||
+    '';
+  let a =
+    trade.afterTradeEmotions ||
+    trade.afterEmotions ||
+    trade.afterTradeEmotion ||
+    trade.afterEmotion ||
+    '';
+
+  let em = trade.emotions;
+  if (typeof em === 'string' && em.trim().startsWith('{')) {
+    try { em = JSON.parse(em); } catch {}
+  }
+  if (em && typeof em === 'object') {
+    if (!b && (em.before || em.beforeTradeEmotions)) b = em.before || em.beforeTradeEmotions;
+    if (!a && (em.after || em.afterTradeEmotions)) a = em.after || em.afterTradeEmotions;
+  }
+
+  let ta = trade.tradeAnalysis;
+  if (typeof ta === 'string' && ta.trim().startsWith('{')) {
+    try { ta = JSON.parse(ta); } catch {}
+  }
+  if (ta && typeof ta === 'object') {
+    if (ta.emotions && typeof ta.emotions === 'object') {
+      if (!b && (ta.emotions.before || ta.emotions.beforeTradeEmotions)) b = ta.emotions.before || ta.emotions.beforeTradeEmotions;
+      if (!a && (ta.emotions.after || ta.emotions.afterTradeEmotions)) a = ta.emotions.after || ta.emotions.afterTradeEmotions;
+    }
+    if (!b && ta.beforeEmotion) b = ta.beforeEmotion;
+    if (!a && ta.afterEmotion) a = ta.afterEmotion;
+  }
+
+  return {
+    bEmotion: typeof b === 'string' ? b.trim() : (Array.isArray(b) && b[0] ? String(b[0]).trim() : ''),
+    aEmotion: typeof a === 'string' ? a.trim() : (Array.isArray(a) && a[0] ? String(a[0]).trim() : ''),
+  };
+}
+
 // ─── GET /api/journal — get all trades and computed statistics ────────────────
 router.get('/', protect, async (req, res, next) => {
   try {
@@ -27,38 +72,13 @@ router.get('/', protect, async (req, res, next) => {
     const trades = await Trade.find(filter).sort({ entryDate: -1 });
 
     const formattedTrades = trades.map((trade) => {
-      const bEmotion =
-        trade.beforeTradeEmotions ||
-        trade.beforeEmotions ||
-        trade.beforeTradeEmotion ||
-        trade.beforeEmotion ||
-        '';
-      const aEmotion =
-        trade.afterTradeEmotions ||
-        trade.afterEmotions ||
-        trade.afterTradeEmotion ||
-        trade.afterEmotion ||
-        '';
+      const { bEmotion, aEmotion } = extractEmotionsFromDoc(trade);
       return {
         ...trade.toObject(),
         beforeTradeEmotions: bEmotion,
         afterTradeEmotions: aEmotion,
         beforeEmotions: bEmotion,
         afterEmotions: aEmotion,
-        beforeTradeEmotion: bEmotion,
-        afterTradeEmotion: aEmotion,
-        beforeEmotion: bEmotion,
-        afterEmotion: aEmotion,
-        emotions: {
-          before: bEmotion,
-          after: aEmotion,
-        },
-        tradeAnalysis: {
-          emotions: {
-            before: bEmotion,
-            after: aEmotion,
-          },
-        },
         beforeTradeEmotion: bEmotion,
         afterTradeEmotion: aEmotion,
         beforeEmotion: bEmotion,
@@ -349,7 +369,21 @@ router.get('/:id', protect, async (req, res, next) => {
     if (!trade) {
       return res.status(404).json({ success: false, message: 'Trade not found.' });
     }
-    res.json({ success: true, data: trade });
+    const { bEmotion, aEmotion } = extractEmotionsFromDoc(trade);
+    const formatted = {
+      ...trade.toObject(),
+      beforeTradeEmotions: bEmotion,
+      afterTradeEmotions: aEmotion,
+      beforeEmotions: bEmotion,
+      afterEmotions: aEmotion,
+      beforeTradeEmotion: bEmotion,
+      afterTradeEmotion: aEmotion,
+      beforeEmotion: bEmotion,
+      afterEmotion: aEmotion,
+      emotions: { before: bEmotion, after: aEmotion },
+      tradeAnalysis: { emotions: { before: bEmotion, after: aEmotion } },
+    };
+    res.json({ success: true, data: formatted });
   } catch (err) {
     next(err);
   }
@@ -387,6 +421,8 @@ router.put('/:id', protect, async (req, res, next) => {
       }
     });
 
+    const existingEmotions = extractEmotionsFromDoc(trade);
+
     const bEmotion =
       req.body.beforeTradeEmotions !== undefined
         ? req.body.beforeTradeEmotions
@@ -398,13 +434,9 @@ router.put('/:id', protect, async (req, res, next) => {
         ? req.body.beforeEmotion
         : req.body.emotions?.before !== undefined
         ? req.body.emotions.before
-        : req.body.tradeAnalysis?.emotions?.before;
-    if (bEmotion !== undefined) {
-      trade.beforeTradeEmotions = bEmotion;
-      trade.beforeEmotions = bEmotion;
-      trade.beforeTradeEmotion = bEmotion;
-      trade.beforeEmotion = bEmotion;
-    }
+        : req.body.tradeAnalysis?.emotions?.before !== undefined
+        ? req.body.tradeAnalysis.emotions.before
+        : existingEmotions.bEmotion;
 
     const aEmotion =
       req.body.afterTradeEmotions !== undefined
@@ -417,22 +449,28 @@ router.put('/:id', protect, async (req, res, next) => {
         ? req.body.afterEmotion
         : req.body.emotions?.after !== undefined
         ? req.body.emotions.after
-        : req.body.tradeAnalysis?.emotions?.after;
-    if (aEmotion !== undefined) {
-      trade.afterTradeEmotions = aEmotion;
-      trade.afterEmotions = aEmotion;
-      trade.afterTradeEmotion = aEmotion;
-      trade.afterEmotion = aEmotion;
-    }
+        : req.body.tradeAnalysis?.emotions?.after !== undefined
+        ? req.body.tradeAnalysis.emotions.after
+        : existingEmotions.aEmotion;
+
+    trade.beforeTradeEmotions = bEmotion || '';
+    trade.beforeEmotions = bEmotion || '';
+    trade.beforeTradeEmotion = bEmotion || '';
+    trade.beforeEmotion = bEmotion || '';
+
+    trade.afterTradeEmotions = aEmotion || '';
+    trade.afterEmotions = aEmotion || '';
+    trade.afterTradeEmotion = aEmotion || '';
+    trade.afterEmotion = aEmotion || '';
 
     trade.emotions = {
-      before: trade.beforeTradeEmotions || '',
-      after: trade.afterTradeEmotions || '',
+      before: bEmotion || '',
+      after: aEmotion || '',
     };
     trade.tradeAnalysis = {
       emotions: {
-        before: trade.beforeTradeEmotions || '',
-        after: trade.afterTradeEmotions || '',
+        before: bEmotion || '',
+        after: aEmotion || '',
       },
     };
 
