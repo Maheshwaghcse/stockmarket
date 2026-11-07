@@ -519,7 +519,15 @@ export default function TradeJournalTemplate({
   const tradeType = currentData?.tradeType || 'Long'
   const entryDate = currentData?.entryDate || ''
   const position = currentData?.position || 'Intraday'
-  const time = currentData?.time || (entryDate ? new Date(entryDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '')
+  const time = currentData?.time || (entryDate && entryDate.includes('T') ? (() => {
+    try {
+      const [hh, mm] = entryDate.split('T')[1].slice(0, 5).split(':')
+      const h = parseInt(hh, 10)
+      const ampm = h >= 12 ? 'PM' : 'AM'
+      const h12 = h % 12 || 12
+      return `${String(h12).padStart(2, '0')}:${mm} ${ampm}`
+    } catch { return '' }
+  })() : '') || (entryDate ? new Date(entryDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '') || '09:30 AM'
   const rawLot = currentData?.lotSize !== undefined && currentData?.lotSize !== null
     ? currentData.lotSize
     : (currentData?.quantity !== undefined && currentData?.quantity !== null ? currentData.quantity : '')
@@ -1150,29 +1158,45 @@ export default function TradeJournalTemplate({
         {/* ─── 1. TOP HEADER BOX: DATE & SYMBOL ───────────────────────────── */}
         {(mobileSectionTab === 'all' || mobileSectionTab === 'setup') && (
           <div className="border border-slate-800 rounded-xl p-3 sm:p-4 bg-[#0e1628]/90 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-            {/* DATE */}
+            {/* DATE & TIME */}
             <div className="flex items-center gap-3">
               <span className="font-extrabold tracking-wider text-xs sm:text-sm text-slate-300 uppercase shrink-0">
                 DATE:
               </span>
               {isEditing ? (
-                <div className="flex-1 flex items-center gap-2">
+                <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     type="datetime-local"
                     required
                     value={entryDate ? entryDate.slice(0, 16) : ''}
                     onChange={(e) => {
                       onChange('entryDate', e.target.value)
-                      if (e.target.value) {
-                        const t = e.target.value.split('T')[1]
-                        if (t) onChange('time', t)
+                      if (e.target.value && e.target.value.includes('T')) {
+                        const tPart = e.target.value.split('T')[1]?.slice(0, 5)
+                        if (tPart) {
+                          const [hh, mm] = tPart.split(':')
+                          const h = parseInt(hh, 10)
+                          const ampm = h >= 12 ? 'PM' : 'AM'
+                          const h12 = h % 12 || 12
+                          onChange('time', `${String(h12).padStart(2, '0')}:${mm} ${ampm}`)
+                        }
                       }
                     }}
                     className="w-full bg-[#152244] border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 font-mono"
                   />
+                  <div className="sm:w-36 shrink-0">
+                    <input
+                      type="text"
+                      placeholder="e.g. 09:30 AM"
+                      value={time}
+                      onChange={(e) => onChange('time', e.target.value)}
+                      className="w-full bg-[#152244] border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-blue-400 font-mono"
+                      title="Trade Entry Time"
+                    />
+                  </div>
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-2 font-bold text-sm sm:text-base text-white font-mono">
+                <div className="inline-flex items-center gap-2 font-bold text-sm sm:text-base text-white font-mono flex-wrap">
                   <span>
                     {entryDate
                       ? new Date(entryDate).toLocaleDateString('en-IN', {
@@ -1183,6 +1207,12 @@ export default function TradeJournalTemplate({
                         })
                       : '—'}
                   </span>
+                  {time && (
+                    <span className="text-xs px-2.5 py-0.5 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 flex items-center gap-1 font-mono">
+                      <Clock size={11} className="text-blue-400" />
+                      <span>{time}</span>
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -1357,6 +1387,30 @@ export default function TradeJournalTemplate({
                     </select>
                   ) : (
                     <span className="font-semibold text-slate-100">{position || 'Intraday'}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* TIME */}
+              <div className="grid grid-cols-3 items-center px-3 sm:px-4 py-2">
+                <span className="font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+                  <Clock size={12} className="text-cyan-400" />
+                  TIME:
+                </span>
+                <div className="col-span-2">
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      placeholder="e.g. 09:30 AM"
+                      value={time}
+                      onChange={(e) => onChange('time', e.target.value)}
+                      className="w-full bg-[#152244] border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-blue-400 font-mono"
+                    />
+                  ) : (
+                    <span className="font-mono font-semibold text-slate-100 flex items-center gap-1.5">
+                      <Clock size={12} className="text-cyan-400" />
+                      {time || '09:30 AM'}
+                    </span>
                   )}
                 </div>
               </div>

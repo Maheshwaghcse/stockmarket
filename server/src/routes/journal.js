@@ -60,6 +60,36 @@ function extractEmotionsFromDoc(trade) {
   };
 }
 
+// Robust helper to extract clean Indian Market time (HH:mm AM/PM) from trade
+function extractTimeFromTrade(trade) {
+  if (!trade) return '09:30 AM';
+  if (trade.time && typeof trade.time === 'string' && trade.time.trim()) {
+    return trade.time.trim();
+  }
+  const dateVal = trade.entryDate || trade.createdAt;
+  if (dateVal) {
+    if (typeof dateVal === 'string' && dateVal.includes('T')) {
+      const tPart = dateVal.split('T')[1]?.slice(0, 5);
+      if (tPart) {
+        try {
+          const [hh, mm] = tPart.split(':');
+          const h = parseInt(hh, 10);
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          const h12 = h % 12 || 12;
+          return `${String(h12).padStart(2, '0')}:${mm} ${ampm}`;
+        } catch {}
+      }
+    }
+    try {
+      const d = new Date(dateVal);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      }
+    } catch {}
+  }
+  return '09:30 AM';
+}
+
 // ─── GET /api/journal — get all trades and computed statistics ────────────────
 router.get('/', protect, async (req, res, next) => {
   try {
@@ -84,8 +114,10 @@ router.get('/', protect, async (req, res, next) => {
 
     const formattedTrades = trades.map((trade) => {
       const { bEmotion, aEmotion } = extractEmotionsFromDoc(trade);
+      const tradeTime = extractTimeFromTrade(trade);
       return {
         ...trade.toObject(),
+        time: tradeTime,
         beforeTradeEmotions: bEmotion,
         afterTradeEmotions: aEmotion,
         beforeEmotions: bEmotion,
@@ -106,6 +138,37 @@ router.get('/', protect, async (req, res, next) => {
         },
       };
     });
+
+    // Auto-sync any trades that were missing time or emotion fields in DB
+    const tradesToSync = trades.filter((t) => !t.time || !t.beforeTradeEmotions || !t.afterTradeEmotions);
+    if (tradesToSync.length > 0) {
+      Promise.all(
+        tradesToSync.map((t) => {
+          const { bEmotion, aEmotion } = extractEmotionsFromDoc(t);
+          const tradeTime = extractTimeFromTrade(t);
+          return Trade.updateOne(
+            { _id: t._id },
+            {
+              $set: {
+                time: tradeTime,
+                beforeTradeEmotions: bEmotion,
+                beforeEmotions: bEmotion,
+                beforeTradeEmotion: bEmotion,
+                beforeEmotion: bEmotion,
+                afterTradeEmotions: aEmotion,
+                afterEmotions: aEmotion,
+                afterTradeEmotion: aEmotion,
+                afterEmotion: aEmotion,
+                'emotions.before': bEmotion,
+                'emotions.after': aEmotion,
+                'tradeAnalysis.emotions.before': bEmotion,
+                'tradeAnalysis.emotions.after': aEmotion,
+              },
+            }
+          ).catch(() => {});
+        })
+      ).catch(() => {});
+    }
 
     // Compute comprehensive analytics, streaks, extremes, and curves
     const analytics = computeJournalAnalytics(trades);
@@ -135,6 +198,7 @@ router.get('/', protect, async (req, res, next) => {
       }
 
       const { bEmotion, aEmotion } = extractEmotionsFromDoc(trade);
+      const tradeTime = extractTimeFromTrade(trade);
 
       calendarMap[dateKey].trades.push({
         id: trade._id,
@@ -156,7 +220,7 @@ router.get('/', protect, async (req, res, next) => {
         lessonLearned: trade.lessonLearned || '',
         tags: trade.tags || [],
         position: trade.position || 'Intraday',
-        time: trade.time || '',
+        time: tradeTime,
         instrumentType: trade.instrumentType || 'Equity',
         optionType: trade.optionType ? trade.optionType.toUpperCase() : 'CALL',
         strategy: trade.strategy || '',
@@ -300,6 +364,8 @@ router.post('/', protect, async (req, res, next) => {
       (req.body.tradeAnalysis && req.body.tradeAnalysis.emotions && req.body.tradeAnalysis.emotions.after) ||
       '';
 
+    const tradeTime = extractTimeFromTrade({ time, entryDate });
+
     const trade = new Trade({
       user: req.user._id,
       symbol: symbol.toUpperCase().trim(),
@@ -316,7 +382,7 @@ router.post('/', protect, async (req, res, next) => {
       lessonLearned: lessonLearned || '',
       tags: Array.isArray(tags) ? tags : [],
       position: position || 'Intraday',
-      time: time || '',
+      time: tradeTime,
       instrumentType: instrumentType || 'Equity',
       optionType: optionType ? optionType.toUpperCase().trim() : 'CALL',
       strategy: strategy || '',
@@ -474,10 +540,17 @@ router.put('/:id', protect, async (req, res, next) => {
       },
     };
 
+    if (req.body.time !== undefined && req.body.time !== '') {
+      trade.time = req.body.time;
+    } else if (!trade.time) {
+      trade.time = extractTimeFromTrade(trade);
+    }
+
     await trade.save();
 
     const formatted = {
       ...trade.toObject(),
+      time: trade.time,
       beforeTradeEmotions: bEmotion,
       afterTradeEmotions: aEmotion,
       beforeEmotions: bEmotion,

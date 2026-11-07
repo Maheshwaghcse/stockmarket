@@ -141,8 +141,26 @@ export default function TradeViewerModal({
     try {
       const bEmotion = extractBeforeEmotion(editFormData)
       const aEmotion = extractAfterEmotion(editFormData)
+      const tradeTime =
+        editFormData.time ||
+        (editFormData.entryDate && editFormData.entryDate.includes('T')
+          ? (() => {
+              try {
+                const [hh, mm] = editFormData.entryDate.split('T')[1].slice(0, 5).split(':')
+                const h = parseInt(hh, 10)
+                const ampm = h >= 12 ? 'PM' : 'AM'
+                const h12 = h % 12 || 12
+                return `${String(h12).padStart(2, '0')}:${mm} ${ampm}`
+              } catch {
+                return ''
+              }
+            })()
+          : '') ||
+        '09:30 AM'
+
       await onUpdateTrade(currentTrade._id, {
         ...editFormData,
+        time: tradeTime,
         quantity: qty,
         lotSize: qty,
         beforeTradeEmotions: bEmotion,

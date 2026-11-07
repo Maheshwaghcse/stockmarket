@@ -820,10 +820,12 @@ export async function generateTradingJournalPdf({
       const isLoss = pnlNum < 0
       const d = t.entryDate ? new Date(t.entryDate) : null
       const dateStr = d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'
+      const timeStr = t.time || (t.entryDate && typeof t.entryDate === 'string' && t.entryDate.includes('T') ? t.entryDate.split('T')[1].slice(0, 5) : '')
+      const dateDisplay = timeStr ? `${dateStr} ${timeStr}` : dateStr
 
       return [
         String(idx + 1),
-        dateStr,
+        dateDisplay,
         t.symbol || '—',
         t.strategy || '—',
         t.tradeType || 'Long',

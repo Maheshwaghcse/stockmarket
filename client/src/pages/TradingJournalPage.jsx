@@ -661,8 +661,26 @@ export default function TradingJournalPage() {
       form.emotions?.after ||
       ''
 
+    const tradeTime =
+      form.time ||
+      (form.entryDate && form.entryDate.includes('T')
+        ? (() => {
+            try {
+              const [hh, mm] = form.entryDate.split('T')[1].slice(0, 5).split(':')
+              const h = parseInt(hh, 10)
+              const ampm = h >= 12 ? 'PM' : 'AM'
+              const h12 = h % 12 || 12
+              return `${String(h12).padStart(2, '0')}:${mm} ${ampm}`
+            } catch {
+              return ''
+            }
+          })()
+        : '') ||
+      new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+
     createTradeMutation.mutate({
       ...form,
+      time: tradeTime,
       symbol: form.symbol.toUpperCase().trim(),
       entryPrice: parseFloat(form.entryPrice),
       exitPrice: form.exitPrice !== undefined && form.exitPrice !== '' && form.exitPrice !== null ? parseFloat(form.exitPrice) : null,
@@ -1714,11 +1732,22 @@ export default function TradingJournalPage() {
                             )}
                           </td>
                           <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px] text-left">
-                            {new Date(trade.entryDate).toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
+                            <div>
+                              {new Date(trade.entryDate).toLocaleDateString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </div>
+                            <div className="text-[10px] text-cyan-400 font-medium flex items-center gap-1 mt-0.5">
+                              <Clock size={10} className="text-cyan-400" />
+                              <span>
+                                {trade.time ||
+                                  (trade.entryDate && trade.entryDate.includes('T')
+                                    ? trade.entryDate.split('T')[1].slice(0, 5)
+                                    : '09:30 AM')}
+                              </span>
+                            </div>
                           </td>
                           <td className="py-3.5 px-3 font-mono text-slate-200 text-right">
                             ₹{trade.entryPrice?.toLocaleString('en-IN')}
@@ -1857,6 +1886,15 @@ export default function TradingJournalPage() {
                                         year: 'numeric',
                                       })}
                                     </span>
+                                    <span className="px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/25 flex items-center gap-1 font-mono text-[11px]">
+                                      <Clock size={11} className="text-cyan-400" />
+                                      <span>
+                                        {trade.time ||
+                                          (trade.entryDate && trade.entryDate.includes('T')
+                                            ? trade.entryDate.split('T')[1].slice(0, 5)
+                                            : '09:30 AM')}
+                                      </span>
+                                    </span>
                                     {isClosed && (
                                       <span className={`font-bold px-2 py-0.5 rounded ${isProfitable ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}`}>
                                         {isProfitable ? '+' : ''}₹{pnl.toLocaleString('en-IN')} ({trade.pnlPercent > 0 ? '+' : ''}{trade.pnlPercent}%)
@@ -1894,6 +1932,16 @@ export default function TradingJournalPage() {
                                       <div className="text-slate-400 flex items-center justify-between font-mono text-[11px]">
                                         <span>Position / Type:</span>
                                         <span className="text-slate-200">{trade.position || 'Intraday'} • {trade.instrumentType || 'Equity'}</span>
+                                      </div>
+                                      <div className="text-slate-400 flex items-center justify-between font-mono text-[11px]">
+                                        <span>Time / Clock:</span>
+                                        <span className="text-cyan-300 font-semibold flex items-center gap-1">
+                                          <Clock size={11} className="text-cyan-400" />
+                                          {trade.time ||
+                                            (trade.entryDate && trade.entryDate.includes('T')
+                                              ? trade.entryDate.split('T')[1].slice(0, 5)
+                                              : '09:30 AM')}
+                                        </span>
                                       </div>
                                       <div className="text-slate-400 flex items-center justify-between font-mono text-[11px] pt-1 border-t border-slate-800">
                                         <span>Stop Loss / Target:</span>
@@ -2301,7 +2349,16 @@ export default function TradingJournalPage() {
 
                     {/* Card Footer: Date & Details Toggle Button */}
                     <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                      <span>{new Date(trade.entryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                      <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                        <span>{new Date(trade.entryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                        <span className="text-cyan-400 font-medium flex items-center gap-0.5">
+                          <Clock size={10} className="text-cyan-400" />
+                          {trade.time ||
+                            (trade.entryDate && trade.entryDate.includes('T')
+                              ? trade.entryDate.split('T')[1].slice(0, 5)
+                              : '09:30 AM')}
+                        </span>
+                      </div>
                       <button
                         onClick={() => setExpandedTradeId(isExpanded ? null : trade._id)}
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
@@ -2326,7 +2383,7 @@ export default function TradingJournalPage() {
                           </span>
                           <div className="font-semibold text-slate-100">{trade.strategy || 'No Strategy Set'}</div>
                           <div className="text-[11px] text-slate-400 font-mono">
-                            SL: ₹{trade.stopLoss ?? '—'} | TP: ₹{trade.takeProfit ?? '—'} | R:R: {trade.riskReward || '—'}
+                            Time: <span className="text-cyan-300 font-bold">{trade.time || (trade.entryDate && trade.entryDate.includes('T') ? trade.entryDate.split('T')[1].slice(0, 5) : '09:30 AM')}</span> | SL: ₹{trade.stopLoss ?? '—'} | TP: ₹{trade.takeProfit ?? '—'} | R:R: {trade.riskReward || '—'}
                           </div>
                         </div>
 
