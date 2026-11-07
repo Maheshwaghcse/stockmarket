@@ -297,6 +297,7 @@ export default function TradeJournalTemplate({
   onCancel,
   isSubmitting = false,
   allTrades = [],
+  onQuickUpdateTrade = null,
 }) {
   const isEditing = mode === 'create' || mode === 'edit'
   const [zoomImage, setZoomImage] = useState(false)
@@ -793,12 +794,27 @@ export default function TradeJournalTemplate({
 
   // Single-click selection for slicer: selects emotion and immediately closes slicer ("it will gone only show what i click")
   const handlePickBeforeEmotion = (name) => {
-    if (!isEditing) return
-    onChange('beforeTradeEmotions', name)
-    onChange('beforeEmotions', name)
-    onChange('beforeTradeEmotion', name)
-    onChange('beforeEmotion', name)
+    if (onChange) {
+      onChange('beforeTradeEmotions', name)
+      onChange('beforeEmotions', name)
+      onChange('beforeTradeEmotion', name)
+      onChange('beforeEmotion', name)
+      onChange('emotions', { before: name, after: afterTradeEmotions })
+      onChange('tradeAnalysis', { emotions: { before: name, after: afterTradeEmotions } })
+    }
     setIsBeforePickerOpen(false)
+
+    // Direct reflection in DB when viewing an existing trade
+    if (!isEditing && onQuickUpdateTrade && (trade?._id || trade?.id)) {
+      onQuickUpdateTrade({
+        beforeTradeEmotions: name,
+        beforeEmotions: name,
+        beforeTradeEmotion: name,
+        beforeEmotion: name,
+        emotions: { before: name, after: afterTradeEmotions },
+        tradeAnalysis: { emotions: { before: name, after: afterTradeEmotions } },
+      })
+    }
   }
 
   // Slicer handlers: After Trade Emotions
@@ -808,26 +824,68 @@ export default function TradeJournalTemplate({
 
   // Single-click selection for slicer: selects emotion and immediately closes slicer ("it will gone only show what i click")
   const handlePickAfterEmotion = (name) => {
-    if (!isEditing) return
-    onChange('afterTradeEmotions', name)
-    onChange('afterEmotions', name)
-    onChange('afterTradeEmotion', name)
-    onChange('afterEmotion', name)
+    if (onChange) {
+      onChange('afterTradeEmotions', name)
+      onChange('afterEmotions', name)
+      onChange('afterTradeEmotion', name)
+      onChange('afterEmotion', name)
+      onChange('emotions', { before: beforeTradeEmotions, after: name })
+      onChange('tradeAnalysis', { emotions: { before: beforeTradeEmotions, after: name } })
+    }
     setIsAfterPickerOpen(false)
+
+    // Direct reflection in DB when viewing an existing trade
+    if (!isEditing && onQuickUpdateTrade && (trade?._id || trade?.id)) {
+      onQuickUpdateTrade({
+        afterTradeEmotions: name,
+        afterEmotions: name,
+        afterTradeEmotion: name,
+        afterEmotion: name,
+        emotions: { before: beforeTradeEmotions, after: name },
+        tradeAnalysis: { emotions: { before: beforeTradeEmotions, after: name } },
+      })
+    }
   }
 
   const clearCurrentTabEmotions = () => {
-    if (!isEditing) return
     if (activeEmotionTab === 'before') {
-      onChange('beforeTradeEmotions', '')
-      onChange('beforeEmotions', '')
-      onChange('beforeTradeEmotion', '')
-      onChange('beforeEmotion', '')
+      if (onChange) {
+        onChange('beforeTradeEmotions', '')
+        onChange('beforeEmotions', '')
+        onChange('beforeTradeEmotion', '')
+        onChange('beforeEmotion', '')
+        onChange('emotions', { before: '', after: afterTradeEmotions })
+        onChange('tradeAnalysis', { emotions: { before: '', after: afterTradeEmotions } })
+      }
+      if (!isEditing && onQuickUpdateTrade && (trade?._id || trade?.id)) {
+        onQuickUpdateTrade({
+          beforeTradeEmotions: '',
+          beforeEmotions: '',
+          beforeTradeEmotion: '',
+          beforeEmotion: '',
+          emotions: { before: '', after: afterTradeEmotions },
+          tradeAnalysis: { emotions: { before: '', after: afterTradeEmotions } },
+        })
+      }
     } else {
-      onChange('afterTradeEmotions', '')
-      onChange('afterEmotions', '')
-      onChange('afterTradeEmotion', '')
-      onChange('afterEmotion', '')
+      if (onChange) {
+        onChange('afterTradeEmotions', '')
+        onChange('afterEmotions', '')
+        onChange('afterTradeEmotion', '')
+        onChange('afterEmotion', '')
+        onChange('emotions', { before: beforeTradeEmotions, after: '' })
+        onChange('tradeAnalysis', { emotions: { before: beforeTradeEmotions, after: '' } })
+      }
+      if (!isEditing && onQuickUpdateTrade && (trade?._id || trade?.id)) {
+        onQuickUpdateTrade({
+          afterTradeEmotions: '',
+          afterEmotions: '',
+          afterTradeEmotion: '',
+          afterEmotion: '',
+          emotions: { before: beforeTradeEmotions, after: '' },
+          tradeAnalysis: { emotions: { before: beforeTradeEmotions, after: '' } },
+        })
+      }
     }
   }
 
@@ -2009,10 +2067,8 @@ export default function TradeJournalTemplate({
                               return (
                                 <div
                                   key={item.name}
-                                  onClick={() => isEditing && setIsBeforePickerOpen(true)}
-                                  className={`rounded-2xl p-4 border bg-[#0f1d38] border-blue-400 shadow-xl shadow-blue-950/70 ring-1 ring-blue-400/80 transition-all select-none relative ${
-                                    isEditing ? 'cursor-pointer hover:border-blue-300' : 'cursor-default'
-                                  }`}
+                                  onClick={() => setIsBeforePickerOpen(true)}
+                                  className="rounded-2xl p-4 border bg-[#0f1d38] border-blue-400 shadow-xl shadow-blue-950/70 ring-1 ring-blue-400/80 transition-all select-none relative cursor-pointer hover:border-blue-300"
                                 >
                                   <div className="absolute top-3.5 right-3.5 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center shadow">
                                     <Check size={14} strokeWidth={3} />
@@ -2028,11 +2084,9 @@ export default function TradeJournalTemplate({
                                       {item.desc}
                                     </div>
                                   )}
-                                  {isEditing && (
-                                    <div className="text-[10px] text-blue-300/80 mt-2 italic">
-                                      Click to change emotion
-                                    </div>
-                                  )}
+                                  <div className="text-[10px] text-blue-300/80 mt-2 italic">
+                                    Click to change emotion
+                                  </div>
                                 </div>
                               )
                             })}
@@ -2041,10 +2095,8 @@ export default function TradeJournalTemplate({
                       ) : (
                         /* Empty State: Sleek Clickable Box */
                         <div
-                          onClick={() => isEditing && setIsBeforePickerOpen(true)}
-                          className={`border-2 border-dashed border-slate-700/80 hover:border-blue-500/70 bg-[#070c18] rounded-2xl p-6 text-center transition-all ${
-                            isEditing ? 'cursor-pointer hover:bg-[#0c1428]' : ''
-                          }`}
+                          onClick={() => setIsBeforePickerOpen(true)}
+                          className="border-2 border-dashed border-slate-700/80 hover:border-blue-500/70 bg-[#070c18] rounded-2xl p-6 text-center transition-all cursor-pointer hover:bg-[#0c1428]"
                         >
                           <Smile size={28} className="text-blue-400 mx-auto mb-2 opacity-80" />
                           <div className="font-serif italic text-lg text-white font-medium">
@@ -2053,19 +2105,17 @@ export default function TradeJournalTemplate({
                           <div className="text-xs text-slate-400 mt-0.5">
                             Trade घेण्यापूर्वी तुझी मानसिक स्थिती निवड.
                           </div>
-                          {isEditing && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setIsBeforePickerOpen(true)
-                              }}
-                              className="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-md shadow-blue-600/30 hover:bg-blue-500 cursor-pointer inline-flex items-center gap-1.5"
-                            >
-                              <Plus size={12} />
-                              <span>Select Emotion (क्लिक करा)</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setIsBeforePickerOpen(true)
+                            }}
+                            className="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-md shadow-blue-600/30 hover:bg-blue-500 cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <Plus size={12} />
+                            <span>Select Emotion (क्लिक करा)</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -2173,10 +2223,8 @@ export default function TradeJournalTemplate({
                               return (
                                 <div
                                   key={item.name}
-                                  onClick={() => isEditing && setIsAfterPickerOpen(true)}
-                                  className={`rounded-2xl p-4 border bg-[#1b1236] border-purple-400 shadow-xl shadow-purple-950/70 ring-1 ring-purple-400/80 transition-all select-none relative ${
-                                    isEditing ? 'cursor-pointer hover:border-purple-300' : 'cursor-default'
-                                  }`}
+                                  onClick={() => setIsAfterPickerOpen(true)}
+                                  className="rounded-2xl p-4 border bg-[#1b1236] border-purple-400 shadow-xl shadow-purple-950/70 ring-1 ring-purple-400/80 transition-all select-none relative cursor-pointer hover:border-purple-300"
                                 >
                                   <div className="absolute top-3.5 right-3.5 w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center shadow">
                                     <Check size={14} strokeWidth={3} />
@@ -2192,11 +2240,9 @@ export default function TradeJournalTemplate({
                                       {item.desc}
                                     </div>
                                   )}
-                                  {isEditing && (
-                                    <div className="text-[10px] text-purple-300/80 mt-2 italic">
-                                      Click to change emotion
-                                    </div>
-                                  )}
+                                  <div className="text-[10px] text-purple-300/80 mt-2 italic">
+                                    Click to change emotion
+                                  </div>
                                 </div>
                               )
                             })}
@@ -2205,10 +2251,8 @@ export default function TradeJournalTemplate({
                       ) : (
                         /* Empty State: Sleek Clickable Box */
                         <div
-                          onClick={() => isEditing && setIsAfterPickerOpen(true)}
-                          className={`border-2 border-dashed border-slate-700/80 hover:border-purple-500/70 bg-[#070c18] rounded-2xl p-6 text-center transition-all ${
-                            isEditing ? 'cursor-pointer hover:bg-[#120b22]' : ''
-                          }`}
+                          onClick={() => setIsAfterPickerOpen(true)}
+                          className="border-2 border-dashed border-slate-700/80 hover:border-purple-500/70 bg-[#070c18] rounded-2xl p-6 text-center transition-all cursor-pointer hover:bg-[#120b22]"
                         >
                           <Smile size={28} className="text-purple-400 mx-auto mb-2 opacity-80" />
                           <div className="font-serif italic text-lg text-white font-medium">
@@ -2217,19 +2261,17 @@ export default function TradeJournalTemplate({
                           <div className="text-xs text-slate-400 mt-0.5">
                             Trade संपल्यानंतर तुला काय जाणवले ते निवड.
                           </div>
-                          {isEditing && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setIsAfterPickerOpen(true)
-                              }}
-                              className="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold bg-purple-600 text-white shadow-md shadow-purple-600/30 hover:bg-purple-500 cursor-pointer inline-flex items-center gap-1.5"
-                            >
-                              <Plus size={12} />
-                              <span>Select Emotion (क्लिक करा)</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setIsAfterPickerOpen(true)
+                            }}
+                            className="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold bg-purple-600 text-white shadow-md shadow-purple-600/30 hover:bg-purple-500 cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <Plus size={12} />
+                            <span>Select Emotion (क्लिक करा)</span>
+                          </button>
                         </div>
                       )}
                     </div>

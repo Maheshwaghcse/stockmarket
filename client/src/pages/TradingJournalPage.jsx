@@ -620,6 +620,21 @@ export default function TradingJournalPage() {
     const qty = parseInt(form.lotSize !== undefined && form.lotSize !== '' ? form.lotSize : form.quantity, 10)
     if (isNaN(qty) || qty <= 0) return toast.error('Please enter quantity / lot size (must be greater than 0)')
 
+    const bEmotion =
+      form.beforeTradeEmotions ||
+      form.beforeEmotions ||
+      form.beforeTradeEmotion ||
+      form.beforeEmotion ||
+      form.emotions?.before ||
+      ''
+    const aEmotion =
+      form.afterTradeEmotions ||
+      form.afterEmotions ||
+      form.afterTradeEmotion ||
+      form.afterEmotion ||
+      form.emotions?.after ||
+      ''
+
     createTradeMutation.mutate({
       ...form,
       symbol: form.symbol.toUpperCase().trim(),
@@ -630,14 +645,24 @@ export default function TradingJournalPage() {
       quantity: qty,
       lotSize: qty,
       rating: form.rating ? parseInt(form.rating, 10) : 5,
-      beforeTradeEmotions: form.beforeTradeEmotions || form.beforeEmotions || '',
-      beforeEmotions: form.beforeTradeEmotions || form.beforeEmotions || '',
-      beforeTradeEmotion: form.beforeTradeEmotions || form.beforeEmotions || '',
-      beforeEmotion: form.beforeTradeEmotions || form.beforeEmotions || '',
-      afterTradeEmotions: form.afterTradeEmotions || form.afterEmotions || '',
-      afterEmotions: form.afterTradeEmotions || form.afterEmotions || '',
-      afterTradeEmotion: form.afterTradeEmotions || form.afterEmotions || '',
-      afterEmotion: form.afterTradeEmotions || form.afterEmotions || '',
+      beforeTradeEmotions: bEmotion,
+      beforeEmotions: bEmotion,
+      beforeTradeEmotion: bEmotion,
+      beforeEmotion: bEmotion,
+      afterTradeEmotions: aEmotion,
+      afterEmotions: aEmotion,
+      afterTradeEmotion: aEmotion,
+      afterEmotion: aEmotion,
+      emotions: {
+        before: bEmotion,
+        after: aEmotion,
+      },
+      tradeAnalysis: {
+        emotions: {
+          before: bEmotion,
+          after: aEmotion,
+        },
+      },
     })
   }
 
@@ -1901,6 +1926,16 @@ export default function TradingJournalPage() {
                                                     beforeEmotions: em.name,
                                                     beforeTradeEmotion: em.name,
                                                     beforeEmotion: em.name,
+                                                    emotions: {
+                                                      before: em.name,
+                                                      after: afterEmotion,
+                                                    },
+                                                    tradeAnalysis: {
+                                                      emotions: {
+                                                        before: em.name,
+                                                        after: afterEmotion,
+                                                      },
+                                                    },
                                                   },
                                                 })
                                               }
@@ -1963,6 +1998,16 @@ export default function TradingJournalPage() {
                                                     afterEmotions: em.name,
                                                     afterTradeEmotion: em.name,
                                                     afterEmotion: em.name,
+                                                    emotions: {
+                                                      before: beforeEmotion,
+                                                      after: em.name,
+                                                    },
+                                                    tradeAnalysis: {
+                                                      emotions: {
+                                                        before: beforeEmotion,
+                                                        after: em.name,
+                                                      },
+                                                    },
                                                   },
                                                 })
                                               }
@@ -2246,6 +2291,16 @@ export default function TradingJournalPage() {
                                           beforeEmotions: em.name,
                                           beforeTradeEmotion: em.name,
                                           beforeEmotion: em.name,
+                                          emotions: {
+                                            before: em.name,
+                                            after: afterEmotion,
+                                          },
+                                          tradeAnalysis: {
+                                            emotions: {
+                                              before: em.name,
+                                              after: afterEmotion,
+                                            },
+                                          },
                                         },
                                       })
                                     }
@@ -2289,6 +2344,16 @@ export default function TradingJournalPage() {
                                           afterEmotions: em.name,
                                           afterTradeEmotion: em.name,
                                           afterEmotion: em.name,
+                                          emotions: {
+                                            before: beforeEmotion,
+                                            after: em.name,
+                                          },
+                                          tradeAnalysis: {
+                                            emotions: {
+                                              before: beforeEmotion,
+                                              after: em.name,
+                                            },
+                                          },
                                         },
                                       })
                                     }

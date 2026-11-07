@@ -148,10 +148,42 @@ export default function TradeViewerModal({
     if (isNaN(qty) || qty <= 0) return toast.error('Please enter quantity / lot size (must be greater than 0)')
     setIsSubmitting(true)
     try {
+      const bEmotion =
+        editFormData.beforeTradeEmotions ||
+        editFormData.beforeEmotions ||
+        editFormData.beforeTradeEmotion ||
+        editFormData.beforeEmotion ||
+        editFormData.emotions?.before ||
+        ''
+      const aEmotion =
+        editFormData.afterTradeEmotions ||
+        editFormData.afterEmotions ||
+        editFormData.afterTradeEmotion ||
+        editFormData.afterEmotion ||
+        editFormData.emotions?.after ||
+        ''
       await onUpdateTrade(currentTrade._id, {
         ...editFormData,
         quantity: qty,
         lotSize: qty,
+        beforeTradeEmotions: bEmotion,
+        beforeEmotions: bEmotion,
+        beforeTradeEmotion: bEmotion,
+        beforeEmotion: bEmotion,
+        afterTradeEmotions: aEmotion,
+        afterEmotions: aEmotion,
+        afterTradeEmotion: aEmotion,
+        afterEmotion: aEmotion,
+        emotions: {
+          before: bEmotion,
+          after: aEmotion,
+        },
+        tradeAnalysis: {
+          emotions: {
+            before: bEmotion,
+            after: aEmotion,
+          },
+        },
       })
       setIsEditing(false)
     } catch {
@@ -383,6 +415,14 @@ export default function TradeViewerModal({
               onCancel={() => setIsEditing(false)}
               isSubmitting={isSubmitting}
               allTrades={trades}
+              onQuickUpdateTrade={async (fields) => {
+                if (!currentTrade || !onUpdateTrade) return
+                await onUpdateTrade(currentTrade._id, {
+                  ...currentTrade,
+                  ...editFormData,
+                  ...fields,
+                })
+              }}
             />
           )}
         </div>

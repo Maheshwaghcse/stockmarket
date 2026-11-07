@@ -45,6 +45,34 @@ router.get('/', protect, async (req, res, next) => {
         afterTradeEmotions: aEmotion,
         beforeEmotions: bEmotion,
         afterEmotions: aEmotion,
+        beforeTradeEmotion: bEmotion,
+        afterTradeEmotion: aEmotion,
+        beforeEmotion: bEmotion,
+        afterEmotion: aEmotion,
+        emotions: {
+          before: bEmotion,
+          after: aEmotion,
+        },
+        tradeAnalysis: {
+          emotions: {
+            before: bEmotion,
+            after: aEmotion,
+          },
+        },
+        beforeTradeEmotion: bEmotion,
+        afterTradeEmotion: aEmotion,
+        beforeEmotion: bEmotion,
+        afterEmotion: aEmotion,
+        emotions: {
+          before: bEmotion,
+          after: aEmotion,
+        },
+        tradeAnalysis: {
+          emotions: {
+            before: bEmotion,
+            after: aEmotion,
+          },
+        },
       };
     });
 
@@ -116,6 +144,20 @@ router.get('/', protect, async (req, res, next) => {
         afterTradeEmotions: aEmotion,
         beforeEmotions: bEmotion,
         afterEmotions: aEmotion,
+        beforeTradeEmotion: bEmotion,
+        afterTradeEmotion: aEmotion,
+        beforeEmotion: bEmotion,
+        afterEmotion: aEmotion,
+        emotions: {
+          before: bEmotion,
+          after: aEmotion,
+        },
+        tradeAnalysis: {
+          emotions: {
+            before: bEmotion,
+            after: aEmotion,
+          },
+        },
         customSections: Array.isArray(trade.customSections) ? trade.customSections : [],
         stopLoss: trade.stopLoss || null,
         takeProfit: trade.takeProfit || null,
@@ -221,6 +263,23 @@ router.post('/', protect, async (req, res, next) => {
       });
     }
 
+    const bEmotion =
+      beforeTradeEmotions ||
+      beforeEmotions ||
+      req.body.beforeTradeEmotion ||
+      req.body.beforeEmotion ||
+      (req.body.emotions && (req.body.emotions.before || req.body.emotions.beforeTradeEmotions)) ||
+      (req.body.tradeAnalysis && req.body.tradeAnalysis.emotions && req.body.tradeAnalysis.emotions.before) ||
+      '';
+    const aEmotion =
+      afterTradeEmotions ||
+      afterEmotions ||
+      req.body.afterTradeEmotion ||
+      req.body.afterEmotion ||
+      (req.body.emotions && (req.body.emotions.after || req.body.emotions.afterTradeEmotions)) ||
+      (req.body.tradeAnalysis && req.body.tradeAnalysis.emotions && req.body.tradeAnalysis.emotions.after) ||
+      '';
+
     const trade = new Trade({
       user: req.user._id,
       symbol: symbol.toUpperCase().trim(),
@@ -241,22 +300,24 @@ router.post('/', protect, async (req, res, next) => {
       instrumentType: instrumentType || 'Equity',
       optionType: optionType ? optionType.toUpperCase().trim() : 'CALL',
       strategy: strategy || '',
-      beforeTradeEmotions:
-        beforeTradeEmotions || beforeEmotions || req.body.beforeTradeEmotion || req.body.beforeEmotion || '',
-      afterTradeEmotions:
-        afterTradeEmotions || afterEmotions || req.body.afterTradeEmotion || req.body.afterEmotion || '',
-      beforeEmotions:
-        beforeEmotions || beforeTradeEmotions || req.body.beforeTradeEmotion || req.body.beforeEmotion || '',
-      afterEmotions:
-        afterEmotions || afterTradeEmotions || req.body.afterTradeEmotion || req.body.afterEmotion || '',
-      beforeTradeEmotion:
-        beforeTradeEmotions || beforeEmotions || req.body.beforeTradeEmotion || req.body.beforeEmotion || '',
-      afterTradeEmotion:
-        afterTradeEmotions || afterEmotions || req.body.afterTradeEmotion || req.body.afterEmotion || '',
-      beforeEmotion:
-        beforeTradeEmotions || beforeEmotions || req.body.beforeTradeEmotion || req.body.beforeEmotion || '',
-      afterEmotion:
-        afterTradeEmotions || afterEmotions || req.body.afterTradeEmotion || req.body.afterEmotion || '',
+      beforeTradeEmotions: bEmotion,
+      afterTradeEmotions: aEmotion,
+      beforeEmotions: bEmotion,
+      afterEmotions: aEmotion,
+      beforeTradeEmotion: bEmotion,
+      afterTradeEmotion: aEmotion,
+      beforeEmotion: bEmotion,
+      afterEmotion: aEmotion,
+      emotions: {
+        before: bEmotion,
+        after: aEmotion,
+      },
+      tradeAnalysis: {
+        emotions: {
+          before: bEmotion,
+          after: aEmotion,
+        },
+      },
       stopLoss: stopLoss !== undefined && stopLoss !== '' && stopLoss !== null ? parseFloat(stopLoss) : null,
       takeProfit: takeProfit !== undefined && takeProfit !== '' && takeProfit !== null ? parseFloat(takeProfit) : null,
       riskReward: riskReward || '',
@@ -333,7 +394,11 @@ router.put('/:id', protect, async (req, res, next) => {
         ? req.body.beforeEmotions
         : req.body.beforeTradeEmotion !== undefined
         ? req.body.beforeTradeEmotion
-        : req.body.beforeEmotion;
+        : req.body.beforeEmotion !== undefined
+        ? req.body.beforeEmotion
+        : req.body.emotions?.before !== undefined
+        ? req.body.emotions.before
+        : req.body.tradeAnalysis?.emotions?.before;
     if (bEmotion !== undefined) {
       trade.beforeTradeEmotions = bEmotion;
       trade.beforeEmotions = bEmotion;
@@ -348,13 +413,28 @@ router.put('/:id', protect, async (req, res, next) => {
         ? req.body.afterEmotions
         : req.body.afterTradeEmotion !== undefined
         ? req.body.afterTradeEmotion
-        : req.body.afterEmotion;
+        : req.body.afterEmotion !== undefined
+        ? req.body.afterEmotion
+        : req.body.emotions?.after !== undefined
+        ? req.body.emotions.after
+        : req.body.tradeAnalysis?.emotions?.after;
     if (aEmotion !== undefined) {
       trade.afterTradeEmotions = aEmotion;
       trade.afterEmotions = aEmotion;
       trade.afterTradeEmotion = aEmotion;
       trade.afterEmotion = aEmotion;
     }
+
+    trade.emotions = {
+      before: trade.beforeTradeEmotions || '',
+      after: trade.afterTradeEmotions || '',
+    };
+    trade.tradeAnalysis = {
+      emotions: {
+        before: trade.beforeTradeEmotions || '',
+        after: trade.afterTradeEmotions || '',
+      },
+    };
 
     await trade.save();
 

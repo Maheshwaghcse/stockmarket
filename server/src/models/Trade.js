@@ -108,6 +108,14 @@ const tradeSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    emotions: {
+      type: mongoose.Schema.Types.Mixed,
+      default: () => ({ before: '', after: '' }),
+    },
+    tradeAnalysis: {
+      type: mongoose.Schema.Types.Mixed,
+      default: () => ({ emotions: { before: '', after: '' } }),
+    },
     beforeTradeEmotions: {
       type: String,
       default: '',
