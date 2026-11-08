@@ -6,7 +6,7 @@ import {
   Clock, ArrowUpRight, ArrowDownRight, Filter, AlertCircle,
   Target, LogOut, Lightbulb, Image, ChevronDown, ChevronUp,
   Eye, FileText, Download, LayoutGrid, CalendarDays, Tag, Sparkles,
-  Smile, Layers, ShieldAlert, Check
+  Smile, Layers, ShieldAlert, Check, FilterX, RotateCcw
 } from 'lucide-react'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
@@ -14,6 +14,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import JournalAnalyticsCharts from '../components/journal/JournalAnalyticsCharts'
 import JournalExportModal from '../components/journal/JournalExportModal'
+import StrategyPerformanceDashboard from '../components/journal/StrategyPerformanceDashboard'
 import TradeJournalTemplate, {
   BEFORE_TRADE_EMOTIONS,
   AFTER_TRADE_EMOTIONS,
@@ -55,6 +56,7 @@ export default function TradingJournalPage() {
   // Filters & State
   const [modalOpen, setModalOpen] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [strategyDashboardOpen, setStrategyDashboardOpen] = useState(false)
   const [dayModalOpen, setDayModalOpen] = useState(false)
   const [viewerModalOpen, setViewerModalOpen] = useState(false)
   const [viewerTradeIndex, setViewerTradeIndex] = useState(0)
@@ -417,6 +419,75 @@ export default function TradingJournalPage() {
     return list
   }, [trades, selectedDayKey, selectedDayTrades, tradeOutcomeFilter, tradeStrategyFilter, tradeEmotionFilter, tradeReasonFilter])
 
+  // Clear all journal & visualization filters in 1 click
+  const handleClearAllFilters = () => {
+    setFromDate('')
+    setToDate('')
+    setSelectedDayKey(null)
+    setTradeOutcomeFilter('ALL')
+    setTradeStrategyFilter('ALL')
+    setTradeEmotionFilter('ALL')
+    setTradeReasonFilter('ALL')
+    queryClient.invalidateQueries({ queryKey: ['journal'] })
+    queryClient.refetchQueries({ queryKey: ['journal'] })
+    toast.success('All filters removed')
+  }
+
+  // Active filters list with individual removal functions
+  const activeFilters = useMemo(() => {
+    const list = []
+    if (fromDate || toDate) {
+      list.push({
+        id: 'date',
+        label: `Date: ${fromDate || 'Start'} → ${toDate || 'Now'}`,
+        onRemove: () => {
+          setFromDate('')
+          setToDate('')
+          queryClient.invalidateQueries({ queryKey: ['journal'] })
+          queryClient.refetchQueries({ queryKey: ['journal'] })
+        },
+      })
+    }
+    if (selectedDayKey) {
+      list.push({
+        id: 'day',
+        label: `Day: ${selectedDayKey}`,
+        onRemove: () => setSelectedDayKey(null),
+      })
+    }
+    if (tradeOutcomeFilter && tradeOutcomeFilter !== 'ALL') {
+      list.push({
+        id: 'outcome',
+        label: `Outcome: ${tradeOutcomeFilter}`,
+        onRemove: () => setTradeOutcomeFilter('ALL'),
+      })
+    }
+    if (tradeStrategyFilter && tradeStrategyFilter !== 'ALL') {
+      list.push({
+        id: 'strategy',
+        label: `Strategy: ${tradeStrategyFilter}`,
+        onRemove: () => setTradeStrategyFilter('ALL'),
+      })
+    }
+    if (tradeEmotionFilter && tradeEmotionFilter !== 'ALL') {
+      list.push({
+        id: 'emotion',
+        label: `Emotion: ${tradeEmotionFilter}`,
+        onRemove: () => setTradeEmotionFilter('ALL'),
+      })
+    }
+    if (tradeReasonFilter && tradeReasonFilter !== 'ALL') {
+      list.push({
+        id: 'reason',
+        label: `Search: "${tradeReasonFilter}"`,
+        onRemove: () => setTradeReasonFilter('ALL'),
+      })
+    }
+    return list
+  }, [fromDate, toDate, selectedDayKey, tradeOutcomeFilter, tradeStrategyFilter, tradeEmotionFilter, tradeReasonFilter, queryClient])
+
+  const hasActiveFilters = activeFilters.length > 0
+
   // Month Calendar Calculations (Matches Screenshot 2)
   const currentMonthYear = useMemo(() => {
     return viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })
@@ -760,6 +831,16 @@ export default function TradingJournalPage() {
             <span>Download PDF</span>
           </button>
 
+          {/* Independent Strategy Performance Dashboard button */}
+          <button
+            onClick={() => setStrategyDashboardOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-purple-200 hover:text-white bg-gradient-to-r from-purple-900/60 via-indigo-900/50 to-purple-900/60 hover:from-purple-800 hover:to-indigo-800 border border-purple-500/40 shadow-lg shadow-purple-950/30 transition-all cursor-pointer active:scale-95"
+            title="Independent Strategy Performance Dashboard - Click to see all strategies, win rates, and datewise analytics"
+          >
+            <Target size={15} className="text-purple-400" />
+            <span>Strategy Performance</span>
+          </button>
+
           {/* How to use link */}
           <button
             onClick={() => setShowHowToUse((v) => !v)}
@@ -794,10 +875,15 @@ export default function TradingJournalPage() {
               Apply
             </button>
             <button
-              onClick={() => { setFromDate(''); setToDate(''); setSelectedDayKey(null); }}
-              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-medium transition-colors"
+              onClick={handleClearAllFilters}
+              className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
+                hasActiveFilters
+                  ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-semibold'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+              }`}
+              title={hasActiveFilters ? 'Click to remove all active filters' : 'All dates'}
             >
-              All
+              {hasActiveFilters ? 'Reset Filters ✕' : 'All'}
             </button>
           </div>
         </div>
@@ -1433,7 +1519,19 @@ export default function TradingJournalPage() {
       </div>
 
       {/* ─── Data Visualization Graphs Section (Highest / Lowest Profit, Streaks, Equity Curve) ─── */}
-      <JournalAnalyticsCharts trades={trades} serverAnalytics={journalData?.analytics} />
+      <JournalAnalyticsCharts
+        trades={hasActiveFilters ? displayedTrades : trades}
+        allTrades={trades}
+        serverAnalytics={journalData?.analytics}
+        hasActiveFilters={hasActiveFilters}
+        activeFilters={activeFilters}
+        onClearFilters={handleClearAllFilters}
+        availableStrategies={availableStrategies}
+        selectedStrategy={tradeStrategyFilter}
+        onSelectStrategy={setTradeStrategyFilter}
+        selectedOutcome={tradeOutcomeFilter}
+        onSelectOutcome={setTradeOutcomeFilter}
+      />
 
 
       {/* ─── Bottom Section: Trade Log & History ───────────────────────────── */}
@@ -1578,12 +1676,7 @@ export default function TradingJournalPage() {
               tradeReasonFilter !== 'ALL') && (
               <button
                 type="button"
-                onClick={() => {
-                  setTradeOutcomeFilter('ALL')
-                  setTradeStrategyFilter('ALL')
-                  setTradeEmotionFilter('ALL')
-                  setTradeReasonFilter('ALL')
-                }}
+                onClick={handleClearAllFilters}
                 className="text-xs text-rose-400 hover:text-rose-300 font-semibold cursor-pointer flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 transition-all hover:bg-rose-500/20"
               >
                 <span>Reset All Slicers ✕</span>
@@ -1614,6 +1707,16 @@ export default function TradingJournalPage() {
                 </button>
               )
             })}
+
+            <button
+              type="button"
+              onClick={() => setStrategyDashboardOpen(true)}
+              className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-purple-300 hover:text-white bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 transition-all cursor-pointer shrink-0"
+              title="Open full Independent Strategy Performance Dashboard to analyze all strategies"
+            >
+              <Target size={12} className="text-purple-400" />
+              <span>Strategy Dashboard (All Strategies)</span>
+            </button>
           </div>
 
           {/* Row 3: Emotion Slicers (Latest Journal Emotions: Before / After) */}
@@ -2648,6 +2751,19 @@ export default function TradingJournalPage() {
         initialEmotion={tradeEmotionFilter}
         availableStrategies={availableStrategies}
       />
+
+      {/* ─── INDEPENDENT STRATEGY PERFORMANCE DASHBOARD MODAL ───────────── */}
+      {strategyDashboardOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in">
+          <div className="relative w-full max-w-6xl my-auto max-h-[94vh] overflow-y-auto rounded-2xl shadow-2xl border border-slate-700/80">
+            <StrategyPerformanceDashboard
+              allTrades={trades}
+              initialStrategy={tradeStrategyFilter !== 'ALL' ? tradeStrategyFilter : ''}
+              onClose={() => setStrategyDashboardOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

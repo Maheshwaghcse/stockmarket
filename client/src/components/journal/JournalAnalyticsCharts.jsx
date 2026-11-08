@@ -17,11 +17,27 @@ import {
   XCircle,
   HelpCircle,
   Clock,
+  FilterX,
+  RotateCcw,
+  Filter,
+  X,
 } from 'lucide-react'
 import { formatINR, computeJournalAnalytics } from '../../lib/journalAnalytics'
 import JournalTimingAnalysis from './JournalTimingAnalysis'
 
-export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = null }) {
+export default function JournalAnalyticsCharts({
+  trades = [],
+  allTrades = [],
+  serverAnalytics = null,
+  hasActiveFilters = false,
+  activeFilters = [],
+  onClearFilters = null,
+  availableStrategies = [],
+  selectedStrategy = 'ALL',
+  onSelectStrategy = null,
+  selectedOutcome = 'ALL',
+  onSelectOutcome = null,
+}) {
   const [activeTab, setActiveTab] = useState('equity') // 'equity', 'waterfall', 'streaks', 'ratios', 'symbols', 'timing'
   const [waterfallSort, setWaterfallSort] = useState('chrono') // 'chrono' or 'ranked'
   const [equityVisualMode, setEquityVisualMode] = useState('bar') // 'bar', 'line', 'mountain', 'stepped', 'drawdown'
@@ -468,48 +484,150 @@ export default function JournalAnalyticsCharts({ trades = [], serverAnalytics = 
       {/* ─── Interactive Visualization Graph Workspace ─── */}
       <div className="card bg-[#0b1329]/95 border border-slate-800/80 rounded-2xl p-5 shadow-2xl space-y-5">
         {/* Visualization Tabs Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
               <BarChart3 size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-200">Journal Data Visualizations</h3>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h3 className="text-sm font-bold text-slate-200">Journal Data Visualizations</h3>
+
+                {/* ─── REMOVE FILTER BUTTON / STATUS BADGE ───────────────── */}
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={onClearFilters}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 hover:text-white border border-rose-500/40 shadow-sm transition-all cursor-pointer active:scale-95 animate-pulse"
+                    title="Active filter applied. Click to remove all filters and show all trade data"
+                  >
+                    <FilterX size={13} className="text-rose-400" />
+                    <span>Remove Filter ({activeFilters.length > 0 ? activeFilters.length : 'Active'})</span>
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800/80 text-slate-400 border border-slate-700/50">
+                    <CheckCircle2 size={11} className="text-emerald-400" />
+                    <span>All Trades (No Filter)</span>
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-slate-400">
                 Interactive graphical views for trade outcomes, equity trajectory, and streak distributions.
               </p>
             </div>
           </div>
 
-          {/* Subtabs */}
-          <div className="flex items-center gap-1 overflow-x-auto touch-scroll pb-1 scrollbar-none">
-            {[
-              { id: 'equity', label: 'Equity Curve', icon: TrendingUp },
-              { id: 'waterfall', label: 'Trade-off & Bars', icon: BarChart3 },
-              { id: 'streaks', label: 'Streak Visualizer', icon: Flame },
-              { id: 'ratios', label: 'Win/Loss & Risk', icon: PieChart },
-              { id: 'symbols', label: 'Symbol Breakdown', icon: Layers },
-              { id: 'timing', label: 'Timing & Stock Entry', icon: Clock },
-            ].map((tab) => {
-              const Icon = tab.icon
-              const isActive = activeTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                      : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800/60'
-                  }`}
+          {/* Subtabs & Quick Filter Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Strategy Filter Dropdown inside Visualizations */}
+            {onSelectStrategy && availableStrategies && availableStrategies.length > 1 && (
+              <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs">
+                <span className="text-[10px] text-slate-400 font-medium">Strategy:</span>
+                <select
+                  value={selectedStrategy || 'ALL'}
+                  onChange={(e) => onSelectStrategy(e.target.value)}
+                  className="bg-transparent text-slate-200 text-xs font-medium focus:outline-none cursor-pointer max-w-[130px] truncate"
                 >
-                  <Icon size={13} className={isActive ? 'text-white' : 'text-blue-400'} />
-                  <span>{tab.label}</span>
-                </button>
-              )
-            })}
+                  {availableStrategies.map((s) => (
+                    <option key={s} value={s} className="bg-slate-900 text-slate-200">
+                      {s === 'ALL' ? 'All Strategies' : s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Outcome Filter Dropdown inside Visualizations */}
+            {onSelectOutcome && (
+              <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs">
+                <span className="text-[10px] text-slate-400 font-medium">Outcome:</span>
+                <select
+                  value={selectedOutcome || 'ALL'}
+                  onChange={(e) => onSelectOutcome(e.target.value)}
+                  className="bg-transparent text-slate-200 text-xs font-medium focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-slate-900 text-slate-200">All</option>
+                  <option value="WIN" className="bg-slate-900 text-slate-200">Wins Only</option>
+                  <option value="LOSS" className="bg-slate-900 text-slate-200">Losses Only</option>
+                  <option value="OPEN" className="bg-slate-900 text-slate-200">Open Only</option>
+                </select>
+              </div>
+            )}
+
+            {/* Subtabs */}
+            <div className="flex items-center gap-1 overflow-x-auto touch-scroll pb-1 scrollbar-none">
+              {[
+                { id: 'equity', label: 'Equity Curve', icon: TrendingUp },
+                { id: 'waterfall', label: 'Trade-off & Bars', icon: BarChart3 },
+                { id: 'streaks', label: 'Streak Visualizer', icon: Flame },
+                { id: 'ratios', label: 'Win/Loss & Risk', icon: PieChart },
+                { id: 'symbols', label: 'Symbol Breakdown', icon: Layers },
+                { id: 'timing', label: 'Timing & Stock Entry', icon: Clock },
+              ].map((tab) => {
+                const Icon = tab.icon
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                        : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800/60'
+                    }`}
+                  >
+                    <Icon size={13} className={isActive ? 'text-white' : 'text-blue-400'} />
+                    <span>{tab.label}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
+
+        {/* ─── ACTIVE FILTER CHIPS & REMOVE FILTER BAR ─────────────────── */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl bg-gradient-to-r from-rose-950/30 via-slate-900/90 to-rose-950/20 border border-rose-500/30 text-xs animate-in fade-in">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold text-rose-300 flex items-center gap-1 mr-1">
+                <Filter size={13} className="text-rose-400" />
+                Active Visual Filter:
+              </span>
+              {activeFilters.map((filt) => (
+                <span
+                  key={filt.id}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-900/90 border border-rose-500/30 text-rose-200 shadow-sm"
+                >
+                  <span>{filt.label}</span>
+                  {filt.onRemove && (
+                    <button
+                      type="button"
+                      onClick={filt.onRemove}
+                      className="text-slate-400 hover:text-white cursor-pointer p-0.5 rounded hover:bg-rose-500/30 transition-colors"
+                      title={`Remove filter: ${filt.label}`}
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+                </span>
+              ))}
+              <span className="text-[11px] text-slate-400 ml-1.5">
+                (Visualizing <strong className="text-white font-mono">{trades.length}</strong> of{' '}
+                <strong className="text-slate-300 font-mono">{allTrades.length || trades.length}</strong> trades)
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30 transition-all cursor-pointer active:scale-95 ml-auto"
+              title="Click to remove all active filters and show all trades"
+            >
+              <RotateCcw size={12} />
+              <span>Remove Filter (Show All)</span>
+            </button>
+          </div>
+        )}
 
         {/* ── TAB 1: Equity Curve (Cumulative Growth) ── */}
         {activeTab === 'equity' && (

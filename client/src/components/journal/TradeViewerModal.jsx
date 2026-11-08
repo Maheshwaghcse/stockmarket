@@ -145,16 +145,16 @@ export default function TradeViewerModal({
         editFormData.time ||
         (editFormData.entryDate && editFormData.entryDate.includes('T')
           ? (() => {
-              try {
-                const [hh, mm] = editFormData.entryDate.split('T')[1].slice(0, 5).split(':')
-                const h = parseInt(hh, 10)
-                const ampm = h >= 12 ? 'PM' : 'AM'
-                const h12 = h % 12 || 12
-                return `${String(h12).padStart(2, '0')}:${mm} ${ampm}`
-              } catch {
-                return ''
-              }
-            })()
+            try {
+              const [hh, mm] = editFormData.entryDate.split('T')[1].slice(0, 5).split(':')
+              const h = parseInt(hh, 10)
+              const ampm = h >= 12 ? 'PM' : 'AM'
+              const h12 = h % 12 || 12
+              return `${String(h12).padStart(2, '0')}:${mm} ${ampm}`
+            } catch {
+              return ''
+            }
+          })()
           : '') ||
         '09:30 AM'
 
@@ -414,6 +414,7 @@ export default function TradeViewerModal({
               isSubmitting={isSubmitting}
               allTrades={trades}
               onQuickUpdateTrade={async (fields) => {
+
                 if (!currentTrade || !onUpdateTrade) return
                 setEditFormData((prev) => ({ ...prev, ...fields }))
                 await onUpdateTrade(currentTrade._id, {

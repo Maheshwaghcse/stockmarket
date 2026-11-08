@@ -25,7 +25,6 @@ import {
 } from 'lucide-react'
 import { formatINR } from '../../lib/journalAnalytics'
 import { searchStockCatalog, DEFAULT_STOCK_LOT_SIZES } from '../../lib/stockCatalog'
-import StrategyPerformanceDashboard from './StrategyPerformanceDashboard'
 
 const SUGGESTED_SYMBOLS = [
   'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN',
@@ -423,7 +422,6 @@ export default function TradeJournalTemplate({
 }) {
   const isEditing = mode === 'create' || mode === 'edit'
   const [zoomImage, setZoomImage] = useState(false)
-  const [showStrategyDashboard, setShowStrategyDashboard] = useState(false)
   const fileInputRef = useRef(null)
   const symbolWrapperRef = useRef(null)
 
@@ -1125,16 +1123,6 @@ export default function TradeJournalTemplate({
               </span>
             )}
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowStrategyDashboard(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-md shadow-purple-600/30 transition-all cursor-pointer self-start sm:self-auto shrink-0"
-            title="Open Independent Strategy Performance & Win Rate Analysis"
-          >
-            <BarChart3 size={13} />
-            <span>Strategy Analytics & Win Rate</span>
-          </button>
         </div>
 
         {/* ─── MOBILE SECTION NAVIGATION PILLS (NON-LENGTHY, MOBILE FRIENDLY) ── */}
@@ -1667,20 +1655,6 @@ export default function TradeJournalTemplate({
                       <span className="font-bold text-sm text-purple-300">
                         {strategy || '—'}
                       </span>
-                    </div>
-                  )}
-
-                  {strategy && (
-                    <div className="pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setShowStrategyDashboard(true)}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-300 hover:text-white bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 px-2 py-0.5 rounded-md transition-all cursor-pointer"
-                        title={`View independent win rate and performance for ${strategy}`}
-                      >
-                        <BarChart3 size={11} />
-                        <span>Win Rate & Analytics ({strategy})</span>
-                      </button>
                     </div>
                   )}
                 </div>
@@ -3133,21 +3107,6 @@ export default function TradeJournalTemplate({
           </div>
         </div>
       )}
-
-      {/* ─── STRATEGY PERFORMANCE DASHBOARD MODAL ───────────────────────── */}
-      {showStrategyDashboard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in">
-          <div className="relative w-full max-w-5xl my-auto max-h-[92vh] overflow-y-auto rounded-2xl shadow-2xl">
-            <StrategyPerformanceDashboard
-              allTrades={allTrades}
-              initialStrategy={strategy || 'Tiger Breakout'}
-              onClose={() => setShowStrategyDashboard(false)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
-
-export { StrategyPerformanceDashboard }
