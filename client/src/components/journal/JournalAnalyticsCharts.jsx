@@ -493,21 +493,29 @@ export default function JournalAnalyticsCharts({
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h3 className="text-sm font-bold text-slate-200">Journal Data Visualizations</h3>
 
-                {/* ─── REMOVE FILTER BUTTON / STATUS BADGE ───────────────── */}
+                {/* ─── REMOVE FILTER BUTTON (ALWAYS PRESENT) ───────────────── */}
+                <button
+                  type="button"
+                  onClick={onClearFilters}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    hasActiveFilters
+                      ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30 ring-2 ring-rose-400/40 animate-pulse'
+                      : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 shadow-sm'
+                  }`}
+                  title={hasActiveFilters ? "Active filters applied. Click to remove all filters and show all trade data" : "Remove all filters (currently showing all trades)"}
+                >
+                  <FilterX size={13} className={hasActiveFilters ? 'text-white' : 'text-slate-400'} />
+                  <span>{hasActiveFilters ? `Remove Filter (${activeFilters.length})` : 'Remove Filter'}</span>
+                </button>
+
                 {hasActiveFilters ? (
-                  <button
-                    type="button"
-                    onClick={onClearFilters}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 hover:text-white border border-rose-500/40 shadow-sm transition-all cursor-pointer active:scale-95 animate-pulse"
-                    title="Active filter applied. Click to remove all filters and show all trade data"
-                  >
-                    <FilterX size={13} className="text-rose-400" />
-                    <span>Remove Filter ({activeFilters.length > 0 ? activeFilters.length : 'Active'})</span>
-                  </button>
+                  <span className="text-[10px] text-amber-300 font-mono font-semibold">
+                    (Filtered: {trades.length} of {allTrades.length || trades.length} trades)
+                  </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800/80 text-slate-400 border border-slate-700/50">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     <CheckCircle2 size={11} className="text-emerald-400" />
-                    <span>All Trades (No Filter)</span>
+                    <span>All {trades.length} Trades Showing</span>
                   </span>
                 )}
               </div>
@@ -581,6 +589,18 @@ export default function JournalAnalyticsCharts({
                   </button>
                 )
               })}
+
+              {hasActiveFilters && onClearFilters && (
+                <button
+                  type="button"
+                  onClick={onClearFilters}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-500/25 hover:bg-rose-500/40 text-rose-300 hover:text-white border border-rose-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  title="Remove all active filters"
+                >
+                  <FilterX size={12} />
+                  <span>Remove Filter</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -54,6 +54,7 @@ export default function TradingJournalPage() {
   const [searchParams] = useSearchParams()
 
   // Filters & State
+  const [journalViewTab, setJournalViewTab] = useState('journal') // 'journal' | 'strategy'
   const [modalOpen, setModalOpen] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
   const [strategyDashboardOpen, setStrategyDashboardOpen] = useState(false)
@@ -833,7 +834,10 @@ export default function TradingJournalPage() {
 
           {/* Independent Strategy Performance Dashboard button */}
           <button
-            onClick={() => setStrategyDashboardOpen(true)}
+            onClick={() => {
+              setJournalViewTab('strategy')
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-purple-200 hover:text-white bg-gradient-to-r from-purple-900/60 via-indigo-900/50 to-purple-900/60 hover:from-purple-800 hover:to-indigo-800 border border-purple-500/40 shadow-lg shadow-purple-950/30 transition-all cursor-pointer active:scale-95"
             title="Independent Strategy Performance Dashboard - Click to see all strategies, win rates, and datewise analytics"
           >
@@ -888,6 +892,68 @@ export default function TradingJournalPage() {
           </div>
         </div>
       </div>
+
+      {/* ─── MAIN JOURNAL NAVIGATION / SEPARATE OPTION SELECTOR ───────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#0d162d]/90 border border-slate-800/90 rounded-2xl p-2 sm:p-2.5 shadow-xl">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setJournalViewTab('journal')}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              journalViewTab === 'journal'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800/80'
+            }`}
+          >
+            <FileText size={16} />
+            <span>Trading Journal (Tradebook & History)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setJournalViewTab('strategy')
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              journalViewTab === 'strategy'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
+                : 'bg-slate-900/60 text-purple-300 hover:text-white hover:bg-purple-900/30 border border-purple-500/30'
+            }`}
+          >
+            <Target size={16} className={journalViewTab === 'strategy' ? 'text-white' : 'text-purple-400'} />
+            <span>Independent Strategy Performance Dashboard (Click to See All)</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {journalViewTab === 'strategy' ? (
+            <button
+              type="button"
+              onClick={() => setJournalViewTab('journal')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all cursor-pointer"
+            >
+              <ChevronLeft size={14} />
+              <span>Back to Tradebook</span>
+            </button>
+          ) : (
+            <span className="text-[11px] text-slate-400 font-medium hidden md:inline">
+              Total Logged Trades: <strong className="text-slate-200">{trades.length}</strong>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {journalViewTab === 'strategy' ? (
+        <div className="space-y-4 animate-in fade-in">
+          <StrategyPerformanceDashboard
+            allTrades={trades}
+            initialStrategy={tradeStrategyFilter !== 'ALL' ? tradeStrategyFilter : ''}
+            onClose={() => setJournalViewTab('journal')}
+          />
+        </div>
+      ) : (
+        <>
 
       {/* How to use information banner */}
       {showHowToUse && (
@@ -1710,7 +1776,10 @@ export default function TradingJournalPage() {
 
             <button
               type="button"
-              onClick={() => setStrategyDashboardOpen(true)}
+              onClick={() => {
+                setJournalViewTab('strategy')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
               className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-purple-300 hover:text-white bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 transition-all cursor-pointer shrink-0"
               title="Open full Independent Strategy Performance Dashboard to analyze all strategies"
             >
@@ -2688,6 +2757,8 @@ export default function TradingJournalPage() {
           </>
         )}
       </div>
+      </>
+      )}
 
       {/* ─── Modal: New Trade (Using User Trading Journal Template) ────────── */}
       {modalOpen && (
