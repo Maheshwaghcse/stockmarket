@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle,
+  Check,
 } from 'lucide-react'
 import TradeJournalTemplate, {
   extractBeforeEmotion,
