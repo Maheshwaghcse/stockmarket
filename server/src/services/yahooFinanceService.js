@@ -1,3 +1,39 @@
+async function fetchIndexQuotes(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && indexQuotesCache.size > 0 && now - lastIndexFetchTime < QUOTE_CACHE_TTL_MS) {
+    return Array.from(indexQuotesCache.values());
+  }
+
+  try {
+    const promises = INDEX_CONFIG.map(async (item) => {
+      try {
+        let raw = null;
+        try {
+          raw = await yf.quote(item.yahooSymbol);
+        } catch {
+          raw = null;
+        }
+        if (!raw || !raw.regularMarketPrice) {
+          raw = await fetchDirectYahooQuote(item.yahooSymbol);
+        }
+        const processed = processQuote(raw, item);
+        if (processed) {
+          indexQuotesCache.set(item.symbol, processed);
+        }
+      } catch (err) {
+        console.warn('[YahooFinance] Failed to fetch index ' + item.symbol + ' (' + item.yahooSymbol + '):', err.message);
+      }
+    });
+
+    await Promise.all(promises);
+    lastIndexFetchTime = now;
+  } catch (err) {
+    console.error('[YahooFinance] Batch fetch error for indices:', err.message);
+  }
+
+  return Array.from(indexQuotesCache.values());
+}
+
 /**
  * Yahoo Finance Market Data Service
  *
@@ -301,6 +337,63 @@ seedBaselineQuotes();
 /**
  * Normalize and validate a quote object retrieved from Yahoo Finance
  */
+
+const https = require('https');
+
+/**
+ * Direct HTTP quote fetch from Yahoo Finance v8 chart API.
+ * This endpoint works globally in cloud hosting environments (including Render/AWS)
+ * without cookie, crumb, or consent wall restrictions.
+ */
+function fetchDirectYahooQuote(yahooSymbol) {
+  return new Promise((resolve) => {
+    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(yahooSymbol) + '?interval=1d&range=1d';
+    const req = https.get(
+      url,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'application/json',
+        },
+        timeout: 6000,
+      },
+      (res) => {
+        let data = '';
+        res.on('data', (c) => (data += c));
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            const meta = json?.chart?.result?.[0]?.meta;
+            if (meta && typeof meta.regularMarketPrice === 'number' && meta.regularMarketPrice > 0) {
+              resolve({
+                regularMarketPrice: meta.regularMarketPrice,
+                regularMarketPreviousClose: meta.chartPreviousClose || meta.previousClose,
+                regularMarketDayHigh: meta.regularMarketDayHigh,
+                regularMarketDayLow: meta.regularMarketDayLow,
+                regularMarketOpen: meta.regularMarketOpen,
+                regularMarketVolume: meta.regularMarketVolume,
+                regularMarketTime: meta.regularMarketTime ? meta.regularMarketTime * 1000 : Date.now(),
+                symbol: yahooSymbol,
+                exchange: meta.exchangeName,
+                currency: meta.currency,
+              });
+            } else {
+              resolve(null);
+            }
+          } catch {
+            resolve(null);
+          }
+        });
+      }
+    );
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
+  });
+}
+
 function processQuote(rawQuote, configItem) {
   if (!rawQuote) return null;
 
@@ -581,13 +674,12 @@ async function fetchStockQuotes(forceRefresh = false) {
   }
 
   try {
-    // Process in chunks of 35 symbols to leverage Yahoo Finance batch API without exceeding limits
-    const CHUNK_SIZE = 35;
-    for (let i = 0; i < STOCK_CONFIG.length; i += CHUNK_SIZE) {
-      const chunk = STOCK_CONFIG.slice(i, i + CHUNK_SIZE);
-      const symbols = chunk.map((c) => c.yahooSymbol);
-
-      try {
+    let batchFetched = 0;
+    try {
+      const CHUNK_SIZE = 35;
+      for (let i = 0; i < STOCK_CONFIG.length; i += CHUNK_SIZE) {
+        const chunk = STOCK_CONFIG.slice(i, i + CHUNK_SIZE);
+        const symbols = chunk.map((c) => c.yahooSymbol);
         const rawQuotes = await yf.quote(symbols);
         const quoteMap = new Map();
         (Array.isArray(rawQuotes) ? rawQuotes : [rawQuotes]).forEach((q) => {
@@ -596,40 +688,48 @@ async function fetchStockQuotes(forceRefresh = false) {
 
         chunk.forEach((item) => {
           const raw = quoteMap.get(item.yahooSymbol);
-          if (raw) {
+          if (raw && typeof raw.regularMarketPrice === 'number' && raw.regularMarketPrice > 0) {
             const processed = processQuote(raw, item);
             if (processed) {
               stockQuotesCache.set(item.symbol, processed);
+              batchFetched++;
             }
           }
         });
-      } catch (chunkErr) {
-        console.warn(`[YahooFinance] Chunk fetch fallback for batch ${i / CHUNK_SIZE}: ${chunkErr.message}`);
-        // Fallback to individual quote calls for this specific chunk
+      }
+    } catch (batchErr) {
+      console.warn('[YahooFinance] Batch quote error (' + batchErr.message + '), falling back to direct v8 fetch');
+    }
+
+    // Direct v8 fallback if batch quote was blocked in cloud environment
+    if (batchFetched < STOCK_CONFIG.length) {
+      const CONCURRENCY = 15;
+      for (let i = 0; i < STOCK_CONFIG.length; i += CONCURRENCY) {
+        const chunk = STOCK_CONFIG.slice(i, i + CONCURRENCY);
         await Promise.all(
           chunk.map(async (item) => {
             try {
-              const raw = await yf.quote(item.yahooSymbol);
-              const processed = processQuote(raw, item);
-              if (processed) stockQuotesCache.set(item.symbol, processed);
-            } catch (err) {
-              // Retain existing cached quote if available
+              const raw = await fetchDirectYahooQuote(item.yahooSymbol);
+              if (raw) {
+                const processed = processQuote(raw, item);
+                if (processed) stockQuotesCache.set(item.symbol, processed);
+              }
+            } catch {
+              // Retain baseline quote
             }
           })
         );
       }
     }
+
     lastStockFetchTime = now;
   } catch (err) {
-    console.error('[YahooFinance] Batch fetch error for stocks:', err.message);
+    console.error('[YahooFinance] Fetch error for stocks:', err.message);
   }
 
   return Array.from(stockQuotesCache.values());
 }
 
-/**
- * Fetch single stock detail including valuation metrics from Yahoo Finance
- */
 async function fetchStockDetail(symbol, forceRefresh = false) {
   const upper = symbol.toUpperCase();
   const config = STOCK_CONFIG.find((c) => c.symbol === upper) || resolveSymbolConfig(upper);
@@ -642,9 +742,18 @@ async function fetchStockDetail(symbol, forceRefresh = false) {
   }
 
   try {
-    const raw = await yf.quote(config.yahooSymbol);
+    let raw = null;
+    try {
+      raw = await yf.quote(config.yahooSymbol);
+    } catch {
+      raw = null;
+    }
+    if (!raw || !raw.regularMarketPrice) {
+      raw = await fetchDirectYahooQuote(config.yahooSymbol);
+    }
+
     const base = processQuote(raw, config);
-    if (!base) return cached ? cached.data : null;
+    if (!base) return cached ? cached.data : (stockQuotesCache.get(upper) || null);
 
     const detail = {
       ...base,
@@ -658,7 +767,7 @@ async function fetchStockDetail(symbol, forceRefresh = false) {
     stockDetailCache.set(upper, { data: detail, timestamp: now });
     return detail;
   } catch (err) {
-    console.error(`[YahooFinance] Error fetching stock detail for ${symbol}:`, err.message);
+    console.error('[YahooFinance] Error fetching stock detail for ' + symbol + ':', err.message);
     if (cached) return cached.data;
     if (stockQuotesCache.has(upper)) return stockQuotesCache.get(upper);
     return null;
