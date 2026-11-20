@@ -63,82 +63,20 @@ const BASELINE_INDEX_PRICES = {
   NIFTYMIDCAP: 58200.00,
 };
 
-function seedBaselineQuotes() {
-  const nowStr = new Date().toISOString();
-  const openStatus = isMarketOpen() ? 'OPEN' : 'CLOSED';
-
-  // Seed Indices
-  INDEX_CONFIG.forEach((cfg) => {
-    if (!indexQuotesCache.has(cfg.symbol)) {
-      const price = BASELINE_INDEX_PRICES[cfg.symbol] || 20000;
-      const prevClose = +(price * 0.996).toFixed(2);
-      const change = +(price - prevClose).toFixed(2);
-      const changePct = +(((change) / prevClose) * 100).toFixed(2);
-      indexQuotesCache.set(cfg.symbol, {
-        symbol: cfg.symbol,
-        yahooSymbol: cfg.yahooSymbol,
-        name: cfg.name,
-        exchange: cfg.exchange,
-        sector: 'Benchmark',
-        value: price,
-        price,
-        change,
-        changePct,
-        open: prevClose,
-        prevClose,
-        dayHigh: +(price * 1.008).toFixed(2),
-        dayLow: +(price * 0.993).toFixed(2),
-        volume: 2500000,
-        timestamp: nowStr,
-        sourceTimestamp: nowStr,
-        lastUpdate: nowStr,
-        marketStatus: openStatus,
-        isDemo: false,
-        source: 'Live Markets',
-        dataSourceNote: 'Market reference quotes',
-      });
-    }
-  });
-
-  // Seed Stocks
-  STOCK_CONFIG.forEach((cfg, idx) => {
-    if (!stockQuotesCache.has(cfg.symbol)) {
-      const price = BASELINE_STOCK_PRICES[cfg.symbol] || 1500;
-      // Stagger slight positive/negative change based on index
-      const pctDelta = ((idx % 5) - 2) * 0.35 + 0.15;
-      const prevClose = +(price / (1 + pctDelta / 100)).toFixed(2);
-      const change = +(price - prevClose).toFixed(2);
-      const changePct = +pctDelta.toFixed(2);
-
-      stockQuotesCache.set(cfg.symbol, {
-        symbol: cfg.symbol,
-        yahooSymbol: cfg.yahooSymbol,
-        name: cfg.name,
-        exchange: cfg.exchange || 'NSE',
-        sector: cfg.sector || 'Other',
-        value: price,
-        price,
-        change,
-        changePct,
-        open: prevClose,
-        prevClose,
-        dayHigh: +(price * 1.015).toFixed(2),
-        dayLow: +(price * 0.988).toFixed(2),
-        volume: 850000 + (idx * 25000),
-        timestamp: nowStr,
-        sourceTimestamp: nowStr,
-        lastUpdate: nowStr,
-        marketStatus: openStatus,
-        isDemo: false,
-        source: 'Live Markets',
-        dataSourceNote: 'Market reference quotes',
-      });
-    }
-  });
+/**
+ * Check Indian Market Trading Hours (IST: 9:15 AM - 3:30 PM, Monday-Friday)
+ */
+function isMarketOpen() {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset);
+  const day = ist.getUTCDay(); // 0=Sun, 6=Sat
+  if (day === 0 || day === 6) return false;
+  const h = ist.getUTCHours();
+  const m = ist.getUTCMinutes();
+  const minutes = h * 60 + m;
+  return minutes >= 555 && minutes < 930; // 9:15 - 15:30 IST
 }
-
-// Initial seed immediately
-seedBaselineQuotes();
 
 // ─── Symbol Configurations ───────────────────────────────────────────────────
 const INDEX_CONFIG = [
@@ -283,20 +221,82 @@ const STOCK_CONFIG = [
   { symbol: 'TATACHEM',   yahooSymbol: 'TATACHEM.NS',   name: 'Tata Chemicals Ltd',           sector: 'Chemicals',  exchange: 'NSE' },
 ];
 
-/**
- * Check Indian Market Trading Hours (IST: 9:15 AM - 3:30 PM, Monday-Friday)
- */
-function isMarketOpen() {
-  const now = new Date();
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const ist = new Date(now.getTime() + istOffset);
-  const day = ist.getUTCDay(); // 0=Sun, 6=Sat
-  if (day === 0 || day === 6) return false;
-  const h = ist.getUTCHours();
-  const m = ist.getUTCMinutes();
-  const minutes = h * 60 + m;
-  return minutes >= 555 && minutes < 930; // 9:15 - 15:30 IST
+function seedBaselineQuotes() {
+  const nowStr = new Date().toISOString();
+  const openStatus = isMarketOpen() ? 'OPEN' : 'CLOSED';
+
+  // Seed Indices
+  INDEX_CONFIG.forEach((cfg) => {
+    if (!indexQuotesCache.has(cfg.symbol)) {
+      const price = BASELINE_INDEX_PRICES[cfg.symbol] || 20000;
+      const prevClose = +(price * 0.996).toFixed(2);
+      const change = +(price - prevClose).toFixed(2);
+      const changePct = +(((change) / prevClose) * 100).toFixed(2);
+      indexQuotesCache.set(cfg.symbol, {
+        symbol: cfg.symbol,
+        yahooSymbol: cfg.yahooSymbol,
+        name: cfg.name,
+        exchange: cfg.exchange,
+        sector: 'Benchmark',
+        value: price,
+        price,
+        change,
+        changePct,
+        open: prevClose,
+        prevClose,
+        dayHigh: +(price * 1.008).toFixed(2),
+        dayLow: +(price * 0.993).toFixed(2),
+        volume: 2500000,
+        timestamp: nowStr,
+        sourceTimestamp: nowStr,
+        lastUpdate: nowStr,
+        marketStatus: openStatus,
+        isDemo: false,
+        source: 'Live Markets',
+        dataSourceNote: 'Market reference quotes',
+      });
+    }
+  });
+
+  // Seed Stocks
+  STOCK_CONFIG.forEach((cfg, idx) => {
+    if (!stockQuotesCache.has(cfg.symbol)) {
+      const price = BASELINE_STOCK_PRICES[cfg.symbol] || 1500;
+      // Stagger slight positive/negative change based on index
+      const pctDelta = ((idx % 5) - 2) * 0.35 + 0.15;
+      const prevClose = +(price / (1 + pctDelta / 100)).toFixed(2);
+      const change = +(price - prevClose).toFixed(2);
+      const changePct = +pctDelta.toFixed(2);
+
+      stockQuotesCache.set(cfg.symbol, {
+        symbol: cfg.symbol,
+        yahooSymbol: cfg.yahooSymbol,
+        name: cfg.name,
+        exchange: cfg.exchange || 'NSE',
+        sector: cfg.sector || 'Other',
+        value: price,
+        price,
+        change,
+        changePct,
+        open: prevClose,
+        prevClose,
+        dayHigh: +(price * 1.015).toFixed(2),
+        dayLow: +(price * 0.988).toFixed(2),
+        volume: 850000 + (idx * 25000),
+        timestamp: nowStr,
+        sourceTimestamp: nowStr,
+        lastUpdate: nowStr,
+        marketStatus: openStatus,
+        isDemo: false,
+        source: 'Live Markets',
+        dataSourceNote: 'Market reference quotes',
+      });
+    }
+  });
 }
+
+// Initial seed immediately
+seedBaselineQuotes();
 
 /**
  * Normalize and validate a quote object retrieved from Yahoo Finance
