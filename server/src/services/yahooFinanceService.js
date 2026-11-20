@@ -1,39 +1,3 @@
-async function fetchIndexQuotes(forceRefresh = false) {
-  const now = Date.now();
-  if (!forceRefresh && indexQuotesCache.size > 0 && now - lastIndexFetchTime < QUOTE_CACHE_TTL_MS) {
-    return Array.from(indexQuotesCache.values());
-  }
-
-  try {
-    const promises = INDEX_CONFIG.map(async (item) => {
-      try {
-        let raw = null;
-        try {
-          raw = await yf.quote(item.yahooSymbol);
-        } catch {
-          raw = null;
-        }
-        if (!raw || !raw.regularMarketPrice) {
-          raw = await fetchDirectYahooQuote(item.yahooSymbol);
-        }
-        const processed = processQuote(raw, item);
-        if (processed) {
-          indexQuotesCache.set(item.symbol, processed);
-        }
-      } catch (err) {
-        console.warn('[YahooFinance] Failed to fetch index ' + item.symbol + ' (' + item.yahooSymbol + '):', err.message);
-      }
-    });
-
-    await Promise.all(promises);
-    lastIndexFetchTime = now;
-  } catch (err) {
-    console.error('[YahooFinance] Batch fetch error for indices:', err.message);
-  }
-
-  return Array.from(indexQuotesCache.values());
-}
-
 /**
  * Yahoo Finance Market Data Service
  *
@@ -464,14 +428,21 @@ async function fetchIndexQuotes(forceRefresh = false) {
   try {
     const promises = INDEX_CONFIG.map(async (item) => {
       try {
-        const raw = await yf.quote(item.yahooSymbol);
+        let raw = null;
+        try {
+          raw = await yf.quote(item.yahooSymbol);
+        } catch {
+          raw = null;
+        }
+        if (!raw || !raw.regularMarketPrice) {
+          raw = await fetchDirectYahooQuote(item.yahooSymbol);
+        }
         const processed = processQuote(raw, item);
         if (processed) {
           indexQuotesCache.set(item.symbol, processed);
         }
       } catch (err) {
-        console.warn(`[YahooFinance] Failed to fetch index ${item.symbol} (${item.yahooSymbol}):`, err.message);
-        // Retain existing cached quote if available
+        console.warn('[YahooFinance] Failed to fetch index ' + item.symbol + ' (' + item.yahooSymbol + '):', err.message);
       }
     });
 
