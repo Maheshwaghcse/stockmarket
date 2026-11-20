@@ -50,8 +50,7 @@ cd server && npm run dev
 cd client && npm run dev
 ```
 
-Frontend: http://localhost:5173  
-Backend API: http://localhost:5000
+Live Link: https://stockmarket-amber.vercel.app/
 
 ---
 
